@@ -1,0 +1,194 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { videoManager } from '@/storage/database';
+import type { InsertVideo } from '@/storage/database';
+
+/**
+ * POST /api/videos
+ * 添加新视频，自动获取视频信息和统计数据
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { videoUrl, owner, tags, category } = body;
+
+    if (!videoUrl) {
+      return NextResponse.json(
+        { error: '视频 URL 不能为空' },
+        { status: 400 }
+      );
+    }
+
+    // 从 URL 中提取视频 ID
+    let videoId = '';
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = videoUrl.match(pattern);
+      if (match && match[1]) {
+        videoId = match[1];
+        break;
+      }
+    }
+
+    if (!videoId) {
+      return NextResponse.json(
+        { error: '无法从 URL 中提取视频 ID' },
+        { status: 400 }
+      );
+    }
+
+    // 检查视频是否已存在
+    const existingVideo = await videoManager.getVideoByVideoId(videoId);
+    if (existingVideo) {
+      return NextResponse.json(
+        {
+          error: '视频已存在',
+          video: existingVideo,
+        },
+        { status: 409 }
+      );
+    }
+
+    // 获取 YouTube API Key
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: '平台未配置 YouTube API Key' },
+        { status: 500 }
+      );
+    }
+
+    // 调用 YouTube Data API 获取视频信息
+    const videoResponse = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`
+    );
+
+    if (!videoResponse.ok) {
+      const errorData = await videoResponse.json().catch(() => ({}));
+      return NextResponse.json(
+        {
+          error: '获取视频信息失败',
+          details: errorData.error?.message || videoResponse.statusText,
+        },
+        { status: videoResponse.status }
+      );
+    }
+
+    const videoData = await videoResponse.json();
+    if (!videoData.items || videoData.items.length === 0) {
+      return NextResponse.json(
+        { error: '未找到该视频' },
+        { status: 404 }
+      );
+    }
+
+    const snippet = videoData.items[0].snippet;
+    const thumbnail = snippet.thumbnails?.maxres?.url ||
+                     snippet.thumbnails?.high?.url ||
+                     snippet.thumbnails?.medium?.url ||
+                     snippet.thumbnails?.default?.url;
+
+    // 创建视频记录
+    const insertData: InsertVideo = {
+      videoId,
+      title: snippet.title,
+      description: snippet.description,
+      thumbnail,
+      channelId: snippet.channelId,
+      channelTitle: snippet.channelTitle,
+      tags: tags ? (Array.isArray(tags) ? tags : tags.split(',').map((t: string) => t.trim())) : snippet.tags,
+      categoryId: category || snippet.categoryId,
+      owner,
+    };
+
+    const video = await videoManager.createVideo(insertData);
+
+    // 获取视频统计数据
+    try {
+      const statsResponse = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${apiKey}`
+      );
+
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json();
+        if (statsData.items && statsData.items.length > 0) {
+          const statistics = statsData.items[0].statistics;
+
+          await videoManager.createVideoStats({
+            videoId,
+            statDate: new Date(),
+            viewCount: parseInt(statistics.viewCount) || 0,
+            likeCount: parseInt(statistics.likeCount) || 0,
+            commentCount: parseInt(statistics.commentCount) || 0,
+          });
+        }
+      }
+    } catch (statsError) {
+      console.error('获取视频统计失败:', statsError);
+      // 统计数据获取失败不影响视频添加
+    }
+
+    return NextResponse.json({
+      success: true,
+      video,
+      message: '视频添加成功',
+    });
+  } catch (error) {
+    console.error('添加视频失败:', error);
+    return NextResponse.json(
+      {
+        error: '服务器内部错误',
+        details: error instanceof Error ? error.message : '未知错误',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * GET /api/videos
+ * 获取视频列表
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const skip = parseInt(searchParams.get('skip') || '0');
+    const isActive = searchParams.get('isActive') === 'true' ? true :
+                     searchParams.get('isActive') === 'false' ? false :
+                     undefined;
+
+    const videos = await videoManager.getVideos({
+      limit,
+      skip,
+      isActive,
+    });
+
+    // 获取每个视频的最新统计数据
+    const videosWithStats = await Promise.all(
+      videos.map(async (video) => {
+        const latestStats = await videoManager.getLatestVideoStats(video.videoId);
+        return {
+          ...video,
+          latestStats: latestStats || null,
+        };
+      })
+    );
+
+    return NextResponse.json({
+      videos: videosWithStats,
+      total: videosWithStats.length,
+    });
+  } catch (error) {
+    console.error('获取视频列表失败:', error);
+    return NextResponse.json(
+      {
+        error: '服务器内部错误',
+        details: error instanceof Error ? error.message : '未知错误',
+      },
+      { status: 500 }
+    );
+  }
+}

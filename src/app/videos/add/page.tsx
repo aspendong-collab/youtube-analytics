@@ -1,13 +1,16 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
 
 export default function AddVideoPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     videoUrl: '',
     videoTitle: '',
@@ -56,11 +59,47 @@ export default function AddVideoPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('添加视频:', formData);
-    // TODO: 实现添加视频逻辑
-    alert('视频添加成功！');
+
+    if (!formData.videoUrl.trim()) {
+      toast.error('请输入视频链接');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/videos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          videoUrl: formData.videoUrl,
+          owner: formData.owner,
+          tags: formData.tags,
+          category: formData.category,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || '添加视频失败');
+      }
+
+      const data = await response.json();
+
+      toast.success('视频添加成功！已自动获取视频信息和统计数据。');
+
+      // 跳转到视频列表页面
+      router.push('/videos');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '添加视频失败';
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -68,14 +107,14 @@ export default function AddVideoPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-[#1D1D1F]">添加视频</h1>
-          <p className="text-sm text-[#86868B] mt-1">添加新的视频到监控列表</p>
+          <p className="text-sm text-[#86868B] mt-1">添加新的视频到监控列表，系统会自动获取视频信息和统计数据</p>
         </div>
       </div>
 
       <Card className="p-6 bg-white shadow-sm border-[rgba(0,0,0,0.08)]">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="videoUrl">视频链接</Label>
+            <Label htmlFor="videoUrl">视频链接 *</Label>
             <div className="flex gap-3">
               <Input
                 id="videoUrl"
@@ -118,32 +157,46 @@ export default function AddVideoPage() {
             <Label htmlFor="videoTitle">视频标题</Label>
             <Input
               id="videoTitle"
-              placeholder="输入视频标题"
+              placeholder="自动获取或手动输入"
               value={formData.videoTitle}
               onChange={(e) => setFormData({ ...formData, videoTitle: e.target.value })}
-              required
             />
+            <p className="text-xs text-[#86868B]">
+              可以点击"获取视频信息"按钮自动填充
+            </p>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="description">视频描述</Label>
             <Textarea
               id="description"
-              placeholder="输入视频描述"
+              placeholder="自动获取或手动输入"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="owner">负责人</Label>
-            <Input
-              id="owner"
-              placeholder="选择负责人"
-              value={formData.owner}
-              onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="owner">负责人</Label>
+              <Input
+                id="owner"
+                placeholder="输入负责人姓名"
+                value={formData.owner}
+                onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="category">分类</Label>
+              <Input
+                id="category"
+                placeholder="输入视频分类"
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -156,21 +209,20 @@ export default function AddVideoPage() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="category">分类</Label>
-            <Input
-              id="category"
-              placeholder="输入视频分类"
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-            />
-          </div>
-
           <div className="flex gap-3 pt-4">
-            <Button type="submit" className="bg-[#007AFF] hover:bg-[#0066CC]">
-              添加视频
+            <Button
+              type="submit"
+              className="bg-[#007AFF] hover:bg-[#0066CC]"
+              disabled={isLoading}
+            >
+              {isLoading ? '添加中...' : '添加视频'}
             </Button>
-            <Button type="button" variant="outline" className="border-[rgba(0,0,0,0.1)]">
+            <Button
+              type="button"
+              variant="outline"
+              className="border-[rgba(0,0,0,0.1)]"
+              onClick={() => router.push('/videos')}
+            >
               取消
             </Button>
           </div>
