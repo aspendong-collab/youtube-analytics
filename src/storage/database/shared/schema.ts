@@ -9,7 +9,7 @@ import {
   jsonb,
   index,
 } from "drizzle-orm/pg-core";
-import { createSchemaFactory } from "drizzle-zod";
+import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Videos 表 - 存储视频基本信息
@@ -64,13 +64,8 @@ export const videoStats = pgTable(
   })
 );
 
-// 使用 createSchemaFactory 配置 date coercion
-const { createInsertSchema: createCoercedInsertSchema } = createSchemaFactory({
-  coerce: { date: true },
-});
-
 // Videos schemas
-export const insertVideoSchema = createCoercedInsertSchema(videos).pick({
+export const insertVideoSchema = createInsertSchema(videos).pick({
   videoId: true,
   title: true,
   description: true,
@@ -82,7 +77,7 @@ export const insertVideoSchema = createCoercedInsertSchema(videos).pick({
   owner: true,
 });
 
-export const updateVideoSchema = createCoercedInsertSchema(videos)
+export const updateVideoSchema = createInsertSchema(videos)
   .pick({
     title: true,
     description: true,
@@ -97,7 +92,7 @@ export const updateVideoSchema = createCoercedInsertSchema(videos)
   .partial();
 
 // Video Stats schemas
-export const insertVideoStatsSchema = createCoercedInsertSchema(videoStats).pick({
+export const insertVideoStatsSchema = createInsertSchema(videoStats).pick({
   videoId: true,
   statDate: true,
   viewCount: true,
