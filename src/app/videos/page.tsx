@@ -1,60 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-
-interface VideoStats {
-  viewCount: number;
-  likeCount: number;
-  commentCount: number;
-  statDate: string | Date;
-}
-
-interface Video {
-  id: string;
-  videoId: string;
-  title: string;
-  description?: string;
-  thumbnail?: string;
-  channelId?: string;
-  channelTitle?: string;
-  owner?: string;
-  createdAt: string | Date;
-  latestStats?: VideoStats | null;
-}
+import { useVideos, type Video } from '@/hooks/use-videos';
 
 export default function VideosPage() {
   const router = useRouter();
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data, isLoading, error } = useVideos({ isActive: true, limit: 100 });
   const [filterOwner, setFilterOwner] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 加载视频列表
-  useEffect(() => {
-    loadVideos();
-  }, []);
+  const videos = data?.videos || [];
 
-  const loadVideos = async () => {
-    try {
-      const response = await fetch('/api/videos?isActive=true&limit=100');
-
-      if (!response.ok) {
-        throw new Error('获取视频列表失败');
-      }
-
-      const data = await response.json();
-      setVideos(data.videos || []);
-    } catch (error) {
-      console.error('加载视频列表失败:', error);
-      toast.error('加载视频列表失败');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // 如果有错误，显示错误信息
+  if (error) {
+    toast.error('加载视频列表失败');
+  }
 
   // 格式化数字
   const formatNumber = (num: number): string => {
@@ -105,7 +69,7 @@ export default function VideosPage() {
   // 获取所有负责人
   const owners = Array.from(new Set(videos.map((v) => v.owner).filter(Boolean)));
 
-  if (isLoading) {
+  if (isLoading && videos.length === 0) {
     return (
       <div className="p-8 flex items-center justify-center">
         <div className="text-[#86868B]">加载中...</div>

@@ -1,46 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-
-interface VideoStats {
-  viewCount: number;
-  likeCount: number;
-  commentCount: number;
-  statDate: string | Date;
-}
-
-interface Video {
-  id: string;
-  videoId: string;
-  title: string;
-  owner?: string;
-  createdAt: string | Date;
-  latestStats?: VideoStats | null;
-}
+import { useStats } from '@/hooks/use-videos';
 
 export default function OverviewPage() {
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    loadVideos();
-  }, []);
-
-  const loadVideos = async () => {
-    try {
-      const response = await fetch('/api/videos?isActive=true&limit=1000');
-      if (response.ok) {
-        const data = await response.json();
-        setVideos(data.videos || []);
-      }
-    } catch (error) {
-      console.error('加载视频数据失败:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { data, isLoading } = useStats();
+  const videos = data?.videos || [];
 
   // 计算统计数据
   const calculateStats = () => {
@@ -83,7 +49,7 @@ export default function OverviewPage() {
     return num.toString();
   };
 
-  if (isLoading) {
+  if (isLoading && videos.length === 0) {
     return (
       <div className="p-8 flex items-center justify-center">
         <div className="text-[#86868B]">加载中...</div>
