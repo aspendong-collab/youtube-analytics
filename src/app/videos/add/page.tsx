@@ -34,7 +34,25 @@ export default function AddVideoPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || '获取视频信息失败');
+        const errorMsg = data.error || '获取视频信息失败';
+        const details = data.details ? ` (${data.details})` : '';
+
+        // 构建更友好的错误提示
+        let fullError = errorMsg;
+
+        if (data.error?.includes('未配置 YouTube API Key')) {
+          fullError = '请先配置 YouTube API Key';
+        } else if (data.error?.includes('无法从 URL 中提取视频 ID')) {
+          fullError = '请输入正确的 YouTube 视频链接';
+        } else if (data.error?.includes('未找到该视频')) {
+          fullError = '无法找到该视频，请检查链接是否正确';
+        } else if (data.statusCode === 403) {
+          fullError = 'API Key 权限不足或已达到配额限制';
+        } else if (data.statusCode === 401) {
+          fullError = 'API Key 无效，请重新配置';
+        }
+
+        throw new Error(fullError + details);
       }
 
       const data = await response.json();
@@ -46,8 +64,17 @@ export default function AddVideoPage() {
         tags: data.tags ? data.tags.join(', ') : '',
         category: data.categoryId || '',
       });
+
+      // 成功后清除错误信息
+      setError('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '获取视频信息失败');
+      const errorMessage = err instanceof Error ? err.message : '获取视频信息失败';
+      setError(errorMessage);
+
+      // 如果是 API Key 相关错误，显示额外的提示
+      if (errorMessage.includes('API Key')) {
+        setError(errorMessage + '。请前往"设置管理 > 数据采集"进行配置。');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -92,7 +119,12 @@ export default function AddVideoPage() {
               </Button>
             </div>
             {error && (
-              <p className="text-sm text-red-500 mt-1">{error}</p>
+              <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <span className="text-red-500">⚠️</span>
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              </div>
             )}
           </div>
 
