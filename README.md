@@ -1,8 +1,25 @@
-# projects
+# YouTube Analytics Platform
 
-这是一个基于 [Next.js 16](https://nextjs.org) + [shadcn/ui](https://ui.shadcn.com) 的全栈应用项目，由扣子编程 CLI 创建。
+一个基于 [Next.js 16](https://nextjs.org) + [shadcn/ui](https://ui.shadcn.com) 的 YouTube 数据分析与优化平台，提供数据总览、视频监控、深度分析、优化建议等功能。
+
+## 功能特性
+
+- 📊 **数据总览** - 查看关键指标和趋势分析
+- 🎬 **视频监控** - 监控视频表现和互动数据
+- 📈 **深度分析** - 多维度数据分析和可视化
+- 💡 **优化建议** - 基于数据的智能建议
+- 🔥 **热点趋势** - 发现热门内容和趋势
+- ⚙️ **设置管理** - 灵活的配置和个性化设置
+- 🔄 **视频信息自动获取** - 从 YouTube URL 自动提取视频信息
+- 🔐 **双重存储机制** - Cookie + LocalStorage 永久保存配置
+- 📝 **详细日志调试** - 完整的调试信息帮助排查问题
 
 ## 快速开始
+
+### 前置要求
+
+- Node.js 18+
+- pnpm 包管理器
 
 ### 启动开发服务器
 
@@ -25,6 +42,70 @@ coze build
 ```bash
 coze start
 ```
+
+### 部署到 Vercel
+
+详细的部署步骤请参考 [Vercel 部署指南](./VERCEL_SETUP_GUIDE.md)。
+
+## 配置 YouTube API Key
+
+### 方法 A：界面配置（推荐个人使用）
+
+1. 访问 "设置管理" → "数据采集"
+2. 在 "API 配置" 标签页中输入 YouTube API Key
+3. 点击 "保存配置" 按钮
+
+### 方法 B：Vercel 环境变量（推荐生产环境）
+
+1. 访问 Vercel 项目设置
+2. 添加环境变量：`YOUTUBE_API_KEY`
+3. 重新部署应用
+
+### 获取 YouTube API Key
+
+1. 访问 [Google Cloud Console](https://console.cloud.google.com/)
+2. 创建或选择一个项目
+3. 搜索并启用 "YouTube Data API v3"
+4. 创建凭据 → API 密钥
+5. 复制 API Key 并配置到应用中
+
+## 问题排查
+
+如果遇到视频信息获取失败等问题，请查看详细的 [问题排查指南](./TROUBLESHOOTING.md)。
+
+## 核心功能说明
+
+### 视频信息自动获取
+
+在"添加视频"页面，可以输入 YouTube 视频链接，系统会自动：
+
+1. 从 URL 中提取视频 ID
+2. 调用 YouTube Data API 获取视频信息
+3. 自动填充视频标题、描述等信息
+
+**支持的 URL 格式：**
+- `https://www.youtube.com/watch?v=VIDEO_ID`
+- `https://youtu.be/VIDEO_ID`
+- `https://www.youtube.com/embed/VIDEO_ID`
+
+### 配置持久化
+
+系统采用双重存储机制永久保存用户配置：
+
+1. **Cookie 存储** - 有效期 1 年，可在服务端访问
+2. **LocalStorage 存储** - 浏览器永久存储，作为备份
+
+配置数据包括：
+- YouTube API Key
+- 数据采集频率
+- 监控视频列表
+- 分析偏好设置
+
+### API 优先级
+
+1. 优先使用 Cookie 中的配置
+2. Cookie 无效时回退到环境变量 `YOUTUBE_API_KEY`
+3. 都不存在时提示用户配置
 
 ## 项目结构
 
