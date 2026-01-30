@@ -42,6 +42,12 @@ export default function AddVideoPage() {
 
       const data = await response.json();
 
+      // 如果是未配置 API Key 的提示，显示友好的提示信息
+      if (data.error && data.canManualInput) {
+        setError('未配置 YouTube API Key，请手动输入视频信息');
+        return;
+      }
+
       setFormData({
         ...formData,
         videoTitle: data.title || '',

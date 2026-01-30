@@ -60,88 +60,100 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.YOUTUBE_API_KEY;
     console.log('[API /api/videos] 检查 API Key:', { hasApiKey: !!apiKey, length: apiKey?.length || 0 });
 
-    if (!apiKey) {
-      console.error('[API /api/videos] 未配置 YouTube API Key');
-      return NextResponse.json(
-        {
-          error: '平台未配置 YouTube API Key',
-          hint: '请联系管理员在环境变量中配置 YOUTUBE_API_KEY',
-        },
-        { status: 500 }
-      );
-    }
-
-    // 调用 YouTube Data API 获取视频信息
-    const videoResponse = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`
-    );
-
-    if (!videoResponse.ok) {
-      const errorData = await videoResponse.json().catch(() => ({}));
-      return NextResponse.json(
-        {
-          error: '获取视频信息失败',
-          details: errorData.error?.message || videoResponse.statusText,
-        },
-        { status: videoResponse.status }
-      );
-    }
-
-    const videoData = await videoResponse.json();
-    if (!videoData.items || videoData.items.length === 0) {
-      return NextResponse.json(
-        { error: '未找到该视频' },
-        { status: 404 }
-      );
-    }
-
-    const snippet = videoData.items[0].snippet;
-    const thumbnail = snippet.thumbnails?.maxres?.url ||
-                     snippet.thumbnails?.high?.url ||
-                     snippet.thumbnails?.medium?.url ||
-                     snippet.thumbnails?.default?.url;
-
-    // 创建视频记录
+    // 创建视频记录（优先使用 API 数据，否则使用用户输入的数据）
     console.log('[API /api/videos] 准备创建视频记录');
     const insertData: InsertVideo = {
       videoId,
-      title: snippet.title,
-      description: snippet.description,
-      thumbnail,
-      channelId: snippet.channelId,
-      channelTitle: snippet.channelTitle,
-      tags: tags ? (Array.isArray(tags) ? tags : tags.split(',').map((t: string) => t.trim())) : snippet.tags,
-      categoryId: category || snippet.categoryId,
+      title: body.videoTitle || '未命名视频',
+      description: body.description || '',
+      thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
       owner,
     };
+
+    if (apiKey) {
+      // 如果有 API Key，尝试获取视频信息
+      try {
+        const videoResponse = await fetch(
+          `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`
+        );
+
+        if (videoResponse.ok) {
+          const videoData = await videoResponse.json();
+          if (videoData.items && videoData.items.length > 0) {
+            const snippet = videoData.items[0].snippet;
+            insertData.title = snippet.title;
+            insertData.description = snippet.description;
+            insertData.channelId = snippet.channelId;
+            insertData.channelTitle = snippet.channelTitle;
+            insertData.thumbnail = snippet.thumbnails?.maxres?.url ||
+                                   snippet.thumbnails?.high?.url ||
+                                   snippet.thumbnails?.medium?.url ||
+                                   snippet.thumbnails?.default?.url ||
+                                   `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+            insertData.tags = tags ? (Array.isArray(tags) ? tags : tags.split(',').map((t: string) => t.trim())) : snippet.tags;
+            insertData.categoryId = category || snippet.categoryId;
+          }
+        }
+      } catch (apiError) {
+        console.error('[API /api/videos] 获取视频信息失败，使用用户输入:', apiError);
+        // 继续使用用户输入的数据
+      }
+    } else {
+      console.log('[API /api/videos] 未配置 API Key，使用用户输入的数据');
+    }
+
+    // 处理 tags
+    if (tags && !insertData.tags) {
+      insertData.tags = Array.isArray(tags) ? tags : tags.split(',').map((t: string) => t.trim());
+    }
+
+    // 处理 category
+    if (category && !insertData.categoryId) {
+      insertData.categoryId = category;
+    }
 
     console.log('[API /api/videos] 调用 videoManager.createVideo');
     const video = await videoManager.createVideo(insertData);
     console.log('[API /api/videos] 视频创建成功:', video.id);
 
-    // 获取视频统计数据
-    try {
-      const statsResponse = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${apiKey}`
-      );
+    // 获取视频统计数据（如果有 API Key）
+    if (apiKey) {
+      try {
+        const statsResponse = await fetch(
+          `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${apiKey}`
+        );
 
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json();
-        if (statsData.items && statsData.items.length > 0) {
-          const statistics = statsData.items[0].statistics;
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json();
+          if (statsData.items && statsData.items.length > 0) {
+            const statistics = statsData.items[0].statistics;
 
-          await videoManager.createVideoStats({
-            videoId,
-            statDate: new Date(),
-            viewCount: parseInt(statistics.viewCount) || 0,
-            likeCount: parseInt(statistics.likeCount) || 0,
-            commentCount: parseInt(statistics.commentCount) || 0,
-          });
+            await videoManager.createVideoStats({
+              videoId,
+              statDate: new Date(),
+              viewCount: parseInt(statistics.viewCount) || 0,
+              likeCount: parseInt(statistics.likeCount) || 0,
+              commentCount: parseInt(statistics.commentCount) || 0,
+            });
+          }
         }
+      } catch (statsError) {
+        console.error('获取视频统计失败:', statsError);
+        // 统计数据获取失败不影响视频添加
       }
-    } catch (statsError) {
-      console.error('获取视频统计失败:', statsError);
-      // 统计数据获取失败不影响视频添加
+    } else {
+      // 如果没有 API Key，创建初始统计数据为 0
+      try {
+        await videoManager.createVideoStats({
+          videoId,
+          statDate: new Date(),
+          viewCount: 0,
+          likeCount: 0,
+          commentCount: 0,
+        });
+      } catch (statsError) {
+        console.error('创建初始统计数据失败:', statsError);
+      }
     }
 
     return NextResponse.json({

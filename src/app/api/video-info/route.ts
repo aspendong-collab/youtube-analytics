@@ -47,10 +47,11 @@ export async function GET(request: NextRequest) {
   if (!apiKey) {
     return NextResponse.json(
       {
-        error: '平台未配置 YouTube API Key',
-        hint: '请联系管理员在环境变量中配置 YOUTUBE_API_KEY',
+        error: '未配置 YouTube API Key',
+        hint: '请手动输入视频信息，或联系管理员配置 YouTube API Key',
+        canManualInput: true,
       },
-      { status: 500 }
+      { status: 200 } // 改为 200，让前端可以正常处理
     );
   }
 
