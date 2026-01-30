@@ -17,6 +17,42 @@ export default function AddVideoPage() {
     category: '',
   });
 
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const fetchVideoInfo = async () => {
+    if (!formData.videoUrl.trim()) {
+      setError('请先输入视频链接');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(`/api/video-info?url=${encodeURIComponent(formData.videoUrl)}`);
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || '获取视频信息失败');
+      }
+
+      const data = await response.json();
+
+      setFormData({
+        ...formData,
+        videoTitle: data.title || '',
+        description: data.description || '',
+        tags: data.tags ? data.tags.join(', ') : '',
+        category: data.categoryId || '',
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '获取视频信息失败');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('添加视频:', formData);
@@ -37,13 +73,27 @@ export default function AddVideoPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="videoUrl">视频链接</Label>
-            <Input
-              id="videoUrl"
-              placeholder="https://www.youtube.com/watch?v=..."
-              value={formData.videoUrl}
-              onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
-              required
-            />
+            <div className="flex gap-3">
+              <Input
+                id="videoUrl"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={formData.videoUrl}
+                onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                required
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={fetchVideoInfo}
+                disabled={isLoading}
+                className="whitespace-nowrap border-[#007AFF] text-[#007AFF] hover:bg-[rgba(0,122,255,0.08)]"
+              >
+                {isLoading ? '获取中...' : '获取视频信息'}
+              </Button>
+            </div>
+            {error && (
+              <p className="text-sm text-red-500 mt-1">{error}</p>
+            )}
           </div>
 
           <div className="space-y-2">
