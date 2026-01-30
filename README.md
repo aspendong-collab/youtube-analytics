@@ -9,10 +9,9 @@
 - 📈 **深度分析** - 多维度数据分析和可视化
 - 💡 **优化建议** - 基于数据的智能建议
 - 🔥 **热点趋势** - 发现热门内容和趋势
-- ⚙️ **设置管理** - 灵活的配置和个性化设置
+- ⚙️ **设置管理** - 个性化配置数据采集偏好
 - 🔄 **视频信息自动获取** - 从 YouTube URL 自动提取视频信息
-- 🔐 **双重存储机制** - Cookie + LocalStorage 永久保存配置
-- 📝 **详细日志调试** - 完整的调试信息帮助排查问题
+- 👥 **多用户支持** - 所有用户共享平台资源，个性化配置采集偏好
 
 ## 快速开始
 
@@ -27,7 +26,7 @@
 coze dev
 ```
 
-启动后，在浏览器中打开 [http://localhost:5000](http://localhost:5000) 查看应用。
+启动后，在浏览器中打开 [http://localhost:5000](http://localhost:5000) 查看。
 
 开发服务器支持热更新，修改代码后页面会自动刷新。
 
@@ -49,17 +48,7 @@ coze start
 
 ## 配置 YouTube API Key
 
-### 方法 A：界面配置（推荐个人使用）
-
-1. 访问 "设置管理" → "数据采集"
-2. 在 "API 配置" 标签页中输入 YouTube API Key
-3. 点击 "保存配置" 按钮
-
-### 方法 B：Vercel 环境变量（推荐生产环境）
-
-1. 访问 Vercel 项目设置
-2. 添加环境变量：`YOUTUBE_API_KEY`
-3. 重新部署应用
+**重要：本平台使用环境变量配置 YouTube API Key，所有用户共享使用。**
 
 ### 获取 YouTube API Key
 
@@ -67,373 +56,54 @@ coze start
 2. 创建或选择一个项目
 3. 搜索并启用 "YouTube Data API v3"
 4. 创建凭据 → API 密钥
-5. 复制 API Key 并配置到应用中
+5. 复制 API Key
+
+### 在 Vercel 中配置
+
+1. 访问 Vercel 项目设置
+2. 进入 "Environment Variables" 标签
+3. 添加环境变量：
+   - Name: `YOUTUBE_API_KEY`
+   - Value: （粘贴你的 API Key）
+4. 选择环境：Production / Preview / Development
+5. 点击 "Save"
+6. 重新部署项目
+
+### 本地开发配置
+
+在项目根目录创建 `.env.local` 文件：
+
+```bash
+YOUTUBE_API_KEY=你的API密钥
+```
+
+⚠️ **注意：** `.env.local` 文件不会被提交到 Git，请在本地自行配置。
+
+## 多用户使用说明
+
+本平台支持多用户同时访问和使用：
+
+### 共享资源
+- YouTube API Key：由管理员统一配置，所有用户共享
+- 数据库：所有用户的数据存储在同一个数据库中
+- 平台功能：所有用户可以使用所有功能
+
+### 个性化配置
+用户可以在 "设置管理 > 数据采集" 中配置：
+- 自动采集计划
+- 采集间隔
+- 数据指标选择
+
+这些配置保存在用户的浏览器本地存储中，不会影响其他用户。
 
 ## 问题排查
 
 如果遇到视频信息获取失败等问题，请查看详细的 [问题排查指南](./TROUBLESHOOTING.md)。
 
-## 核心功能说明
-
-### 视频信息自动获取
-
-在"添加视频"页面，可以输入 YouTube 视频链接，系统会自动：
-
-1. 从 URL 中提取视频 ID
-2. 调用 YouTube Data API 获取视频信息
-3. 自动填充视频标题、描述等信息
-
-**支持的 URL 格式：**
-- `https://www.youtube.com/watch?v=VIDEO_ID`
-- `https://youtu.be/VIDEO_ID`
-- `https://www.youtube.com/embed/VIDEO_ID`
-
-### 配置持久化
-
-系统采用双重存储机制永久保存用户配置：
-
-1. **Cookie 存储** - 有效期 1 年，可在服务端访问
-2. **LocalStorage 存储** - 浏览器永久存储，作为备份
-
-配置数据包括：
-- YouTube API Key
-- 数据采集频率
-- 监控视频列表
-- 分析偏好设置
-
-### API 优先级
-
-1. 优先使用 Cookie 中的配置
-2. Cookie 无效时回退到环境变量 `YOUTUBE_API_KEY`
-3. 都不存在时提示用户配置
+常见问题：
+- ❌ **平台未配置 API Key** - 联系管理员配置
+- ❌ **API Key 无效** - 管理员检查配置
+- ❌ **视频链接错误** - 使用正确的 YouTube 链接格式
+- ❌ **视频不存在** - 检查视频是否已被删除
 
 ## 项目结构
-
-```
-src/
-├── app/                      # Next.js App Router 目录
-│   ├── layout.tsx           # 根布局组件
-│   ├── page.tsx             # 首页
-│   ├── globals.css          # 全局样式（包含 shadcn 主题变量）
-│   └── [route]/             # 其他路由页面
-├── components/              # React 组件目录
-│   └── ui/                  # shadcn/ui 基础组件（优先使用）
-│       ├── button.tsx
-│       ├── card.tsx
-│       └── ...
-├── lib/                     # 工具函数库
-│   └── utils.ts            # cn() 等工具函数
-└── hooks/                   # 自定义 React Hooks（可选）
-```
-
-## 核心开发规范
-
-### 1. 组件开发
-
-**优先使用 shadcn/ui 基础组件**
-
-本项目已预装完整的 shadcn/ui 组件库，位于 `src/components/ui/` 目录。开发时应优先使用这些组件作为基础：
-
-```tsx
-// ✅ 推荐：使用 shadcn 基础组件
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-
-export default function MyComponent() {
-  return (
-    <Card>
-      <CardHeader>标题</CardHeader>
-      <CardContent>
-        <Input placeholder="输入内容" />
-        <Button>提交</Button>
-      </CardContent>
-    </Card>
-  );
-}
-```
-
-**可用的 shadcn 组件清单**
-
-- 表单：`button`, `input`, `textarea`, `select`, `checkbox`, `radio-group`, `switch`, `slider`
-- 布局：`card`, `separator`, `tabs`, `accordion`, `collapsible`, `scroll-area`
-- 反馈：`alert`, `alert-dialog`, `dialog`, `toast`, `sonner`, `progress`
-- 导航：`dropdown-menu`, `menubar`, `navigation-menu`, `context-menu`
-- 数据展示：`table`, `avatar`, `badge`, `hover-card`, `tooltip`, `popover`
-- 其他：`calendar`, `command`, `carousel`, `resizable`, `sidebar`
-
-详见 `src/components/ui/` 目录下的具体组件实现。
-
-### 2. 路由开发
-
-Next.js 使用文件系统路由，在 `src/app/` 目录下创建文件夹即可添加路由：
-
-```bash
-# 创建新路由 /about
-src/app/about/page.tsx
-
-# 创建动态路由 /posts/[id]
-src/app/posts/[id]/page.tsx
-
-# 创建路由组（不影响 URL）
-src/app/(marketing)/about/page.tsx
-
-# 创建 API 路由
-src/app/api/users/route.ts
-```
-
-**页面组件示例**
-
-```tsx
-// src/app/about/page.tsx
-import { Button } from '@/components/ui/button';
-
-export const metadata = {
-  title: '关于我们',
-  description: '关于页面描述',
-};
-
-export default function AboutPage() {
-  return (
-    <div>
-      <h1>关于我们</h1>
-      <Button>了解更多</Button>
-    </div>
-  );
-}
-```
-
-**动态路由示例**
-
-```tsx
-// src/app/posts/[id]/page.tsx
-export default async function PostPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-
-  return <div>文章 ID: {id}</div>;
-}
-```
-
-**API 路由示例**
-
-```tsx
-// src/app/api/users/route.ts
-import { NextResponse } from 'next/server';
-
-export async function GET() {
-  return NextResponse.json({ users: [] });
-}
-
-export async function POST(request: Request) {
-  const body = await request.json();
-  return NextResponse.json({ success: true });
-}
-```
-
-### 3. 依赖管理
-
-**必须使用 pnpm 管理依赖**
-
-```bash
-# ✅ 安装依赖
-pnpm install
-
-# ✅ 添加新依赖
-pnpm add package-name
-
-# ✅ 添加开发依赖
-pnpm add -D package-name
-
-# ❌ 禁止使用 npm 或 yarn
-# npm install  # 错误！
-# yarn add     # 错误！
-```
-
-项目已配置 `preinstall` 脚本，使用其他包管理器会报错。
-
-### 4. 样式开发
-
-**使用 Tailwind CSS v4**
-
-本项目使用 Tailwind CSS v4 进行样式开发，并已配置 shadcn 主题变量。
-
-```tsx
-// 使用 Tailwind 类名
-<div className="flex items-center gap-4 p-4 rounded-lg bg-background">
-  <Button className="bg-primary text-primary-foreground">
-    主要按钮
-  </Button>
-</div>
-
-// 使用 cn() 工具函数合并类名
-import { cn } from '@/lib/utils';
-
-<div className={cn(
-  "base-class",
-  condition && "conditional-class",
-  className
-)}>
-  内容
-</div>
-```
-
-**主题变量**
-
-主题变量定义在 `src/app/globals.css` 中，支持亮色/暗色模式：
-
-- `--background`, `--foreground`
-- `--primary`, `--primary-foreground`
-- `--secondary`, `--secondary-foreground`
-- `--muted`, `--muted-foreground`
-- `--accent`, `--accent-foreground`
-- `--destructive`, `--destructive-foreground`
-- `--border`, `--input`, `--ring`
-
-### 5. 表单开发
-
-推荐使用 `react-hook-form` + `zod` 进行表单开发：
-
-```tsx
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-
-const formSchema = z.object({
-  username: z.string().min(2, '用户名至少 2 个字符'),
-  email: z.string().email('请输入有效的邮箱'),
-});
-
-export default function MyForm() {
-  const form = useForm({
-    resolver: zodResolver(formSchema),
-    defaultValues: { username: '', email: '' },
-  });
-
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
-    console.log(data);
-  };
-
-  return (
-    <form onSubmit={form.handleSubmit(onSubmit)}>
-      <Input {...form.register('username')} />
-      <Input {...form.register('email')} />
-      <Button type="submit">提交</Button>
-    </form>
-  );
-}
-```
-
-### 6. 数据获取
-
-**服务端组件（推荐）**
-
-```tsx
-// src/app/posts/page.tsx
-async function getPosts() {
-  const res = await fetch('https://api.example.com/posts', {
-    cache: 'no-store', // 或 'force-cache'
-  });
-  return res.json();
-}
-
-export default async function PostsPage() {
-  const posts = await getPosts();
-
-  return (
-    <div>
-      {posts.map(post => (
-        <div key={post.id}>{post.title}</div>
-      ))}
-    </div>
-  );
-}
-```
-
-**客户端组件**
-
-```tsx
-'use client';
-
-import { useEffect, useState } from 'react';
-
-export default function ClientComponent() {
-  const [data, setData] = useState(null);
-
-  useEffect(() => {
-    fetch('/api/data')
-      .then(res => res.json())
-      .then(setData);
-  }, []);
-
-  return <div>{JSON.stringify(data)}</div>;
-}
-```
-
-## 常见开发场景
-
-### 添加新页面
-
-1. 在 `src/app/` 下创建文件夹和 `page.tsx`
-2. 使用 shadcn 组件构建 UI
-3. 根据需要添加 `layout.tsx` 和 `loading.tsx`
-
-### 创建业务组件
-
-1. 在 `src/components/` 下创建组件文件（非 UI 组件）
-2. 优先组合使用 `src/components/ui/` 中的基础组件
-3. 使用 TypeScript 定义 Props 类型
-
-### 添加全局状态
-
-推荐使用 React Context 或 Zustand：
-
-```tsx
-// src/lib/store.ts
-import { create } from 'zustand';
-
-interface Store {
-  count: number;
-  increment: () => void;
-}
-
-export const useStore = create<Store>((set) => ({
-  count: 0,
-  increment: () => set((state) => ({ count: state.count + 1 })),
-}));
-```
-
-### 集成数据库
-
-推荐使用 Prisma 或 Drizzle ORM，在 `src/lib/db.ts` 中配置。
-
-## 技术栈
-
-- **框架**: Next.js 16.1.1 (App Router)
-- **UI 组件**: shadcn/ui (基于 Radix UI)
-- **样式**: Tailwind CSS v4
-- **表单**: React Hook Form + Zod
-- **图标**: Lucide React
-- **字体**: Geist Sans & Geist Mono
-- **包管理器**: pnpm 9+
-- **TypeScript**: 5.x
-
-## 参考文档
-
-- [Next.js 官方文档](https://nextjs.org/docs)
-- [shadcn/ui 组件文档](https://ui.shadcn.com)
-- [Tailwind CSS 文档](https://tailwindcss.com/docs)
-- [React Hook Form](https://react-hook-form.com)
-
-## 重要提示
-
-1. **必须使用 pnpm** 作为包管理器
-2. **优先使用 shadcn/ui 组件** 而不是从零开发基础组件
-3. **遵循 Next.js App Router 规范**，正确区分服务端/客户端组件
-4. **使用 TypeScript** 进行类型安全开发
-5. **使用 `@/` 路径别名** 导入模块（已配置）

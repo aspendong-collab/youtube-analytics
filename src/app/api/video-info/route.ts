@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -32,45 +31,15 @@ export async function GET(request: NextRequest) {
 
   if (!videoId) {
     return NextResponse.json(
-      { error: '无法从 URL 中提取视频 ID' },
+      { error: '无法从 URL 中提取视频 ID，请输入正确的 YouTube 视频链接' },
       { status: 400 }
     );
   }
 
-  // 获取 YouTube API Key
-  // 优先从 Cookie 中读取配置，如果没有则使用环境变量
-  let apiKey = process.env.YOUTUBE_API_KEY;
+  // 直接使用环境变量中的 API Key
+  const apiKey = process.env.YOUTUBE_API_KEY;
 
-  try {
-    const cookieStore = await cookies();
-    const settings = cookieStore.get('app_settings');
-
-    console.log('[API /api/video-info] Cookie 存在:', !!settings);
-
-    if (settings) {
-      try {
-        const settingsData = JSON.parse(settings.value);
-        console.log('[API /api/video-info] Cookie 数据结构:', {
-          hasApiKeys: !!settingsData.apiKeys,
-          hasYoutubeApiKey: !!settingsData.apiKeys?.youtubeApiKey,
-          youtubeApiKeyLength: settingsData.apiKeys?.youtubeApiKey?.length || 0,
-        });
-
-        if (settingsData.apiKeys?.youtubeApiKey) {
-          apiKey = settingsData.apiKeys.youtubeApiKey;
-          console.log('[API /api/video-info] 使用 Cookie 中的 API Key');
-        }
-      } catch (parseError) {
-        console.error('[API /api/video-info] 解析 Cookie 数据失败:', parseError);
-      }
-    }
-  } catch (error) {
-    console.error('[API /api/video-info] 从 Cookie 读取配置失败:', error);
-  }
-
-  console.log('[API /api/video-info] 最终使用的 API Key 来源:', {
-    fromEnv: !!process.env.YOUTUBE_API_KEY,
-    fromCookie: apiKey !== process.env.YOUTUBE_API_KEY,
+  console.log('[API /api/video-info] 检查 API Key 配置:', {
     hasApiKey: !!apiKey,
     apiKeyLength: apiKey?.length || 0,
   });
@@ -78,11 +47,8 @@ export async function GET(request: NextRequest) {
   if (!apiKey) {
     return NextResponse.json(
       {
-        error: '未配置 YouTube API Key',
-        hint: '请在"设置管理 > 数据采集"中配置 YouTube API Key，或在环境变量中设置 YOUTUBE_API_KEY',
-        debug: {
-          hasEnvKey: !!process.env.YOUTUBE_API_KEY,
-        }
+        error: '平台未配置 YouTube API Key',
+        hint: '请联系管理员在环境变量中配置 YOUTUBE_API_KEY',
       },
       { status: 500 }
     );
@@ -91,8 +57,9 @@ export async function GET(request: NextRequest) {
   try {
     // 调用 YouTube Data API v3
     const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`;
-    console.log('[API /api/video-info] 准备调用 YouTube API:', {
-      url: apiUrl.replace(/key=[^&]+/, 'key=***'),
+    console.log('[API /api/video-info] 调用 YouTube API:', {
+      videoId,
+      apiUrl: apiUrl.replace(/key=[^&]+/, 'key=***'),
     });
 
     const response = await fetch(apiUrl, {
@@ -102,44 +69,48 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log('[API /api/video-info] YouTube API 响应状态:', {
+    console.log('[API /api/video-info] YouTube API 响应:', {
       status: response.status,
       statusText: response.statusText,
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('[API /api/video-info] YouTube API 错误响应:', errorData);
+      console.error('[API /api/video-info] YouTube API 错误:', errorData);
+
+      // 根据状态码返回更友好的错误信息
+      let errorMessage = '获取视频信息失败';
+      let hint = '';
+
+      if (response.status === 401) {
+        errorMessage = 'API Key 无效或已过期';
+        hint = '请联系管理员检查 YouTube API Key 配置';
+      } else if (response.status === 403) {
+        errorMessage = 'API Key 权限不足或配额已用尽';
+        hint = '请联系管理员检查 YouTube API 配额或申请增加配额';
+      } else if (response.status === 404) {
+        errorMessage = '无法找到该视频';
+        hint = '请检查视频链接是否正确，或者视频是否已被删除';
+      }
 
       return NextResponse.json(
         {
-          error: '获取视频信息失败',
-          details: errorData.error?.message || response.statusText,
+          error: errorMessage,
+          hint,
           statusCode: response.status,
-          debug: {
-            videoId,
-            responseStatus: response.status,
-            apiError: errorData.error,
-          }
         },
         { status: response.status }
       );
     }
 
     const data = await response.json();
-    console.log('[API /api/video-info] YouTube API 响应数据:', {
-      hasItems: !!data.items,
-      itemsCount: data.items?.length || 0,
-    });
 
     if (!data.items || data.items.length === 0) {
+      console.log('[API /api/video-info] 未找到视频，响应数据:', data);
       return NextResponse.json(
         {
           error: '未找到该视频',
-          debug: {
-            videoId,
-            response: data,
-          }
+          hint: '请检查视频链接是否正确，或者视频是否已被删除',
         },
         { status: 404 }
       );
@@ -151,7 +122,7 @@ export async function GET(request: NextRequest) {
     console.log('[API /api/video-info] 成功获取视频信息:', {
       videoId: video.id,
       title: snippet.title,
-      hasDescription: !!snippet.description,
+      channelTitle: snippet.channelTitle,
     });
 
     return NextResponse.json({
@@ -166,15 +137,11 @@ export async function GET(request: NextRequest) {
       categoryId: snippet.categoryId,
     });
   } catch (error) {
-    console.error('[API /api/video-info] 获取视频信息时出错:', error);
+    console.error('[API /api/video-info] 服务器错误:', error);
     return NextResponse.json(
       {
         error: '服务器内部错误',
-        details: error instanceof Error ? error.message : '未知错误',
-        debug: {
-          videoId,
-          errorMessage: error instanceof Error ? error.message : String(error),
-        }
+        hint: '请稍后重试，如果问题持续存在请联系管理员',
       },
       { status: 500 }
     );
