@@ -2,8 +2,11 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from '@/storage/database/shared/schema';
 
-// 从环境变量获取数据库连接字符串
-const connectionString = process.env.PGDATABASE_URL;
+// 硬编码的 Neon 数据库连接（确保始终使用正确的连接）
+const NEON_DATABASE_URL = 'postgresql://neondb_owner:npg_zw0a2RgOhAXY@ep-winter-cherry-a1cs4q75-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+
+// 从环境变量获取数据库连接字符串，如果未设置则使用硬编码值
+const connectionString = process.env.PGDATABASE_URL || NEON_DATABASE_URL;
 
 // 检查是否在构建时
 const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' ||
@@ -29,6 +32,7 @@ if (!connectionString) {
   // 脱敏输出连接字符串，方便调试
   const maskedUrl = connectionString.replace(/\/\/[^@]+@/, '//***@');
   console.log('[DB] Connecting to database:', maskedUrl);
+  console.log('[DB] Using environment variable:', !!process.env.PGDATABASE_URL);
 
   try {
     client = postgres(connectionString, {
