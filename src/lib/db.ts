@@ -26,6 +26,10 @@ if (!connectionString) {
     throw new Error('PGDATABASE_URL environment variable is not set');
   }
 } else {
+  // 脱敏输出连接字符串，方便调试
+  const maskedUrl = connectionString.replace(/\/\/[^@]+@/, '//***@');
+  console.log('[DB] Connecting to database:', maskedUrl);
+
   try {
     client = postgres(connectionString, {
       max: 10,
@@ -33,9 +37,11 @@ if (!connectionString) {
       connect_timeout: 10,
     });
     db = drizzle(client, { schema });
+    console.log('[DB] Database connection established successfully');
   } catch (error) {
+    console.error('[DB] Database connection failed:', error);
     if (isDev) {
-      console.warn('[DB] Database connection failed, using mock database:', error);
+      console.warn('[DB] Using mock database due to connection failure');
       db = null;
     } else {
       throw error;
