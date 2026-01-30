@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { Inspector } from 'react-dev-inspector';
 import { Toaster } from 'sonner';
 import './globals.css';
 import { Sidebar } from '@/components/sidebar';
@@ -18,12 +17,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const isDev = process.env.NODE_ENV === 'development';
-
   return (
     <html lang="zh-CN">
       <body className={`antialiased`}>
-        {isDev && <Inspector />}
         <div className="flex min-h-screen bg-[#F5F5F7]">
           {/* 左侧边栏 */}
           <Sidebar />
