@@ -1,8 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+
+interface VideoStats {
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
+  statDate: string | Date;
+}
+
+interface Video {
+  id: string;
+  videoId: string;
+  title: string;
+  channelId?: string;
+  channelTitle?: string;
+  categoryId?: string;
+  owner?: string;
+  createdAt: string | Date;
+  latestStats?: VideoStats | null;
+}
 
 export default function AnalysisPage() {
   const [dateRange, setDateRange] = useState('7d');
@@ -12,6 +31,65 @@ export default function AnalysisPage() {
     category: 'all',
     status: 'all',
   });
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadVideos();
+  }, []);
+
+  const loadVideos = async () => {
+    try {
+      const response = await fetch('/api/videos?isActive=true&limit=1000');
+      if (response.ok) {
+        const data = await response.json();
+        setVideos(data.videos || []);
+      }
+    } catch (error) {
+      console.error('加载视频数据失败:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 计算统计数据
+  const calculateStats = () => {
+    const totalViews = videos.reduce((sum, v) => sum + (v.latestStats?.viewCount || 0), 0);
+    const totalLikes = videos.reduce((sum, v) => sum + (v.latestStats?.likeCount || 0), 0);
+    const totalComments = videos.reduce((sum, v) => sum + (v.latestStats?.commentCount || 0), 0);
+    const averageEngagement = totalViews > 0
+      ? ((totalLikes + totalComments) / totalViews) * 100
+      : 0;
+
+    return {
+      totalViews,
+      totalLikes,
+      totalComments,
+      averageEngagement: averageEngagement.toFixed(1),
+    };
+  };
+
+  const formatNumber = (num: number): string => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 10000) return (num / 10000).toFixed(1) + 'W';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+  };
+
+  // 获取唯一列表
+  const channels = Array.from(new Set(videos.map((v) => v.channelTitle).filter(Boolean)));
+  const owners = Array.from(new Set(videos.map((v) => v.owner).filter(Boolean)));
+  const categories = Array.from(new Set(videos.map((v) => v.categoryId).filter(Boolean)));
+
+  if (isLoading) {
+    return (
+      <div className="p-8 flex items-center justify-center">
+        <div className="text-[#86868B]">加载中...</div>
+      </div>
+    );
+  }
+
+  const stats = calculateStats();
 
   return (
     <div className="space-y-6">
@@ -65,36 +143,54 @@ export default function AnalysisPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="space-y-2">
             <label className="text-xs font-medium text-[#86868B]">博主</label>
-            <select className="w-full px-3 py-2 bg-white border border-[rgba(0,0,0,0.1)] rounded-lg text-sm">
-              <option>全部</option>
-              <option>博主A</option>
-              <option>博主B</option>
+            <select
+              value={filters.channel}
+              onChange={(e) => setFilters({ ...filters, channel: e.target.value })}
+              className="w-full px-3 py-2 bg-white border border-[rgba(0,0,0,0.1)] rounded-lg text-sm"
+            >
+              <option value="all">全部</option>
+              {channels.map((channel) => (
+                <option key={channel} value={channel}>{channel}</option>
+              ))}
             </select>
           </div>
           <div className="space-y-2">
             <label className="text-xs font-medium text-[#86868B]">负责人</label>
-            <select className="w-full px-3 py-2 bg-white border border-[rgba(0,0,0,0.1)] rounded-lg text-sm">
-              <option>全部</option>
-              <option>张三</option>
-              <option>李四</option>
+            <select
+              value={filters.owner}
+              onChange={(e) => setFilters({ ...filters, owner: e.target.value })}
+              className="w-full px-3 py-2 bg-white border border-[rgba(0,0,0,0.1)] rounded-lg text-sm"
+            >
+              <option value="all">全部</option>
+              {owners.map((owner) => (
+                <option key={owner} value={owner}>{owner}</option>
+              ))}
             </select>
           </div>
           <div className="space-y-2">
             <label className="text-xs font-medium text-[#86868B]">分类</label>
-            <select className="w-full px-3 py-2 bg-white border border-[rgba(0,0,0,0.1)] rounded-lg text-sm">
-              <option>全部</option>
-              <option>教育</option>
-              <option>娱乐</option>
-              <option>科技</option>
+            <select
+              value={filters.category}
+              onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+              className="w-full px-3 py-2 bg-white border border-[rgba(0,0,0,0.1)] rounded-lg text-sm"
+            >
+              <option value="all">全部</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>{category}</option>
+              ))}
             </select>
           </div>
           <div className="space-y-2">
             <label className="text-xs font-medium text-[#86868B]">状态</label>
-            <select className="w-full px-3 py-2 bg-white border border-[rgba(0,0,0,0.1)] rounded-lg text-sm">
-              <option>全部</option>
-              <option>优秀</option>
-              <option>正常</option>
-              <option>异常</option>
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              className="w-full px-3 py-2 bg-white border border-[rgba(0,0,0,0.1)] rounded-lg text-sm"
+            >
+              <option value="all">全部</option>
+              <option value="excellent">优秀</option>
+              <option value="normal">正常</option>
+              <option value="warning">异常</option>
             </select>
           </div>
         </div>
@@ -118,27 +214,19 @@ export default function AnalysisPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard
           title="总观看量"
-          value="1.5M"
-          change="+12%"
-          changeType="positive"
+          value={formatNumber(stats.totalViews)}
         />
         <MetricCard
           title="总点赞数"
-          value="120K"
-          change="+8%"
-          changeType="positive"
+          value={formatNumber(stats.totalLikes)}
         />
         <MetricCard
           title="总评论数"
-          value="8.5K"
-          change="+5%"
-          changeType="positive"
+          value={formatNumber(stats.totalComments)}
         />
         <MetricCard
           title="平均互动率"
-          value="7.8%"
-          change="+1.2%"
-          changeType="positive"
+          value={stats.averageEngagement + '%'}
         />
       </div>
 
@@ -193,26 +281,13 @@ export default function AnalysisPage() {
 function MetricCard({
   title,
   value,
-  change,
-  changeType,
 }: {
   title: string;
   value: string;
-  change: string;
-  changeType: 'positive' | 'negative';
 }) {
   return (
     <div className="bg-white rounded-2xl p-5 shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm text-[#86868B]">{title}</span>
-        <span
-          className={`text-xs font-medium ${
-            changeType === 'positive' ? 'text-[#34C759]' : 'text-[#FF3B30]'
-          }`}
-        >
-          {changeType === 'positive' ? '↑' : '↓'} {change}
-        </span>
-      </div>
+      <div className="text-sm text-[#86868B] mb-2">{title}</div>
       <div className="text-2xl font-semibold text-[#1D1D1F]">{value}</div>
     </div>
   );
