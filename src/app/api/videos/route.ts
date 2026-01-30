@@ -198,22 +198,22 @@ export async function GET(request: NextRequest) {
                      searchParams.get('isActive') === 'false' ? false :
                      undefined;
 
+    // 获取视频列表
     const videos = await videoManager.getVideos({
       limit,
       skip,
       isActive,
     });
 
-    // 获取每个视频的最新统计数据
-    const videosWithStats = await Promise.all(
-      videos.map(async (video) => {
-        const latestStats = await videoManager.getLatestVideoStats(video.videoId);
-        return {
-          ...video,
-          latestStats: latestStats || null,
-        };
-      })
-    );
+    // 批量获取所有视频的最新统计数据（避免 N+1 查询）
+    const videoIds = videos.map(v => v.videoId);
+    const allLatestStats = await videoManager.getLatestStatsForVideos(videoIds);
+
+    // 组合数据
+    const videosWithStats = videos.map(video => ({
+      ...video,
+      latestStats: allLatestStats[video.videoId] || null,
+    }));
 
     return NextResponse.json({
       videos: videosWithStats,

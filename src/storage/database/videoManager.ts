@@ -202,6 +202,41 @@ export class VideoManager {
   }
 
   /**
+   * 批量获取多个视频的最新统计数据
+   */
+  async getLatestStatsForVideos(videoIds: string[]): Promise<Record<string, VideoStats | null>> {
+    if (videoIds.length === 0) {
+      return {};
+    }
+
+    const db = this.getDb();
+
+    // 获取所有视频的统计数据
+    const allStats = await db
+      .select()
+      .from(videoStats)
+      .where(
+        sql`${videoStats.videoId} = ANY(${sql`ARRAY[${sql.join(videoIds.map(id => sql`${id}`), sql`, `)}]`})`
+      )
+      .orderBy(desc(videoStats.statDate))
+      .limit(videoIds.length * 10); // 限制数量，避免返回过多数据
+
+    // 按 videoId 分组，只保留最新的统计
+    const result: Record<string, VideoStats | null> = {};
+    for (const videoId of videoIds) {
+      result[videoId] = null;
+    }
+
+    for (const stat of allStats) {
+      if (result[stat.videoId] === null || stat.statDate > (result[stat.videoId]?.statDate || '')) {
+        result[stat.videoId] = stat;
+      }
+    }
+
+    return result;
+  }
+
+  /**
    * 获取所有活跃视频（用于定时任务）
    */
   async getActiveVideosForUpdate(): Promise<Video[]> {
