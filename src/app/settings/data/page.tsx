@@ -102,6 +102,20 @@ export default function DataCollectionPage() {
         <p className="text-sm text-[#86868B] mt-1">配置数据采集相关设置</p>
       </div>
 
+      {/* 配置说明卡片 */}
+      <Card className="p-4 bg-blue-50 border-blue-200 shadow-sm">
+        <div className="flex items-start gap-3">
+          <span className="text-xl">💡</span>
+          <div className="flex-1">
+            <h3 className="font-medium text-blue-900 mb-1">配置说明</h3>
+            <p className="text-sm text-blue-800">
+              在此配置的 YouTube API Key 会在服务端使用，用于获取视频信息。
+              保存配置后立即生效，无需重启应用。配置会保存在浏览器中，有效期 30 天。
+            </p>
+          </div>
+        </div>
+      </Card>
+
       <Tabs defaultValue="api" className="space-y-6">
         <TabsList>
           <TabsTrigger value="api">API 配置</TabsTrigger>

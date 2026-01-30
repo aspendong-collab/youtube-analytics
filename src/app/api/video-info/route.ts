@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -33,11 +34,28 @@ export async function GET(request: NextRequest) {
   }
 
   // 获取 YouTube API Key
-  const apiKey = process.env.YOUTUBE_API_KEY;
+  // 优先从 Cookie 中读取配置，如果没有则使用环境变量
+  let apiKey = process.env.YOUTUBE_API_KEY;
+
+  try {
+    const cookieStore = await cookies();
+    const settings = cookieStore.get('app_settings');
+    if (settings) {
+      const settingsData = JSON.parse(settings.value);
+      if (settingsData.apiKeys?.youtubeApiKey) {
+        apiKey = settingsData.apiKeys.youtubeApiKey;
+      }
+    }
+  } catch (error) {
+    console.error('从 Cookie 读取配置失败:', error);
+  }
 
   if (!apiKey) {
     return NextResponse.json(
-      { error: '未配置 YouTube API Key，请在环境变量中设置 YOUTUBE_API_KEY' },
+      {
+        error: '未配置 YouTube API Key',
+        hint: '请在"设置管理 > 数据采集"中配置 YouTube API Key，或在环境变量中设置 YOUTUBE_API_KEY',
+      },
       { status: 500 }
     );
   }
