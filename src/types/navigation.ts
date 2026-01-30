@@ -20,7 +20,6 @@ export const navItems: NavItem[] = [
     path: '/videos',
     children: [
       { id: 'video-list', label: '视频列表', path: '/videos' },
-      { id: 'video-add', label: '添加视频', path: '/videos/add' },
       { id: 'owners', label: '负责人管理', path: '/owners' },
       { id: 'groups', label: '分组管理', path: '/groups' },
     ],
