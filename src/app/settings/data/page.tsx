@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
 
 export default function DataCollectionPage() {
   const [apiKeys, setApiKeys] = useState({
@@ -21,6 +22,78 @@ export default function DataCollectionPage() {
     collectComments: false,
     collectAnalytics: true,
   });
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 页面加载时获取配置
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const response = await fetch('/api/settings');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.apiKeys) setApiKeys(data.apiKeys);
+        if (data.collection) setCollectionSettings(data.collection);
+      }
+    } catch (error) {
+      console.error('加载配置失败:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveAll = async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          apiKeys,
+          collection: collectionSettings,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('保存失败');
+      }
+
+      const data = await response.json();
+      toast.success(data.message || '配置保存成功');
+    } catch (error) {
+      console.error('保存配置失败:', error);
+      toast.error('保存配置失败，请重试');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveApiKeys = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleSaveAll();
+  };
+
+  const handleSaveSchedule = async () => {
+    await handleSaveAll();
+  };
+
+  const handleSaveMetrics = async () => {
+    await handleSaveAll();
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-8 flex items-center justify-center">
+        <div className="text-[#86868B]">加载配置中...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 space-y-6">
@@ -68,8 +141,13 @@ export default function DataCollectionPage() {
                 </p>
               </div>
 
-              <Button type="button" className="bg-[#007AFF] hover:bg-[#0066CC]">
-                保存配置
+              <Button
+                type="button"
+                className="bg-[#007AFF] hover:bg-[#0066CC]"
+                onClick={handleSaveAll}
+                disabled={isSaving}
+              >
+                {isSaving ? '保存中...' : '保存配置'}
               </Button>
             </form>
           </Card>
@@ -113,8 +191,13 @@ export default function DataCollectionPage() {
                 </p>
               </div>
 
-              <Button type="button" className="bg-[#007AFF] hover:bg-[#0066CC]">
-                保存配置
+              <Button
+                type="button"
+                className="bg-[#007AFF] hover:bg-[#0066CC]"
+                onClick={handleSaveAll}
+                disabled={isSaving}
+              >
+                {isSaving ? '保存中...' : '保存配置'}
               </Button>
             </div>
           </Card>
@@ -169,8 +252,13 @@ export default function DataCollectionPage() {
                 />
               </div>
 
-              <Button type="button" className="bg-[#007AFF] hover:bg-[#0066CC]">
-                保存配置
+              <Button
+                type="button"
+                className="bg-[#007AFF] hover:bg-[#0066CC]"
+                onClick={handleSaveAll}
+                disabled={isSaving}
+              >
+                {isSaving ? '保存中...' : '保存配置'}
               </Button>
             </div>
           </Card>

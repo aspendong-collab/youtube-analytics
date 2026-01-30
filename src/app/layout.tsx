@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inspector } from 'react-dev-inspector';
+import { Toaster } from 'sonner';
 import './globals.css';
 import { Sidebar } from '@/components/sidebar';
 
@@ -31,6 +32,7 @@ export default function RootLayout({
             {children}
           </main>
         </div>
+        <Toaster position="top-right" />
       </body>
     </html>
   );
