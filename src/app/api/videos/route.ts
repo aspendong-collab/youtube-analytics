@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { videoManager } from '@/storage/database';
 import type { InsertVideo } from '@/storage/database';
 
+// 设置为动态路由，避免构建时预加载
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/videos
  * 添加新视频，自动获取视频信息和统计数据

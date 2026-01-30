@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { videoManager } from '@/storage/database';
 
+// 设置为动态路由，避免构建时预加载
+export const dynamic = 'force-dynamic';
+
 /**
  * Cron Job: 更新所有活跃视频的统计数据
  * 计划每天早上 9:00 执行
