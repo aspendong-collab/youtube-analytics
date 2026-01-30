@@ -20,37 +20,30 @@ import * as schema from "./shared/schema";
 // 硬编码的 Neon 数据库连接
 const NEON_DATABASE_URL = 'postgresql://neondb_owner:npg_zw0a2RgOhAXY@ep-winter-cherry-a1cs4q75-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
 
-// 直接创建数据库连接
-let client: ReturnType<typeof postgres> | null = null;
-let db: ReturnType<typeof drizzle> | null = null;
-
-try {
-  const maskedUrl = NEON_DATABASE_URL.replace(/\/\/[^@]+@/, '//***@');
-  console.log('[VideoManager] Initializing database connection:', maskedUrl);
-  
-  client = postgres(NEON_DATABASE_URL, {
-    max: 10,
-    idle_timeout: 20,
-    connect_timeout: 10,
-  });
-  
-  db = drizzle(client, { schema });
-  console.log('[VideoManager] Database connection established successfully');
-} catch (error) {
-  console.error('[VideoManager] Failed to connect to database:', error);
-}
-
 // 开发环境内存存储
 const mockVideos = new Map<string, Video>();
 const mockVideoStats = new Map<string, VideoStats[]>();
 
 export class VideoManager {
   private getDb() {
-    if (!db) {
-      console.warn('[VideoManager] Database not available. Using mock data in development mode.');
+    // 每次调用时都直接创建连接，避免缓存问题
+    const maskedUrl = NEON_DATABASE_URL.replace(/\/\/[^@]+@/, '//***@');
+    console.log('[VideoManager] Creating fresh database connection:', maskedUrl);
+
+    try {
+      const client = postgres(NEON_DATABASE_URL, {
+        max: 10,
+        idle_timeout: 20,
+        connect_timeout: 10,
+      });
+
+      const db = drizzle(client, { schema });
+      console.log('[VideoManager] Database connection created successfully');
+      return db;
+    } catch (error) {
+      console.error('[VideoManager] Failed to connect to database:', error);
       return null;
     }
-    return db;
   }
 
   /**
