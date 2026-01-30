@@ -85,7 +85,18 @@ export default function AddVideoPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || '添加视频失败');
+        const errorMsg = data.error || '添加视频失败';
+        const hint = data.hint || '';
+
+        console.error('添加视频失败:', { status: response.status, data });
+
+        // 如果是 API Key 相关错误，显示更友好的提示
+        if (errorMsg.includes('API Key')) {
+          toast.error(errorMsg + (hint ? ` (${hint})` : ''));
+        } else {
+          throw new Error(errorMsg);
+        }
+        return;
       }
 
       const data = await response.json();
@@ -96,7 +107,15 @@ export default function AddVideoPage() {
       router.push('/videos');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '添加视频失败';
-      toast.error(errorMessage);
+
+      console.error('添加视频异常:', err);
+
+      // 如果错误包含"服务器内部错误"，可能是环境配置问题
+      if (errorMessage === '服务器内部错误') {
+        toast.error('添加视频失败，请检查网络连接或联系管理员');
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }

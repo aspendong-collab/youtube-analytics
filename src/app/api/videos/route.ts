@@ -7,9 +7,12 @@ import type { InsertVideo } from '@/storage/database';
  * 添加新视频，自动获取视频信息和统计数据
  */
 export async function POST(request: NextRequest) {
+  console.log('[API /api/videos] 收到添加视频请求');
   try {
     const body = await request.json();
     const { videoUrl, owner, tags, category } = body;
+
+    console.log('[API /api/videos] 请求参数:', { videoUrl, owner, tags, category });
 
     if (!videoUrl) {
       return NextResponse.json(
@@ -40,8 +43,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查视频是否已存在
+    console.log('[API /api/videos] 检查视频是否已存在, videoId:', videoId);
     const existingVideo = await videoManager.getVideoByVideoId(videoId);
     if (existingVideo) {
+      console.log('[API /api/videos] 视频已存在:', existingVideo);
       return NextResponse.json(
         {
           error: '视频已存在',
@@ -53,9 +58,15 @@ export async function POST(request: NextRequest) {
 
     // 获取 YouTube API Key
     const apiKey = process.env.YOUTUBE_API_KEY;
+    console.log('[API /api/videos] 检查 API Key:', { hasApiKey: !!apiKey, length: apiKey?.length || 0 });
+
     if (!apiKey) {
+      console.error('[API /api/videos] 未配置 YouTube API Key');
       return NextResponse.json(
-        { error: '平台未配置 YouTube API Key' },
+        {
+          error: '平台未配置 YouTube API Key',
+          hint: '请联系管理员在环境变量中配置 YOUTUBE_API_KEY',
+        },
         { status: 500 }
       );
     }
@@ -91,6 +102,7 @@ export async function POST(request: NextRequest) {
                      snippet.thumbnails?.default?.url;
 
     // 创建视频记录
+    console.log('[API /api/videos] 准备创建视频记录');
     const insertData: InsertVideo = {
       videoId,
       title: snippet.title,
@@ -103,7 +115,9 @@ export async function POST(request: NextRequest) {
       owner,
     };
 
+    console.log('[API /api/videos] 调用 videoManager.createVideo');
     const video = await videoManager.createVideo(insertData);
+    console.log('[API /api/videos] 视频创建成功:', video.id);
 
     // 获取视频统计数据
     try {
