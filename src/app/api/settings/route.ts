@@ -42,16 +42,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const cookieStore = await cookies();
 
-    // 保存到 cookie（有效期 30 天）
+    // 保存到 cookie（有效期 1 年）
+    // 注意：如果不设置 expires 或 maxAge，Cookie 会在浏览器会话结束时失效
+    // 设置 maxAge 为 1 年（365天）
     cookieStore.set('app_settings', JSON.stringify(body), {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60, // 30 天
+      maxAge: 365 * 24 * 60 * 60, // 1 年
     });
-
-    // 注意：这里只是保存到 cookie，实际项目中应该保存到数据库
-    // 如果需要在服务端使用 API Key，还需要更新环境变量
 
     return NextResponse.json({ success: true, message: '配置保存成功' });
   } catch (error) {

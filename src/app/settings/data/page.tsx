@@ -26,6 +26,35 @@ export default function DataCollectionPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // LocalStorage 键名
+  const STORAGE_KEY = 'youtube_analytics_settings';
+
+  // 从 LocalStorage 加载配置
+  const loadFromLocalStorage = () => {
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          return JSON.parse(stored);
+        }
+      }
+    } catch (error) {
+      console.error('从 LocalStorage 加载配置失败:', error);
+    }
+    return null;
+  };
+
+  // 保存到 LocalStorage
+  const saveToLocalStorage = (data: any) => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      }
+    } catch (error) {
+      console.error('保存到 LocalStorage 失败:', error);
+    }
+  };
+
   // 页面加载时获取配置
   useEffect(() => {
     loadSettings();
@@ -33,14 +62,28 @@ export default function DataCollectionPage() {
 
   const loadSettings = async () => {
     try {
+      // 优先从 API（Cookie）加载
       const response = await fetch('/api/settings');
       if (response.ok) {
         const data = await response.json();
         if (data.apiKeys) setApiKeys(data.apiKeys);
         if (data.collection) setCollectionSettings(data.collection);
+      } else {
+        // 如果 Cookie 失败，从 LocalStorage 加载
+        const localData = loadFromLocalStorage();
+        if (localData) {
+          if (localData.apiKeys) setApiKeys(localData.apiKeys);
+          if (localData.collection) setCollectionSettings(localData.collection);
+        }
       }
     } catch (error) {
       console.error('加载配置失败:', error);
+      // 如果加载失败，从 LocalStorage 加载
+      const localData = loadFromLocalStorage();
+      if (localData) {
+        if (localData.apiKeys) setApiKeys(localData.apiKeys);
+        if (localData.collection) setCollectionSettings(localData.collection);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -49,26 +92,39 @@ export default function DataCollectionPage() {
   const handleSaveAll = async () => {
     setIsSaving(true);
     try {
+      const settingsData = {
+        apiKeys,
+        collection: collectionSettings,
+      };
+
       const response = await fetch('/api/settings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          apiKeys,
-          collection: collectionSettings,
-        }),
+        body: JSON.stringify(settingsData),
       });
 
       if (!response.ok) {
         throw new Error('保存失败');
       }
 
+      // 同时保存到 LocalStorage 作为备份
+      saveToLocalStorage(settingsData);
+
       const data = await response.json();
-      toast.success(data.message || '配置保存成功');
+      toast.success(data.message || '配置保存成功，有效期 1 年');
     } catch (error) {
       console.error('保存配置失败:', error);
-      toast.error('保存配置失败，请重试');
+
+      // 即使 API 失败，也保存到 LocalStorage
+      const settingsData = {
+        apiKeys,
+        collection: collectionSettings,
+      };
+      saveToLocalStorage(settingsData);
+
+      toast.error('保存到服务器失败，但已保存到本地，刷新后可恢复');
     } finally {
       setIsSaving(false);
     }
@@ -110,8 +166,17 @@ export default function DataCollectionPage() {
             <h3 className="font-medium text-blue-900 mb-1">配置说明</h3>
             <p className="text-sm text-blue-800">
               在此配置的 YouTube API Key 会在服务端使用，用于获取视频信息。
-              保存配置后立即生效，无需重启应用。配置会保存在浏览器中，有效期 30 天。
+              保存配置后立即生效，无需重启应用。
             </p>
+            <div className="mt-2 p-3 bg-white rounded-md border border-blue-100">
+              <p className="text-xs font-medium text-blue-900 mb-1">💾 存储说明</p>
+              <ul className="text-xs text-blue-800 space-y-1">
+                <li>• 配置同时保存在 Cookie 和浏览器本地存储中</li>
+                <li>• Cookie 有效期：1 年</li>
+                <li>• 只要不清除浏览器缓存，配置将永久有效</li>
+                <li>• 即使 Cookie 被清除，本地存储的配置仍可恢复</li>
+              </ul>
+            </div>
           </div>
         </div>
       </Card>
