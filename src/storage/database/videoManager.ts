@@ -1,5 +1,5 @@
 import { eq, and, desc, gte, sql, SQL } from "drizzle-orm";
-import { getDb } from "coze-coding-dev-sdk";
+import { db } from "@/lib/db";
 import {
   videos,
   videoStats,
@@ -20,7 +20,6 @@ export class VideoManager {
    * 创建视频记录
    */
   async createVideo(data: InsertVideo): Promise<Video> {
-    const db = await getDb();
     const validated = insertVideoSchema.parse(data);
     const [video] = await db.insert(videos).values(validated).returning();
     return video;
@@ -30,7 +29,6 @@ export class VideoManager {
    * 根据 YouTube videoId 获取视频
    */
   async getVideoByVideoId(videoId: string): Promise<Video | null> {
-    const db = await getDb();
     const [video] = await db
       .select()
       .from(videos)
@@ -42,7 +40,6 @@ export class VideoManager {
    * 根据内部 ID 获取视频
    */
   async getVideoById(id: string): Promise<Video | null> {
-    const db = await getDb();
     const [video] = await db.select().from(videos).where(eq(videos.id, id));
     return video || null;
   }
@@ -56,7 +53,6 @@ export class VideoManager {
     isActive?: boolean;
   } = {}): Promise<Video[]> {
     const { skip = 0, limit = 100, isActive } = options;
-    const db = await getDb();
 
     const conditions: SQL[] = [];
     if (isActive !== undefined) {
@@ -85,7 +81,6 @@ export class VideoManager {
    * 更新视频信息
    */
   async updateVideo(id: string, data: UpdateVideo): Promise<Video | null> {
-    const db = await getDb();
     const validated = updateVideoSchema.parse(data);
     const [video] = await db
       .update(videos)
@@ -102,7 +97,6 @@ export class VideoManager {
     videoId: string,
     data: UpdateVideo
   ): Promise<Video | null> {
-    const db = await getDb();
     const validated = updateVideoSchema.parse(data);
     const [video] = await db
       .update(videos)
@@ -116,7 +110,6 @@ export class VideoManager {
    * 删除视频（软删除）
    */
   async deleteVideo(id: string): Promise<boolean> {
-    const db = await getDb();
     const result = await db
       .update(videos)
       .set({ isActive: false, updatedAt: new Date() })
@@ -128,7 +121,6 @@ export class VideoManager {
    * 创建视频统计数据
    */
   async createVideoStats(data: InsertVideoStats): Promise<VideoStats> {
-    const db = await getDb();
     const validated = insertVideoStatsSchema.parse(data);
     const [stats] = await db.insert(videoStats).values(validated).returning();
     return stats;
@@ -144,7 +136,6 @@ export class VideoManager {
       endDate?: Date;
     } = {}
   ): Promise<VideoStats[]> {
-    const db = await getDb();
     const { startDate, endDate } = options;
 
     const conditions: SQL[] = [eq(videoStats.videoId, videoId)];
@@ -166,7 +157,6 @@ export class VideoManager {
    * 获取视频的最新统计数据
    */
   async getLatestVideoStats(videoId: string): Promise<VideoStats | null> {
-    const db = await getDb();
     const [stats] = await db
       .select()
       .from(videoStats)
@@ -182,7 +172,6 @@ export class VideoManager {
   async getActiveVideosWithLatestStats(): Promise<
     Array<Video & { latestStats?: VideoStats }>
   > {
-    const db = await getDb();
     const activeVideos = await this.getVideos({ isActive: true });
 
     const videosWithStats = await Promise.all(
