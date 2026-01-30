@@ -42,16 +42,20 @@ export async function GET(request: NextRequest) {
   console.log('[API /api/video-info] 检查 API Key 配置:', {
     hasApiKey: !!apiKey,
     apiKeyLength: apiKey?.length || 0,
+    envKeys: Object.keys(process.env).filter(k => k.includes('YOUTUBE')),
   });
 
   if (!apiKey) {
     return NextResponse.json(
       {
         error: '未配置 YouTube API Key',
-        hint: '请手动输入视频信息，或联系管理员配置 YouTube API Key',
-        canManualInput: true,
+        hint: '请检查 Vercel 环境变量中是否已配置 YOUTUBE_API_KEY',
+        debug: {
+          hasApiKey: false,
+          envVarsAvailable: Object.keys(process.env).length,
+        },
       },
-      { status: 200 } // 改为 200，让前端可以正常处理
+      { status: 500 }
     );
   }
 

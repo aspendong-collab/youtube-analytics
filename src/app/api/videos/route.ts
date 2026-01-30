@@ -58,7 +58,16 @@ export async function POST(request: NextRequest) {
 
     // 获取 YouTube API Key
     const apiKey = process.env.YOUTUBE_API_KEY;
-    console.log('[API /api/videos] 检查 API Key:', { hasApiKey: !!apiKey, length: apiKey?.length || 0 });
+    console.log('[API /api/videos] 检查 API Key:', {
+      hasApiKey: !!apiKey,
+      apiKeyLength: apiKey?.length || 0,
+      envKeys: Object.keys(process.env).filter(k => k.includes('YOUTUBE')),
+    });
+
+    if (!apiKey) {
+      console.error('[API /api/videos] 未配置 YouTube API Key，使用用户输入数据');
+      // 不返回错误，继续使用用户输入的数据
+    }
 
     // 创建视频记录（优先使用 API 数据，否则使用用户输入的数据）
     console.log('[API /api/videos] 准备创建视频记录');
