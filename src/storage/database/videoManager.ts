@@ -15,10 +15,15 @@ import type {
   InsertVideoStats,
 } from "./shared/schema";
 
+// 开发环境内存存储
+const mockVideos = new Map<string, Video>();
+const mockVideoStats = new Map<string, VideoStats[]>();
+
 export class VideoManager {
   private getDb() {
     if (!dbInstance) {
-      throw new Error('Database not available. Please check PGDATABASE_URL environment variable.');
+      console.warn('[VideoManager] Database not available. Using mock data in development mode.');
+      return null;
     }
     return dbInstance;
   }
@@ -29,6 +34,28 @@ export class VideoManager {
   async createVideo(data: InsertVideo): Promise<Video> {
     const validated = insertVideoSchema.parse(data);
     const db = this.getDb();
+    if (!db) {
+      // Mock: 返回一个模拟的视频对象，并保存到内存中
+      const video: Video = {
+        id: crypto.randomUUID(),
+        videoId: validated.videoId,
+        title: validated.title,
+        description: validated.description || '',
+        thumbnailUrl: validated.thumbnailUrl || '',
+        channelId: validated.channelId || '',
+        channelTitle: validated.channelTitle || '',
+        publishedAt: validated.publishedAt || new Date(),
+        duration: validated.duration || 0,
+        tags: validated.tags || [],
+        categoryId: validated.categoryId || 0,
+        isActive: validated.isActive ?? true,
+        isMonitored: validated.isMonitored ?? false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      mockVideos.set(video.id, video);
+      return video;
+    }
     const [video] = await db.insert(videos).values(validated).returning();
     return video;
   }
@@ -38,6 +65,15 @@ export class VideoManager {
    */
   async getVideoByVideoId(videoId: string): Promise<Video | null> {
     const db = this.getDb();
+    if (!db) {
+      // Mock: 从内存中查找
+      for (const video of mockVideos.values()) {
+        if (video.videoId === videoId) {
+          return video;
+        }
+      }
+      return null;
+    }
     const [video] = await db
       .select()
       .from(videos)
@@ -50,6 +86,10 @@ export class VideoManager {
    */
   async getVideoById(id: string): Promise<Video | null> {
     const db = this.getDb();
+    if (!db) {
+      // Mock: 从内存中查找
+      return mockVideos.get(id) || null;
+    }
     const [video] = await db.select().from(videos).where(eq(videos.id, id));
     return video || null;
   }
@@ -63,6 +103,22 @@ export class VideoManager {
     isActive?: boolean;
   } = {}): Promise<Video[]> {
     const db = this.getDb();
+    if (!db) {
+      // Mock: 使用内存存储
+      const { skip = 0, limit = 100, isActive } = options;
+      let videos = Array.from(mockVideos.values());
+
+      // 过滤活跃状态
+      if (isActive !== undefined) {
+        videos = videos.filter(v => v.isActive === isActive);
+      }
+
+      // 按创建时间降序排序
+      videos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      // 分页
+      return videos.slice(skip, skip + limit);
+    }
     const { skip = 0, limit = 100, isActive } = options;
 
     const conditions: SQL[] = [];
