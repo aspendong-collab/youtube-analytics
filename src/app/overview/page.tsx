@@ -75,16 +75,16 @@ export default function OverviewPage() {
 
     return {
       today: {
-        cost: { label: '今日合作费用', value: today.cooperationCost || 0, unit: '元' },
-        cpv: { label: '今日平均 CPV', value: today.averageCPV || 0, unit: '元/千次播放' },
+        cost: { label: '今日合作费用', value: today.cooperationCost || 0, unit: '$' },
+        cpv: { label: '今日平均 CPV', value: today.averageCPV || 0, unit: '$/千次播放' },
       },
       thisWeek: {
-        cost: { label: '本周合作费用', value: thisWeek.cooperationCost || 0, unit: '元' },
-        cpv: { label: '本周平均 CPV', value: thisWeek.averageCPV || 0, unit: '元/千次播放' },
+        cost: { label: '本周合作费用', value: thisWeek.cooperationCost || 0, unit: '$' },
+        cpv: { label: '本周平均 CPV', value: thisWeek.averageCPV || 0, unit: '$/千次播放' },
       },
       total: {
-        cost: { label: '累计合作费用', value: total.cooperationCost || 0, unit: '元' },
-        cpv: { label: '累计平均 CPV', value: total.averageCPV || 0, unit: '元/千次播放' },
+        cost: { label: '累计合作费用', value: total.cooperationCost || 0, unit: '$' },
+        cpv: { label: '累计平均 CPV', value: total.averageCPV || 0, unit: '$/千次播放' },
       },
     };
   }, [multiStats]);

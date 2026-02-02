@@ -80,6 +80,9 @@ export async function POST(request: NextRequest) {
       description: body.description || '',
       thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
       owner,
+      publishDate: body.publishDate ? new Date(body.publishDate) : undefined,
+      publishStatus: body.publishStatus || 'published',
+      cooperationCost: body.cooperationCost ? String(body.cooperationCost) : undefined,
     };
 
     if (apiKey) {
@@ -104,6 +107,10 @@ export async function POST(request: NextRequest) {
                                    `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
             insertData.tags = tags ? (Array.isArray(tags) ? tags : tags.split(',').map((t: string) => t.trim())) : snippet.tags;
             insertData.categoryId = category || snippet.categoryId;
+            // 从 YouTube API 获取发布时间
+            if (snippet.publishedAt && !insertData.publishDate) {
+              insertData.publishDate = new Date(snippet.publishedAt);
+            }
           }
         }
       } catch (apiError) {

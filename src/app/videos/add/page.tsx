@@ -247,7 +247,7 @@ export default function AddVideoPage() {
 
           {/* 新增字段 */}
           <div className="space-y-2">
-            <Label htmlFor="cooperationCost">合作费用（元）</Label>
+            <Label htmlFor="cooperationCost">合作费用（$）</Label>
             <Input
               id="cooperationCost"
               type="number"
