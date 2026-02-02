@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Heatmap } from '@/components/charts/heatmap';
+import { toast } from 'sonner';
 
 interface VideoStats {
   viewCount: number;
@@ -183,7 +184,10 @@ export default function SuggestionsPage() {
   };
 
   const analyzeTitle = async () => {
-    if (!selectedVideo) return;
+    if (!selectedVideo) {
+      toast.error('请先选择一个视频');
+      return;
+    }
     setIsAnalyzing(true);
     try {
       const response = await fetch('/api/suggestions/title', {
@@ -197,16 +201,24 @@ export default function SuggestionsPage() {
       if (response.ok) {
         const data = await response.json();
         setTitleAnalysis(data);
+        toast.success('标题分析完成');
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || '标题分析失败');
       }
     } catch (error) {
       console.error('标题分析失败:', error);
+      toast.error('标题分析失败，请重试');
     } finally {
       setIsAnalyzing(false);
     }
   };
 
   const analyzeTags = async () => {
-    if (!selectedVideo) return;
+    if (!selectedVideo) {
+      toast.error('请先选择一个视频');
+      return;
+    }
     setIsAnalyzing(true);
     try {
       const response = await fetch('/api/suggestions/tags', {
@@ -221,16 +233,24 @@ export default function SuggestionsPage() {
       if (response.ok) {
         const data = await response.json();
         setTagAnalysis(data);
+        toast.success('标签生成完成');
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || '标签生成失败');
       }
     } catch (error) {
       console.error('标签分析失败:', error);
+      toast.error('标签生成失败，请重试');
     } finally {
       setIsAnalyzing(false);
     }
   };
 
   const analyzeDescription = async () => {
-    if (!selectedVideo) return;
+    if (!selectedVideo) {
+      toast.error('请先选择一个视频');
+      return;
+    }
     setIsAnalyzing(true);
     try {
       const response = await fetch('/api/suggestions/description', {
@@ -245,16 +265,24 @@ export default function SuggestionsPage() {
       if (response.ok) {
         const data = await response.json();
         setDescriptionAnalysis(data);
+        toast.success('描述优化完成');
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || '描述优化失败');
       }
     } catch (error) {
       console.error('描述分析失败:', error);
+      toast.error('描述优化失败，请重试');
     } finally {
       setIsAnalyzing(false);
     }
   };
 
   const analyzeThumbnail = async () => {
-    if (!selectedVideo) return;
+    if (!selectedVideo) {
+      toast.error('请先选择一个视频');
+      return;
+    }
     setIsAnalyzing(true);
     try {
       const response = await fetch('/api/suggestions/thumbnail', {
@@ -269,25 +297,38 @@ export default function SuggestionsPage() {
       if (response.ok) {
         const data = await response.json();
         setThumbnailAnalysis(data);
+        toast.success('封面分析完成');
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || '封面分析失败');
       }
     } catch (error) {
       console.error('封面分析失败:', error);
+      toast.error('封面分析失败，请重试');
     } finally {
       setIsAnalyzing(false);
     }
   };
 
   const analyzeCompetition = async () => {
-    if (!selectedVideo) return;
+    if (!selectedVideo) {
+      toast.error('请先选择一个视频');
+      return;
+    }
     setIsAnalyzing(true);
     try {
       const response = await fetch(`/api/suggestions/competition?videoId=${selectedVideo.videoId}`);
       if (response.ok) {
         const data = await response.json();
         setCompetitionAnalysis(data);
+        toast.success('竞争分析完成');
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || '竞争分析失败');
       }
     } catch (error) {
       console.error('竞争分析失败:', error);
+      toast.error('竞争分析失败，请重试');
     } finally {
       setIsAnalyzing(false);
     }
