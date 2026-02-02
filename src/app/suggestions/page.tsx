@@ -59,6 +59,8 @@ export default function SuggestionsPage() {
   const [tagAnalysis, setTagAnalysis] = useState<TagAnalysis | null>(null);
   const [descriptionAnalysis, setDescriptionAnalysis] = useState<DescriptionAnalysis | null>(null);
   const [publishTimeData, setPublishTimeData] = useState<any>(null);
+  const [thumbnailAnalysis, setThumbnailAnalysis] = useState<any>(null);
+  const [competitionAnalysis, setCompetitionAnalysis] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // 基础建议
@@ -228,6 +230,46 @@ export default function SuggestionsPage() {
     }
   };
 
+  const analyzeThumbnail = async () => {
+    if (!selectedVideo) return;
+    setIsAnalyzing(true);
+    try {
+      const response = await fetch('/api/suggestions/thumbnail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          thumbnailUrl: selectedVideo.thumbnail,
+          title: selectedVideo.title,
+          category: selectedVideo.categoryId,
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setThumbnailAnalysis(data);
+      }
+    } catch (error) {
+      console.error('封面分析失败:', error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const analyzeCompetition = async () => {
+    if (!selectedVideo) return;
+    setIsAnalyzing(true);
+    try {
+      const response = await fetch(`/api/suggestions/competition?videoId=${selectedVideo.videoId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setCompetitionAnalysis(data);
+      }
+    } catch (error) {
+      console.error('竞争分析失败:', error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const formatNumber = (num: number): string => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
     if (num >= 10000) return (num / 10000).toFixed(1) + 'W';
@@ -288,6 +330,8 @@ export default function SuggestionsPage() {
               setTitleAnalysis(null);
               setTagAnalysis(null);
               setDescriptionAnalysis(null);
+              setThumbnailAnalysis(null);
+              setCompetitionAnalysis(null);
             }}
             className="flex-1 max-w-md px-3 py-2 bg-white border border-[rgba(0,0,0,0.1)] rounded-lg text-sm"
           >
@@ -302,11 +346,13 @@ export default function SuggestionsPage() {
 
       {/* AI 优化建议 */}
       <Tabs defaultValue="basic" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="basic">基础分析</TabsTrigger>
           <TabsTrigger value="title">标题优化</TabsTrigger>
           <TabsTrigger value="tags">标签生成</TabsTrigger>
           <TabsTrigger value="description">描述优化</TabsTrigger>
+          <TabsTrigger value="thumbnail">封面分析</TabsTrigger>
+          <TabsTrigger value="competition">竞争分析</TabsTrigger>
           <TabsTrigger value="publish-time">发布时间</TabsTrigger>
         </TabsList>
 
@@ -517,6 +563,298 @@ export default function SuggestionsPage() {
                   <div className="space-y-1">
                     {descriptionAnalysis.tips.map((tip, index) => (
                       <div key={index} className="text-sm text-[#1D1D1F]">• {tip}</div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
+        {/* 封面图分析 */}
+        <TabsContent value="thumbnail" className="space-y-4">
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-[#1D1D1F]">封面图分析</h2>
+              <Button onClick={analyzeThumbnail} disabled={isAnalyzing}>
+                {isAnalyzing ? '分析中...' : '开始分析'}
+              </Button>
+            </div>
+
+            {selectedVideo && selectedVideo.thumbnail && (
+              <div className="mb-6">
+                <div className="text-sm text-[#86868B] mb-2">当前封面图：</div>
+                <div className="flex justify-center">
+                  <img
+                    src={selectedVideo.thumbnail}
+                    alt="封面图"
+                    className="rounded-lg max-w-md w-full object-cover"
+                  />
+                </div>
+              </div>
+            )}
+
+            {thumbnailAnalysis && (
+              <div className="space-y-6">
+                {/* 综合评分 */}
+                <div>
+                  <div className="text-sm text-[#86868B] mb-2">综合评分：</div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-4xl font-bold text-[#007AFF]">{thumbnailAnalysis.overallScore}/10</div>
+                    <Badge variant={thumbnailAnalysis.overallScore >= 7 ? 'default' : thumbnailAnalysis.overallScore >= 5 ? 'secondary' : 'destructive'}>
+                      {thumbnailAnalysis.overallScore >= 7 ? '优秀' : thumbnailAnalysis.overallScore >= 5 ? '良好' : '需改进'}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* 分项评分 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                    <div className="text-sm text-[#86868B] mb-2">视觉冲击力</div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-2xl font-bold text-[#1D1D1F]">{thumbnailAnalysis.visualImpact}/10</div>
+                      <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#007AFF]"
+                          style={{ width: `${thumbnailAnalysis.visualImpact * 10}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                    <div className="text-sm text-[#86868B] mb-2">文字可读性</div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-2xl font-bold text-[#1D1D1F]">{thumbnailAnalysis.textReadability}/10</div>
+                      <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#007AFF]"
+                          style={{ width: `${thumbnailAnalysis.textReadability * 10}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                    <div className="text-sm text-[#86868B] mb-2">标题相关性</div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-2xl font-bold text-[#1D1D1F]">{thumbnailAnalysis.titleRelevance}/10</div>
+                      <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#007AFF]"
+                          style={{ width: `${thumbnailAnalysis.titleRelevance * 10}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                    <div className="text-sm text-[#86868B] mb-2">分类风格</div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-2xl font-bold text-[#1D1D1F]">{thumbnailAnalysis.categoryStyle}/10</div>
+                      <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#007AFF]"
+                          style={{ width: `${thumbnailAnalysis.categoryStyle * 10}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 改进建议 */}
+                <div>
+                  <div className="text-sm font-medium text-[#86868B] mb-2">改进建议：</div>
+                  <div className="space-y-2">
+                    {thumbnailAnalysis.improvements?.map((suggestion: string, index: number) => (
+                      <div key={index} className="flex items-start gap-2 p-3 bg-[#F5F5F7] rounded-lg">
+                        <span className="text-[#007AFF] mt-1">💡</span>
+                        <p className="text-sm text-[#1D1D1F]">{suggestion}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 理想设计 */}
+                <div>
+                  <div className="text-sm font-medium text-[#86868B] mb-2">理想封面设计：</div>
+                  <div className="p-3 bg-[#F5F5F7] rounded-lg text-sm">
+                    {thumbnailAnalysis.idealDesign}
+                  </div>
+                </div>
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
+        {/* 竞争分析 */}
+        <TabsContent value="competition" className="space-y-4">
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-[#1D1D1F]">竞争分析</h2>
+              <Button onClick={analyzeCompetition} disabled={isAnalyzing}>
+                {isAnalyzing ? '分析中...' : '开始分析'}
+              </Button>
+            </div>
+
+            {competitionAnalysis && (
+              <div className="space-y-6">
+                {/* 目标视频表现 */}
+                <div>
+                  <div className="text-sm font-medium text-[#86868B] mb-3">目标视频表现：</div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                      <div className="text-sm text-[#86868B] mb-1">播放量</div>
+                      <div className="text-2xl font-bold text-[#1D1D1F]">
+                        {formatNumber(competitionAnalysis.targetVideo.views)}
+                      </div>
+                    </div>
+                    <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                      <div className="text-sm text-[#86868B] mb-1">互动率</div>
+                      <div className="text-2xl font-bold text-[#007AFF]">
+                        {competitionAnalysis.targetVideo.engagement.toFixed(1)}%
+                      </div>
+                    </div>
+                    <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                      <div className="text-sm text-[#86868B] mb-1">合作费用</div>
+                      <div className="text-2xl font-bold text-[#1D1D1F]">
+                        ${competitionAnalysis.targetVideo.cost.toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 同类视频基准 */}
+                <div>
+                  <div className="text-sm font-medium text-[#86868B] mb-3">同类视频基准对比：</div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-4 bg-[#F5F5F7] rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#007AFF]">📊</span>
+                        <span className="text-sm text-[#1D1D1F]">同类视频平均播放量</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-semibold text-[#1D1D1F]">
+                          {formatNumber(competitionAnalysis.categoryBenchmark.avgViews)}
+                        </span>
+                        <Badge variant={competitionAnalysis.comparison.viewsAboveCategoryAvg.startsWith('+') ? 'default' : 'destructive'}>
+                          {competitionAnalysis.comparison.viewsAboveCategoryAvg}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-[#F5F5F7] rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#007AFF]">📊</span>
+                        <span className="text-sm text-[#1D1D1F]">同类视频平均互动率</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-semibold text-[#1D1D1F]">
+                          {competitionAnalysis.categoryBenchmark.avgEngagement.toFixed(1)}%
+                        </span>
+                        <Badge variant={competitionAnalysis.comparison.engagementAboveCategoryAvg.startsWith('+') ? 'default' : 'destructive'}>
+                          {competitionAnalysis.comparison.engagementAboveCategoryAvg}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-[#F5F5F7] rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#007AFF]">📊</span>
+                        <span className="text-sm text-[#1D1D1F]">同类视频排名</span>
+                      </div>
+                      <div className="text-lg font-semibold text-[#1D1D1F]">
+                        第 {competitionAnalysis.categoryBenchmark.yourRanking} / {competitionAnalysis.categoryBenchmark.sampleSize}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 博主历史基准 */}
+                <div>
+                  <div className="text-sm font-medium text-[#86868B] mb-3">博主历史基准对比：</div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-4 bg-[#F5F5F7] rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#007AFF]">📈</span>
+                        <span className="text-sm text-[#1D1D1F]">博主平均播放量</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-semibold text-[#1D1D1F]">
+                          {formatNumber(competitionAnalysis.channelBenchmark.avgViews)}
+                        </span>
+                        <Badge variant={competitionAnalysis.comparison.viewsAboveChannelAvg.startsWith('+') ? 'default' : 'destructive'}>
+                          {competitionAnalysis.comparison.viewsAboveChannelAvg}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-[#F5F5F7] rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#007AFF]">📈</span>
+                        <span className="text-sm text-[#1D1D1F]">博主平均互动率</span>
+                      </div>
+                      <div className="text-lg font-semibold text-[#1D1D1F]">
+                        {competitionAnalysis.channelBenchmark.avgEngagement.toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 优化建议 */}
+                <div>
+                  <div className="text-sm font-medium text-[#86868B] mb-2">竞争分析建议：</div>
+                  <div className="space-y-2">
+                    {competitionAnalysis.suggestions.map((suggestion: string, index: number) => (
+                      <div key={index} className="flex items-start gap-2 p-3 bg-[#F5F5F7] rounded-lg">
+                        <span className="text-[#007AFF] mt-1">💡</span>
+                        <p className="text-sm text-[#1D1D1F]">{suggestion}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* TOP 竞品视频 */}
+                <div>
+                  <div className="text-sm font-medium text-[#86868B] mb-3">TOP 5 竞品视频：</div>
+                  <div className="space-y-2">
+                    {competitionAnalysis.topCompetitors.map((competitor: any, index: number) => (
+                      <div key={index} className="p-4 bg-[#F5F5F7] rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                              index === 0 ? 'bg-yellow-100 text-yellow-800' :
+                              index === 1 ? 'bg-gray-100 text-gray-800' :
+                              index === 2 ? 'bg-orange-100 text-orange-800' :
+                              'bg-gray-50 text-gray-600'
+                            }`}>
+                              {index + 1}
+                            </div>
+                            <span className="text-sm font-medium text-[#1D1D1F] truncate max-w-xs">
+                              {competitor.title}
+                            </span>
+                          </div>
+                          <Badge variant="secondary">{competitor.channelTitle}</Badge>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 text-sm">
+                          <div>
+                            <div className="text-[#86868B]">播放量</div>
+                            <div className="font-medium text-[#1D1D1F]">{formatNumber(competitor.views)}</div>
+                          </div>
+                          <div>
+                            <div className="text-[#86868B]">互动率</div>
+                            <div className="font-medium text-[#007AFF]">{competitor.engagement.toFixed(1)}%</div>
+                          </div>
+                          <div>
+                            <div className="text-[#86868B]">成本</div>
+                            <div className="font-medium text-[#1D1D1F]">${competitor.cost.toLocaleString()}</div>
+                          </div>
+                          <div>
+                            <div className="text-[#86868B]">CPV</div>
+                            <div className="font-medium text-[#1D1D1F]">${competitor.cpv.toFixed(2)}</div>
+                          </div>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
