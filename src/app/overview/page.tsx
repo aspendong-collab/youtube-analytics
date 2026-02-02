@@ -311,11 +311,11 @@ function CostSection({
   dateRange: DateRange | null;
 }) {
   const formatCurrency = (num: number): string => {
-    return '¥' + num.toFixed(2);
+    return '$' + num.toFixed(2);
   };
 
   const formatCPV = (num: number): string => {
-    return '¥' + num.toFixed(4);
+    return '$' + num.toFixed(4);
   };
 
   return (
@@ -347,13 +347,13 @@ function CostSection({
               title={customData.cost.label}
               value={customData.cost.value}
               unit={customData.cost.unit}
-              prefix="¥"
+              prefix="$"
             />
             <MetricCard
               title={customData.cpv.label}
               value={customData.cpv.value}
               unit={customData.cpv.unit}
-              prefix="¥"
+              prefix="$"
               formatAsCurrency
             />
           </div>
@@ -369,13 +369,13 @@ function CostSection({
                 title={defaultData.today.cost.label}
                 value={defaultData.today.cost.value}
                 unit={defaultData.today.cost.unit}
-                prefix="¥"
+                prefix="$"
               />
               <MetricCard
                 title={defaultData.today.cpv.label}
                 value={defaultData.today.cpv.value}
                 unit={defaultData.today.cpv.unit}
-                prefix="¥"
+                prefix="$"
                 formatAsCurrency
               />
             </div>
@@ -386,13 +386,13 @@ function CostSection({
                 title={defaultData.thisWeek.cost.label}
                 value={defaultData.thisWeek.cost.value}
                 unit={defaultData.thisWeek.cost.unit}
-                prefix="¥"
+                prefix="$"
               />
               <MetricCard
                 title={defaultData.thisWeek.cpv.label}
                 value={defaultData.thisWeek.cpv.value}
                 unit={defaultData.thisWeek.cpv.unit}
-                prefix="¥"
+                prefix="$"
                 formatAsCurrency
               />
             </div>
@@ -403,13 +403,13 @@ function CostSection({
                 title={defaultData.total.cost.label}
                 value={defaultData.total.cost.value}
                 unit={defaultData.total.cost.unit}
-                prefix="¥"
+                prefix="$"
               />
               <MetricCard
                 title={defaultData.total.cpv.label}
                 value={defaultData.total.cpv.value}
                 unit={defaultData.total.cpv.unit}
-                prefix="¥"
+                prefix="$"
                 formatAsCurrency
               />
             </div>
