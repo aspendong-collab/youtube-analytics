@@ -58,16 +58,20 @@ export async function GET(request: NextRequest) {
 
     // 计算平均播放量并排序
     const sortedSlots = Array.from(timeSlots.entries())
-      .map(([key, data]) => ({
-        key,
-        day: parseInt(key.split('-')[0]),
-        hour: parseInt(key.split('-')[1]),
-        dayName: weekDays[parseInt(key.split('-')[0])],
-        timeLabel: `${weekDays[parseInt(key.split('-')[0])]} ${hour}:00`,
-        avgViews: data.totalViews / data.count,
-        videoCount: data.count,
-        totalViews: data.totalViews,
-      }))
+      .map(([key, data]) => {
+        const day = parseInt(key.split('-')[0]);
+        const hour = parseInt(key.split('-')[1]);
+        return {
+          key,
+          day,
+          hour,
+          dayName: weekDays[day],
+          timeLabel: `${weekDays[day]} ${hour}:00`,
+          avgViews: data.totalViews / data.count,
+          videoCount: data.count,
+          totalViews: data.totalViews,
+        };
+      })
       .sort((a, b) => b.avgViews - a.avgViews);
 
     // 获取TOP 5黄金时段
