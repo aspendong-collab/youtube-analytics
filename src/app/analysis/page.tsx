@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Heatmap } from '@/components/charts/heatmap';
 import { toast } from 'sonner';
 
@@ -149,12 +150,17 @@ export default function SuggestionsPage() {
     }
   };
 
-  const handleVideoChange = async (videoId: string) => {
+  const handleVideoChange = (videoId: string) => {
     const video = videos.find(v => v.videoId === videoId);
     if (video) {
       setSelectedVideo(video);
-      // 切换视频后自动重新分析
-      runAllAnalyses(video);
+      // 切换视频后不再自动重新分析，由用户手动点击"AI分析"按钮触发
+    }
+  };
+
+  const handleAnalyzeClick = () => {
+    if (selectedVideo) {
+      runAllAnalyses(selectedVideo);
     }
   };
 
@@ -509,6 +515,13 @@ export default function SuggestionsPage() {
               </option>
             ))}
           </select>
+          <Button
+            onClick={handleAnalyzeClick}
+            disabled={!selectedVideo || isAnalyzing}
+            className="bg-[#007AFF] hover:bg-[#0066CC] text-white"
+          >
+            {isAnalyzing ? 'AI分析中...' : 'AI分析'}
+          </Button>
           {isAnalyzing && (
             <span className="text-sm text-[#007AFF]">分析中...</span>
           )}
