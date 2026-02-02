@@ -47,8 +47,9 @@ export async function POST(request: NextRequest) {
 
     // 检查视频是否已存在
     console.log('[API /api/videos] 检查视频是否已存在, videoId:', videoId);
+    // 检查视频是否已存在（只检查活跃视频）
     const existingVideo = await videoManager.getVideoByVideoId(videoId);
-    if (existingVideo) {
+    if (existingVideo && existingVideo.isActive !== false) {
       console.log('[API /api/videos] 视频已存在:', existingVideo);
       return NextResponse.json(
         {
@@ -57,6 +58,10 @@ export async function POST(request: NextRequest) {
         },
         { status: 409 }
       );
+    } else if (existingVideo && existingVideo.isActive === false) {
+      // 如果视频已被软删除，先硬删除它
+      console.log('[API /api/videos] 检测到已软删除的视频，正在清理...');
+      await videoManager.deleteVideoWithStats(existingVideo.id);
     }
 
     // 获取 YouTube API Key

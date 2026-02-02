@@ -355,11 +355,12 @@ export class VideoManager {
       // 删除所有视频统计数据
       const deletedStats = await this.deleteVideoStatsByVideoId(video.videoId);
 
-      // 软删除视频记录
+      // 硬删除视频记录（完全从数据库删除）
       await db
-        .update(videos)
-        .set({ isActive: false, updatedAt: new Date() })
+        .delete(videos)
         .where(eq(videos.id, id));
+
+      console.log('[VideoManager] 硬删除视频:', video.title, 'video_id:', video.videoId, '删除了', deletedStats, '条统计数据');
 
       return { success: true, deletedStats };
     } catch (error) {
