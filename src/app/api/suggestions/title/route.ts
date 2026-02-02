@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LLMClient, Config } from 'coze-coding-dev-sdk';
+import { getCategoryName } from '@/lib/youtube-categories';
 
 // 设置为动态路由
 export const dynamic = 'force-dynamic';
@@ -19,10 +20,12 @@ export async function POST(request: NextRequest) {
     const config = new Config();
     const client = new LLMClient(config);
 
+    const categoryName = getCategoryName(category);
+
     const prompt = `作为YouTube标题优化专家，请分析以下标题并提供改进建议：
 
 标题：${title}
-分类：${category || '未指定'}
+分类：${categoryName}
 
 请从以下维度分析：
 1. 关键词覆盖度（是否包含核心搜索词）

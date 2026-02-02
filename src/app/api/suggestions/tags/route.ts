@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LLMClient, Config } from 'coze-coding-dev-sdk';
+import { getCategoryName } from '@/lib/youtube-categories';
 
 // 设置为动态路由
 export const dynamic = 'force-dynamic';
@@ -19,11 +20,13 @@ export async function POST(request: NextRequest) {
     const config = new Config();
     const client = new LLMClient(config);
 
+    const categoryName = getCategoryName(category);
+
     const prompt = `作为YouTube SEO专家，请为以下视频生成优化标签：
 
 标题：${title}
 描述：${description || '无'}
-分类：${category || '未指定'}
+分类：${categoryName}
 
 请生成10-15个标签，包括：
 1. 核心关键词（3-5个）

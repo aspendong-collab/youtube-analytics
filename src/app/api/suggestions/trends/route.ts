@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import postgres from 'postgres';
+import { getCategoryName } from '@/lib/youtube-categories';
 
 // 设置为动态路由
 export const dynamic = 'force-dynamic';
@@ -66,8 +67,8 @@ export async function GET(request: NextRequest) {
     `);
 
     // 分析高增长视频
-    const highGrowthVideos = [];
-    const avgGrowthRate = [];
+    const highGrowthVideos: any[] = [];
+    const avgGrowthRate: number[] = [];
     const allTags = new Map<string, number>();
     const categoryStats = new Map<string, { count: number; totalViews: number; totalEngagement: number }>();
 
@@ -217,7 +218,7 @@ function analyzeCommonTags(videos: any[]): string[] {
 // 分析分类分布
 function analyzeCategories(videos: any[]): any[] {
   const categoryCount = new Map<string, number>();
-  
+
   videos.forEach(video => {
     if (video.category) {
       categoryCount.set(video.category, (categoryCount.get(video.category) || 0) + 1);
@@ -228,6 +229,7 @@ function analyzeCategories(videos: any[]): any[] {
     .sort((a, b) => b[1] - a[1])
     .map(([categoryId, count]) => ({
       categoryId,
+      categoryName: getCategoryName(categoryId),
       count,
       percentage: (count / videos.length * 100).toFixed(1) + '%',
     }));

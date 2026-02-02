@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { getCategoryName } from '@/lib/youtube-categories';
 
 interface VideoStats {
   viewCount: number;
@@ -176,7 +177,7 @@ export default function AnalysisPage() {
             >
               <option value="all">全部</option>
               {categories.map((category) => (
-                <option key={category} value={category}>{category}</option>
+                <option key={category} value={category}>{getCategoryName(category)}</option>
               ))}
             </select>
           </div>

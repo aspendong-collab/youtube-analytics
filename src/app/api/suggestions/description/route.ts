@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LLMClient, Config } from 'coze-coding-dev-sdk';
+import { getCategoryName } from '@/lib/youtube-categories';
 
 // 设置为动态路由
 export const dynamic = 'force-dynamic';
@@ -19,10 +20,12 @@ export async function POST(request: NextRequest) {
     const config = new Config();
     const client = new LLMClient(config);
 
+    const categoryName = getCategoryName(category);
+
     const prompt = `作为YouTube描述文案专家，请为以下视频生成优化描述：
 
 标题：${title}
-分类：${category || '未指定'}
+分类：${categoryName}
 现有描述：${existingDescription || '无'}
 
 描述结构要求：

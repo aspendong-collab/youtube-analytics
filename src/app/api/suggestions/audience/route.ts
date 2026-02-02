@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import postgres from 'postgres';
+import { getCategoryName } from '@/lib/youtube-categories';
 
 // 设置为动态路由
 export const dynamic = 'force-dynamic';
@@ -161,16 +162,18 @@ function analyzeAudienceData(videos: any[]): any {
   const avgDuration = videos.length > 0 ? totalDuration / videos.length : 0;
 
   // 找出最受欢迎的分类
-  const topCategory = Array.from(categoryViews.entries())
+  const topCategoryId = Array.from(categoryViews.entries())
     .sort((a, b) => b[1] - a[1])[0]?.[0] || '无数据';
+  const topCategory = getCategoryName(topCategoryId);
 
   // 按偏好排序的分类
   const preferredCategories = Array.from(categoryViews.entries())
     .map(([category, views]) => ({
-      category,
+      categoryId: category,
+      category: getCategoryName(category),
       views,
       share: (views / totalViews * 100).toFixed(1) + '%',
-      avgEngagement: (categoryEngagement.get(category)! / 
+      avgEngagement: (categoryEngagement.get(category)! /
         (videos.filter(v => v.category_id === category).length || 1)).toFixed(1) + '%',
     }))
     .sort((a, b) => parseFloat(b.share) - parseFloat(a.share))
@@ -209,7 +212,7 @@ function analyzeAudienceData(videos: any[]): any {
         channelTitle: video.channel_title || '未知博主',
         views,
         engagement: engagement.toFixed(1) + '%',
-        category: video.category_id || '未分类',
+        category: getCategoryName(video.category_id),
         duration: '未知', // videos表没有duration字段
       };
     })
@@ -225,6 +228,7 @@ function analyzeAudienceData(videos: any[]): any {
     preferredDuration: formatDuration(avgDuration),
     avgWatchTime: formatDuration(avgDuration),
     engagementByCategory: preferredCategories.map(c => ({
+      categoryId: c.categoryId,
       category: c.category,
       avgEngagement: c.avgEngagement,
       share: c.share,
