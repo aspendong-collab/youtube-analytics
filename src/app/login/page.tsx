@@ -8,10 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -46,7 +47,9 @@ export default function LoginPage() {
         toast.error(result.error);
       } else {
         toast.success("登录成功");
-        router.push("/");
+        // 获取 callbackUrl 参数，如果没有则跳转到首页
+        const callbackUrl = searchParams.get('callbackUrl') || '/';
+        router.push(callbackUrl);
         router.refresh();
       }
     } catch (error) {

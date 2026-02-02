@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Toaster } from 'sonner';
 import './globals.css';
-import { Sidebar } from '@/components/sidebar';
+import { LayoutWrapper } from '@/components/layout-wrapper';
 import { QueryProvider } from '@/lib/query-client';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { AuthProvider } from '@/components/providers';
@@ -26,14 +26,9 @@ export default function RootLayout({
         <ErrorBoundary>
           <AuthProvider>
             <QueryProvider>
-              <div className="flex min-h-screen bg-[#F5F5F7]">
-                {/* 左侧边栏 */}
-                <Sidebar />
-                {/* 主内容区域 */}
-                <main className="flex-1 ml-64 p-8 bg-white min-h-screen">
-                  {children}
-                </main>
-              </div>
+              <LayoutWrapper>
+                {children}
+              </LayoutWrapper>
               <Toaster position="top-right" />
             </QueryProvider>
           </AuthProvider>
