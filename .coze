@@ -1,6 +1,10 @@
 [project]
 requires = ["nodejs-24"]
 
+[env]
+NEXTAUTH_URL="https://youtube-analytics-opal.vercel.app"
+NEXTAUTH_SECRET="youtube-analytics-secret-key-change-in-production"
+
 [dev]
 build = ["bash", "./scripts/prepare.sh"]
 run = ["bash", "./scripts/dev.sh"]
