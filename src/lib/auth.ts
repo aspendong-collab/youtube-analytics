@@ -1,7 +1,7 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { db } from "@/storage/database";
+import { dbInstance as db } from "@/lib/db";
 import { users } from "@/storage/database/shared/schema";
 import { eq } from "drizzle-orm";
 
@@ -14,6 +14,10 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        if (!db) {
+          throw new Error("数据库连接失败，请稍后重试");
+        }
+
         if (!credentials?.email || !credentials?.password) {
           throw new Error("请提供邮箱和密码");
         }
