@@ -202,7 +202,7 @@ export default function ChannelsAnalysisPage() {
                 <TableCell>${channel.totalCost.toFixed(2)}</TableCell>
                 <TableCell>${channel.avgCPV.toFixed(4)}</TableCell>
                 <TableCell>
-                  <Link href={`/analysis/channels/${channel.channelId}`}>
+                  <Link href={`/monitoring/channels/${channel.channelId}`}>
                     <Button variant="outline" size="sm">
                       查看详情
                     </Button>

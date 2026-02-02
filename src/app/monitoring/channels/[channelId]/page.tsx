@@ -65,7 +65,7 @@ export default function ChannelDetailPage() {
     return (
       <div className="p-8">
         <div className="mb-6">
-          <Link href="/analysis/channels" className="text-[#007AFF] hover:underline">
+          <Link href="/monitoring/channels" className="text-[#007AFF] hover:underline">
             ← 返回博主列表
           </Link>
         </div>
@@ -83,7 +83,7 @@ export default function ChannelDetailPage() {
       {/* 页面标题 */}
       <div>
         <div className="mb-2">
-          <Link href="/analysis/channels" className="text-[#007AFF] hover:underline text-sm">
+          <Link href="/monitoring/channels" className="text-[#007AFF] hover:underline text-sm">
             ← 返回博主列表
           </Link>
         </div>
