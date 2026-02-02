@@ -40,6 +40,26 @@ export const videos = pgTable(
   })
 );
 
+// Owners 表 - 存储负责人信息
+export const owners = pgTable(
+  "owners",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    name: varchar("name", { length: 100 }).notNull(),
+    email: varchar("email", { length: 255 }),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+  },
+  (table) => ({
+    emailIdx: index("owners_email_idx").on(table.email),
+  })
+);
+
 // Video Stats 表 - 存储每日统计数据
 export const videoStats = pgTable(
   "video_stats",
@@ -91,6 +111,21 @@ export const updateVideoSchema = createInsertSchema(videos)
   })
   .partial();
 
+// Owners schemas
+export const insertOwnerSchema = createInsertSchema(owners).pick({
+  name: true,
+  email: true,
+  isActive: true,
+});
+
+export const updateOwnerSchema = createInsertSchema(owners)
+  .pick({
+    name: true,
+    email: true,
+    isActive: true,
+  })
+  .partial();
+
 // Video Stats schemas
 export const insertVideoStatsSchema = createInsertSchema(videoStats).pick({
   videoId: true,
@@ -107,3 +142,7 @@ export type UpdateVideo = z.infer<typeof updateVideoSchema>;
 
 export type VideoStats = typeof videoStats.$inferSelect;
 export type InsertVideoStats = z.infer<typeof insertVideoStatsSchema>;
+
+export type Owner = typeof owners.$inferSelect;
+export type InsertOwner = z.infer<typeof insertOwnerSchema>;
+export type UpdateOwner = z.infer<typeof updateOwnerSchema>;
