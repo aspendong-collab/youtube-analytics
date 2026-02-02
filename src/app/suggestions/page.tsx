@@ -62,6 +62,9 @@ export default function SuggestionsPage() {
   const [publishTimeData, setPublishTimeData] = useState<any>(null);
   const [thumbnailAnalysis, setThumbnailAnalysis] = useState<any>(null);
   const [competitionAnalysis, setCompetitionAnalysis] = useState<any>(null);
+  const [trendsAnalysis, setTrendsAnalysis] = useState<any>(null);
+  const [audienceAnalysis, setAudienceAnalysis] = useState<any>(null);
+  const [contentDiagnosis, setContentDiagnosis] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // 基础建议
@@ -70,6 +73,8 @@ export default function SuggestionsPage() {
   useEffect(() => {
     loadVideos();
     loadPublishTimeData();
+    loadTrendsData();
+    loadAudienceData();
   }, []);
 
   const loadVideos = async () => {
@@ -334,6 +339,54 @@ export default function SuggestionsPage() {
     }
   };
 
+  const loadTrendsData = async () => {
+    try {
+      const response = await fetch('/api/suggestions/trends');
+      if (response.ok) {
+        const data = await response.json();
+        setTrendsAnalysis(data);
+      }
+    } catch (error) {
+      console.error('加载趋势数据失败:', error);
+    }
+  };
+
+  const loadAudienceData = async () => {
+    try {
+      const response = await fetch('/api/suggestions/audience');
+      if (response.ok) {
+        const data = await response.json();
+        setAudienceAnalysis(data);
+      }
+    } catch (error) {
+      console.error('加载受众数据失败:', error);
+    }
+  };
+
+  const analyzeContent = async () => {
+    if (!selectedVideo) {
+      toast.error('请先选择一个视频');
+      return;
+    }
+    setIsAnalyzing(true);
+    try {
+      const response = await fetch(`/api/suggestions/content-diagnosis?videoId=${selectedVideo.videoId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setContentDiagnosis(data);
+        toast.success('内容诊断完成');
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || '内容诊断失败');
+      }
+    } catch (error) {
+      console.error('内容诊断失败:', error);
+      toast.error('内容诊断失败，请重试');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const formatNumber = (num: number): string => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
     if (num >= 10000) return (num / 10000).toFixed(1) + 'W';
@@ -410,13 +463,16 @@ export default function SuggestionsPage() {
 
       {/* AI 优化建议 */}
       <Tabs defaultValue="basic" className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-10">
           <TabsTrigger value="basic">基础分析</TabsTrigger>
           <TabsTrigger value="title">标题优化</TabsTrigger>
           <TabsTrigger value="tags">标签生成</TabsTrigger>
           <TabsTrigger value="description">描述优化</TabsTrigger>
           <TabsTrigger value="thumbnail">封面分析</TabsTrigger>
           <TabsTrigger value="competition">竞争分析</TabsTrigger>
+          <TabsTrigger value="content-diagnosis">内容诊断</TabsTrigger>
+          <TabsTrigger value="trends">趋势洞察</TabsTrigger>
+          <TabsTrigger value="audience">受众分析</TabsTrigger>
           <TabsTrigger value="publish-time">发布时间</TabsTrigger>
         </TabsList>
 
@@ -1014,6 +1070,396 @@ export default function SuggestionsPage() {
               </div>
             ) : (
               <div className="text-center py-8 text-[#86868B]">加载中...</div>
+            )}
+          </Card>
+        </TabsContent>
+
+        {/* 内容诊断 */}
+        <TabsContent value="content-diagnosis" className="space-y-4">
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-[#1D1D1F]">内容诊断</h2>
+              <Button onClick={analyzeContent} disabled={isAnalyzing}>
+                {isAnalyzing ? '诊断中...' : '开始诊断'}
+              </Button>
+            </div>
+
+            {contentDiagnosis && (
+              <div className="space-y-6">
+                {/* 综合得分 */}
+                <div className="text-center p-6 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm text-[#86868B] mb-2">内容综合得分</div>
+                  <div className="text-5xl font-bold text-[#007AFF]">{contentDiagnosis.overallScore}/100</div>
+                  <Badge 
+                    variant={parseFloat(contentDiagnosis.overallScore) >= 80 ? 'default' : 
+                            parseFloat(contentDiagnosis.overallScore) >= 60 ? 'secondary' : 'destructive'}
+                    className="mt-2"
+                  >
+                    {parseFloat(contentDiagnosis.overallScore) >= 80 ? '优秀' : 
+                     parseFloat(contentDiagnosis.overallScore) >= 60 ? '良好' : '需改进'}
+                  </Badge>
+                </div>
+
+                {/* 优势 */}
+                {contentDiagnosis.strengths && contentDiagnosis.strengths.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium text-[#86868B] mb-2">✅ 内容优势：</div>
+                    <div className="space-y-2">
+                      {contentDiagnosis.strengths.map((strength: string, index: number) => (
+                        <div key={index} className="flex items-start gap-2 p-3 bg-green-50 rounded-lg">
+                          <span className="text-green-600 mt-1">💪</span>
+                          <p className="text-sm text-[#1D1D1F]">{strength}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 问题 */}
+                {contentDiagnosis.issues && contentDiagnosis.issues.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium text-[#86868B] mb-2">⚠️ 需要改进的问题：</div>
+                    <div className="space-y-2">
+                      {contentDiagnosis.issues.map((issue: string, index: number) => (
+                        <div key={index} className="flex items-start gap-2 p-3 bg-red-50 rounded-lg">
+                          <span className="text-red-600 mt-1">⚠️</span>
+                          <p className="text-sm text-[#1D1D1F]">{issue}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 建议 */}
+                {contentDiagnosis.recommendations && contentDiagnosis.recommendations.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium text-[#86868B] mb-2">💡 优化建议：</div>
+                    <div className="space-y-2">
+                      {contentDiagnosis.recommendations.map((rec: string, index: number) => (
+                        <div key={index} className="flex items-start gap-2 p-3 bg-[#F5F5F7] rounded-lg">
+                          <span className="text-[#007AFF] mt-1">💡</span>
+                          <p className="text-sm text-[#1D1D1F]">{rec}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 分项评分 */}
+                {contentDiagnosis.dimensions && (
+                  <div>
+                    <div className="text-sm font-medium text-[#86868B] mb-3">分项评分：</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {Object.entries(contentDiagnosis.dimensions).map(([key, dim]: [string, any]) => (
+                        <div key={key} className="p-4 bg-[#F5F5F7] rounded-lg">
+                          <div className="text-sm text-[#86868B] mb-2">
+                            {key === 'title' ? '标题' :
+                             key === 'description' ? '描述' :
+                             key === 'tags' ? '标签' :
+                             key === 'duration' ? '时长' :
+                             key === 'publishTime' ? '发布时间' :
+                             key === 'engagement' ? '互动数据' :
+                             key === 'cost' ? '成本效益' :
+                             key === 'channelPerformance' ? '博主表现' : key}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="text-2xl font-bold text-[#1D1D1F]">{dim.score || 0}/100</div>
+                            <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-[#007AFF]"
+                                style={{ width: `${dim.score || 0}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
+        {/* 趋势洞察 */}
+        <TabsContent value="trends" className="space-y-4">
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-[#1D1D1F]">趋势洞察</h2>
+              <Button onClick={loadTrendsData} disabled={isAnalyzing}>
+                {isAnalyzing ? '分析中...' : '刷新数据'}
+              </Button>
+            </div>
+
+            {trendsAnalysis && (
+              <div className="space-y-6">
+                {/* 数据概览 */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                    <div className="text-sm text-[#86868B] mb-1">分析视频数</div>
+                    <div className="text-2xl font-bold text-[#1D1D1F]">{trendsAnalysis.summary?.totalVideosAnalyzed || 0}</div>
+                  </div>
+                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                    <div className="text-sm text-[#86868B] mb-1">高增长视频</div>
+                    <div className="text-2xl font-bold text-[#007AFF]">{trendsAnalysis.summary?.highGrowthVideosCount || 0}</div>
+                  </div>
+                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                    <div className="text-sm text-[#86868B] mb-1">平均增长率</div>
+                    <div className="text-2xl font-bold text-[#1D1D1F]">{trendsAnalysis.summary?.avgGrowthRate || 0}</div>
+                  </div>
+                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                    <div className="text-sm text-[#86868B] mb-1">TOP趋势</div>
+                    <div className="text-lg font-bold text-[#007AFF] truncate">{trendsAnalysis.summary?.topTrend || '暂无'}</div>
+                  </div>
+                </div>
+
+                {/* 热门话题 */}
+                <div>
+                  <div className="text-sm font-medium text-[#86868B] mb-3">🔥 当前热门话题：</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                    {trendsAnalysis.hotTopics?.map((topic: any, index: number) => (
+                      <div key={index} className={`p-3 rounded-lg ${
+                        index === 0 ? 'bg-red-50 border border-red-200' :
+                        index === 1 ? 'bg-orange-50 border border-orange-200' :
+                        index === 2 ? 'bg-yellow-50 border border-yellow-200' :
+                        'bg-[#F5F5F7]'
+                      }`}>
+                        <div className="font-medium text-[#1D1D1F] mb-1">{topic.topic}</div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-[#86868B]">{formatNumber(topic.totalViews)} 播放</span>
+                          <Badge variant="outline" className="text-xs">{topic.popularity}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 高增长视频 */}
+                {trendsAnalysis.highGrowthVideos && trendsAnalysis.highGrowthVideos.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium text-[#86868B] mb-3">📈 高增长视频案例：</div>
+                    <div className="space-y-2">
+                      {trendsAnalysis.highGrowthVideos.slice(0, 5).map((video: any, index: number) => (
+                        <div key={index} className="p-3 bg-[#F5F5F7] rounded-lg">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium text-[#1D1D1F] mb-1">{video.title}</div>
+                              <div className="text-xs text-[#86868B] mb-2">{video.channelTitle}</div>
+                              <div className="flex flex-wrap gap-1">
+                                {video.tags?.slice(0, 3).map((tag: string, i: number) => (
+                                  <Badge key={i} variant="outline" className="text-xs">{tag}</Badge>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="text-right ml-4">
+                              <div className="text-sm font-semibold text-[#007AFF]">{video.growthRate}</div>
+                              <div className="text-xs text-[#86868B]">{video.engagement}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 高增长特征 */}
+                {trendsAnalysis.highGrowthFeatures && (
+                  <div>
+                    <div className="text-sm font-medium text-[#86868B] mb-3">📊 高增长视频共同特征：</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                        <div className="text-sm text-[#86868B] mb-2">常见标签</div>
+                        <div className="flex flex-wrap gap-2">
+                          {trendsAnalysis.highGrowthFeatures.commonTags?.map((tag: string, index: number) => (
+                            <Badge key={index} variant="secondary">{tag}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                        <div className="text-sm text-[#86868B] mb-2">平均增长率</div>
+                        <div className="text-2xl font-bold text-[#007AFF]">{trendsAnalysis.highGrowthFeatures.avgGrowthRate}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 内容创作建议 */}
+                {trendsAnalysis.suggestions && trendsAnalysis.suggestions.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium text-[#86868B] mb-2">💡 内容创作建议：</div>
+                    <div className="space-y-2">
+                      {trendsAnalysis.suggestions.map((suggestion: string, index: number) => (
+                        <div key={index} className="flex items-start gap-2 p-3 bg-[#F5F5F7] rounded-lg">
+                          <span className="text-[#007AFF] mt-1">💡</span>
+                          <p className="text-sm text-[#1D1D1F]">{suggestion}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
+        {/* 受众分析 */}
+        <TabsContent value="audience" className="space-y-4">
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-[#1D1D1F]">受众分析</h2>
+              <Button onClick={loadAudienceData} disabled={isAnalyzing}>
+                {isAnalyzing ? '分析中...' : '刷新数据'}
+              </Button>
+            </div>
+
+            {audienceAnalysis && (
+              <div className="space-y-6">
+                {/* 数据概览 */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                    <div className="text-sm text-[#86868B] mb-1">视频总数</div>
+                    <div className="text-2xl font-bold text-[#1D1D1F]">{audienceAnalysis.summary?.totalVideos || 0}</div>
+                  </div>
+                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                    <div className="text-sm text-[#86868B] mb-1">总播放量</div>
+                    <div className="text-2xl font-bold text-[#1D1D1F]">{formatNumber(audienceAnalysis.summary?.totalViews || 0)}</div>
+                  </div>
+                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                    <div className="text-sm text-[#86868B] mb-1">平均互动率</div>
+                    <div className="text-2xl font-bold text-[#007AFF]">{audienceAnalysis.summary?.avgEngagementRate || 0}</div>
+                  </div>
+                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                    <div className="text-sm text-[#86868B] mb-1">最受欢迎分类</div>
+                    <div className="text-lg font-bold text-[#007AFF] truncate">{audienceAnalysis.summary?.topCategory || '无'}</div>
+                  </div>
+                </div>
+
+                {/* 受众偏好 */}
+                <div>
+                  <div className="text-sm font-medium text-[#86868B] mb-3">👥 受众内容偏好：</div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                      <div className="text-sm text-[#86868B] mb-2">偏好内容类型</div>
+                      <div className="space-y-2">
+                        {audienceAnalysis.audiencePreferences?.preferredContentTypes?.slice(0, 3).map((type: string, index: number) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <span className="w-2 h-2 bg-[#007AFF] rounded-full" />
+                            <span className="text-sm text-[#1D1D1F]">{type}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                      <div className="text-sm text-[#86868B] mb-2">偏好时长</div>
+                      <div className="text-lg font-semibold text-[#007AFF]">{audienceAnalysis.audiencePreferences?.preferredDuration || '未知'}</div>
+                    </div>
+                    <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                      <div className="text-sm text-[#86868B] mb-2">平均观看时长</div>
+                      <div className="text-lg font-semibold text-[#1D1D1F]">{audienceAnalysis.audiencePreferences?.avgWatchTime || '未知'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 分类表现 */}
+                {audienceAnalysis.audiencePreferences?.preferredCategories && (
+                  <div>
+                    <div className="text-sm font-medium text-[#86868B] mb-3">📊 分类表现：</div>
+                    <div className="space-y-2">
+                      {audienceAnalysis.audiencePreferences.preferredCategories.slice(0, 5).map((cat: any, index: number) => (
+                        <div key={index} className="p-3 bg-[#F5F5F7] rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                                index === 0 ? 'bg-yellow-500' :
+                                index === 1 ? 'bg-gray-500' :
+                                index === 2 ? 'bg-orange-500' :
+                                'bg-gray-400'
+                              }`}>
+                                {index + 1}
+                              </span>
+                              <span className="font-medium text-[#1D1D1F]">{cat.category}</span>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm text-[#86868B]">{cat.share}</div>
+                              <div className="text-xs text-[#007AFF]">{cat.avgEngagement}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 最佳发布时间 */}
+                {audienceAnalysis.optimalPostingTimes && audienceAnalysis.optimalPostingTimes.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium text-[#86868B] mb-3">⏰ 最佳发布时间：</div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {audienceAnalysis.optimalPostingTimes.slice(0, 3).map((time: any, index: number) => (
+                        <div key={index} className={`p-4 rounded-lg ${
+                          index === 0 ? 'bg-yellow-50 border border-yellow-200' :
+                          index === 1 ? 'bg-gray-50 border border-gray-200' :
+                          index === 2 ? 'bg-orange-50 border border-orange-200' :
+                          'bg-[#F5F5F7]'
+                        }`}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                              index === 0 ? 'bg-yellow-500' :
+                              index === 1 ? 'bg-gray-500' :
+                              index === 2 ? 'bg-orange-500' :
+                              'bg-gray-400'
+                            }`}>
+                              {index + 1}
+                            </span>
+                            <span className="font-medium text-[#1D1D1F]">{time.day}</span>
+                          </div>
+                          <div className="text-xs text-[#86868B]">占比 {time.share}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 高互动视频 */}
+                {audienceAnalysis.engagementPatterns?.topEngagingVideos && audienceAnalysis.engagementPatterns.topEngagingVideos.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium text-[#86868B] mb-3">🏆 高互动视频案例：</div>
+                    <div className="space-y-2">
+                      {audienceAnalysis.engagementPatterns.topEngagingVideos.slice(0, 5).map((video: any, index: number) => (
+                        <div key={index} className="p-3 bg-[#F5F5F7] rounded-lg">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium text-[#1D1D1F] mb-1">{video.title}</div>
+                              <div className="text-xs text-[#86868B]">
+                                {video.channelTitle} · {video.duration} · {video.category}
+                              </div>
+                            </div>
+                            <div className="text-right ml-4">
+                              <div className="text-sm font-semibold text-[#007AFF]">{video.engagement}</div>
+                              <div className="text-xs text-[#86868B]">{formatNumber(video.views)} 播放</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 受众建议 */}
+                {audienceAnalysis.recommendations && audienceAnalysis.recommendations.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium text-[#86868B] mb-2">💡 受众优化建议：</div>
+                    <div className="space-y-2">
+                      {audienceAnalysis.recommendations.map((rec: string, index: number) => (
+                        <div key={index} className="flex items-start gap-2 p-3 bg-[#F5F5F7] rounded-lg">
+                          <span className="text-[#007AFF] mt-1">💡</span>
+                          <p className="text-sm text-[#1D1D1F]">{rec}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </Card>
         </TabsContent>
