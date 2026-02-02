@@ -1,12 +1,8 @@
 {
-  "buildCommand": "pnpm build",
-  "installCommand": "pnpm install --prefer-frozen-lockfile",
+  "buildCommand": "pnpm run build",
+  "outputDirectory": ".next",
+  "devCommand": "pnpm run dev",
+  "installCommand": "pnpm install",
   "framework": "nextjs",
-  "devCommand": "pnpm dev",
-  "crons": [
-    {
-      "path": "/api/cron/update-video-stats",
-      "schedule": "0 1 * * *"
-    }
-  ]
+  "regions": ["hkg1"]
 }
