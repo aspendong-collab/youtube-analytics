@@ -165,22 +165,9 @@ export function Sidebar() {
           </>
         ) : (
           <>
-            {/* 未登录状态 */}
-            <div className="space-y-2">
-              <Link
-                href="/login"
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-[#1D1D1F] hover:bg-[rgba(0,122,255,0.08)] transition-all duration-200"
-              >
-                <span className="text-base">🔐</span>
-                <span>登录</span>
-              </Link>
-              <Link
-                href="/register"
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-[#1D1D1F] hover:bg-[rgba(0,122,255,0.08)] transition-all duration-200"
-              >
-                <span className="text-base">📝</span>
-                <span>注册账号</span>
-              </Link>
+            {/* 未登录状态 - 不显示任何内容，因为未登录用户会被 middleware 重定向到登录页 */}
+            <div className="px-4 py-3 text-sm text-[#86868B]">
+              请先登录
             </div>
           </>
         )}
