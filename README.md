@@ -44,7 +44,33 @@ coze start
 
 ### 部署到 Vercel
 
-详细的部署步骤请参考 [Vercel 部署指南](./VERCEL_SETUP_GUIDE.md)。
+详细的部署步骤请参考 [Vercel 部署指南](./VERCEL_DEPLOYMENT.md)。
+
+快速部署步骤：
+
+1. 访问 [vercel.com/new](https://vercel.com/new)
+2. 导入 GitHub 仓库：`aspendong-collab/youtube-analytics`
+3. 配置环境变量（见下方）
+4. 点击 "Deploy"
+
+#### 环境变量配置
+
+在 Vercel 项目设置中添加以下环境变量：
+
+```
+PGDATABASE_URL=postgresql://neondb_owner:npg_zw0a2RgOhAXY@ep-winter-cherry-a1cs4q75-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+YOUTUBE_API_KEY=AIzaSyBgo5bEiG0dMJ2RKp7I13eL-yk15gFcsjY
+```
+
+#### 部署后测试
+
+使用提供的测试脚本验证部署：
+
+```bash
+./test-deployment.sh https://your-project.vercel.app
+```
+
+详细的测试清单请参考 [部署检查清单](./DEPLOYMENT_CHECKLIST.md)。
 
 ## 配置 YouTube API Key
 
