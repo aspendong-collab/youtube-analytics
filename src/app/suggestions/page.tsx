@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Heatmap } from '@/components/charts/heatmap';
 import { toast } from 'sonner';
@@ -66,6 +65,7 @@ export default function SuggestionsPage() {
   const [audienceAnalysis, setAudienceAnalysis] = useState<any>(null);
   const [contentDiagnosis, setContentDiagnosis] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [activeTab, setActiveTab] = useState('basic');
 
   // 基础建议
   const [basicSuggestions, setBasicSuggestions] = useState<any[]>([]);
@@ -461,26 +461,49 @@ export default function SuggestionsPage() {
         </div>
       </Card>
 
-      {/* AI 优化建议 */}
-      <Tabs defaultValue="basic" className="w-full">
-        <TabsList className="grid w-full grid-cols-10">
-          <TabsTrigger value="basic">基础分析</TabsTrigger>
-          <TabsTrigger value="title">标题优化</TabsTrigger>
-          <TabsTrigger value="tags">标签生成</TabsTrigger>
-          <TabsTrigger value="description">描述优化</TabsTrigger>
-          <TabsTrigger value="thumbnail">封面分析</TabsTrigger>
-          <TabsTrigger value="competition">竞争分析</TabsTrigger>
-          <TabsTrigger value="content-diagnosis">内容诊断</TabsTrigger>
-          <TabsTrigger value="trends">趋势洞察</TabsTrigger>
-          <TabsTrigger value="audience">受众分析</TabsTrigger>
-          <TabsTrigger value="publish-time">发布时间</TabsTrigger>
-        </TabsList>
+      {/* AI 优化建议 - 竖向布局 */}
+      <div className="flex gap-6">
+        {/* 左侧导航 */}
+        <Card className="w-64 p-4 h-fit sticky top-8">
+          <h2 className="text-sm font-medium text-[#86868B] mb-3">分析板块</h2>
+          <nav className="space-y-1">
+            {[
+              { id: 'basic', label: '基础分析', icon: '📊' },
+              { id: 'title', label: '标题优化', icon: '📝' },
+              { id: 'tags', label: '标签生成', icon: '🏷️' },
+              { id: 'description', label: '描述优化', icon: '📄' },
+              { id: 'thumbnail', label: '封面分析', icon: '🖼️' },
+              { id: 'competition', label: '竞争分析', icon: '⚔️' },
+              { id: 'content-diagnosis', label: '内容诊断', icon: '🔍' },
+              { id: 'trends', label: '趋势洞察', icon: '🔥' },
+              { id: 'audience', label: '受众分析', icon: '👥' },
+              { id: 'publish-time', label: '发布时间', icon: '⏰' },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveTab(item.id);
+                }}
+                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-all duration-200 flex items-center gap-3 ${
+                  activeTab === item.id
+                    ? 'bg-[#007AFF] text-white font-medium'
+                    : 'text-[#1D1D1F] hover:bg-[rgba(0,122,255,0.08)]'
+                }`}
+              >
+                <span className="text-base">{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+        </Card>
 
-        {/* 基础分析 */}
-        <TabsContent value="basic" className="space-y-4">
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">基础数据概览</h2>
-            {selectedVideo && (
+        {/* 右侧内容 */}
+        <div className="flex-1 space-y-6">
+          {activeTab === 'basic' && (
+            <>
+              <Card className="p-6">
+                <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">基础数据概览</h2>
+                {selectedVideo && (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-[#F5F5F7] p-4 rounded-lg">
                   <div className="text-sm text-[#86868B] mb-1">播放量</div>
@@ -537,12 +560,13 @@ export default function SuggestionsPage() {
                 </div>
               ))}
             </div>
-          </Card>
-        </TabsContent>
+              </Card>
+            </>
+          )}
 
-        {/* 标题优化 */}
-        <TabsContent value="title" className="space-y-4">
-          <Card className="p-6">
+          {/* 标题优化 */}
+          {activeTab === 'title' && (
+            <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-[#1D1D1F]">标题优化</h2>
               <Button onClick={analyzeTitle} disabled={isAnalyzing}>
@@ -601,11 +625,11 @@ export default function SuggestionsPage() {
               </div>
             )}
           </Card>
-        </TabsContent>
+          )}
 
-        {/* 标签生成 */}
-        <TabsContent value="tags" className="space-y-4">
-          <Card className="p-6">
+          {/* 标签生成 */}
+          {activeTab === 'tags' && (
+            <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-[#1D1D1F]">标签生成</h2>
               <Button onClick={analyzeTags} disabled={isAnalyzing}>
@@ -648,11 +672,11 @@ export default function SuggestionsPage() {
               </div>
             )}
           </Card>
-        </TabsContent>
+          )}
 
-        {/* 描述优化 */}
-        <TabsContent value="description" className="space-y-4">
-          <Card className="p-6">
+          {/* 描述优化 */}
+          {activeTab === 'description' && (
+            <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-[#1D1D1F]">描述优化</h2>
               <Button onClick={analyzeDescription} disabled={isAnalyzing}>
@@ -689,11 +713,11 @@ export default function SuggestionsPage() {
               </div>
             )}
           </Card>
-        </TabsContent>
+          )}
 
-        {/* 封面图分析 */}
-        <TabsContent value="thumbnail" className="space-y-4">
-          <Card className="p-6">
+          {/* 封面分析 */}
+          {activeTab === 'thumbnail' && (
+            <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-[#1D1D1F]">封面图分析</h2>
               <Button onClick={analyzeThumbnail} disabled={isAnalyzing}>
@@ -805,11 +829,11 @@ export default function SuggestionsPage() {
               </div>
             )}
           </Card>
-        </TabsContent>
+        )}
 
-        {/* 竞争分析 */}
-        <TabsContent value="competition" className="space-y-4">
-          <Card className="p-6">
+          {/* 竞争分析 */}
+          {activeTab === 'competition' && (
+            <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-[#1D1D1F]">竞争分析</h2>
               <Button onClick={analyzeCompetition} disabled={isAnalyzing}>
@@ -981,11 +1005,11 @@ export default function SuggestionsPage() {
               </div>
             )}
           </Card>
-        </TabsContent>
+        )}
 
-        {/* 发布时间 */}
-        <TabsContent value="publish-time" className="space-y-4">
-          <Card className="p-6">
+          {/* 发布时间分析 */}
+          {activeTab === 'publish-time' && (
+            <Card className="p-6">
             <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">最佳发布时间分析</h2>
             
             {publishTimeData ? (
@@ -1072,11 +1096,11 @@ export default function SuggestionsPage() {
               <div className="text-center py-8 text-[#86868B]">加载中...</div>
             )}
           </Card>
-        </TabsContent>
+          )}
 
-        {/* 内容诊断 */}
-        <TabsContent value="content-diagnosis" className="space-y-4">
-          <Card className="p-6">
+          {/* 内容诊断 */}
+          {activeTab === 'content-diagnosis' && (
+            <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-[#1D1D1F]">内容诊断</h2>
               <Button onClick={analyzeContent} disabled={isAnalyzing}>
@@ -1179,11 +1203,11 @@ export default function SuggestionsPage() {
               </div>
             )}
           </Card>
-        </TabsContent>
+          )}
 
-        {/* 趋势洞察 */}
-        <TabsContent value="trends" className="space-y-4">
-          <Card className="p-6">
+          {/* 趋势洞察 */}
+          {activeTab === 'trends' && (
+            <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-[#1D1D1F]">趋势洞察</h2>
               <Button onClick={loadTrendsData} disabled={isAnalyzing}>
@@ -1300,11 +1324,11 @@ export default function SuggestionsPage() {
               </div>
             )}
           </Card>
-        </TabsContent>
+          )}
 
-        {/* 受众分析 */}
-        <TabsContent value="audience" className="space-y-4">
-          <Card className="p-6">
+          {/* 受众分析 */}
+          {activeTab === 'audience' && (
+            <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-[#1D1D1F]">受众分析</h2>
               <Button onClick={loadAudienceData} disabled={isAnalyzing}>
@@ -1462,8 +1486,9 @@ export default function SuggestionsPage() {
               </div>
             )}
           </Card>
-        </TabsContent>
-      </Tabs>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
