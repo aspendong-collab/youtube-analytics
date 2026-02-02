@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Heatmap } from '@/components/charts/heatmap';
 import { toast } from 'sonner';
@@ -52,6 +51,7 @@ interface DescriptionAnalysis {
 export default function SuggestionsPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   
   // AI 分析状态
@@ -64,17 +64,23 @@ export default function SuggestionsPage() {
   const [trendsAnalysis, setTrendsAnalysis] = useState<any>(null);
   const [audienceAnalysis, setAudienceAnalysis] = useState<any>(null);
   const [contentDiagnosis, setContentDiagnosis] = useState<any>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // 基础建议
   const [basicSuggestions, setBasicSuggestions] = useState<any[]>([]);
 
   useEffect(() => {
     loadVideos();
-    loadPublishTimeData();
-    loadTrendsData();
-    loadAudienceData();
+    loadGlobalData();
   }, []);
+
+  const loadGlobalData = async () => {
+    // 加载不依赖选择视频的全局数据
+    await Promise.all([
+      loadPublishTimeData(),
+      loadTrendsData(),
+      loadAudienceData()
+    ]);
+  };
 
   const loadVideos = async () => {
     try {
@@ -85,12 +91,43 @@ export default function SuggestionsPage() {
         if (data.videos && data.videos.length > 0) {
           setSelectedVideo(data.videos[0]);
           generateBasicSuggestions(data.videos);
+          // 自动执行所有分析
+          runAllAnalyses(data.videos[0]);
         }
       }
     } catch (error) {
       console.error('加载视频数据失败:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const runAllAnalyses = async (video: Video) => {
+    setIsAnalyzing(true);
+    try {
+      // 并行执行所有分析
+      await Promise.all([
+        analyzeTitle(video),
+        analyzeTags(video),
+        analyzeDescription(video),
+        analyzeThumbnail(video),
+        analyzeCompetition(video),
+        analyzeContent(video)
+      ]);
+    } catch (error) {
+      console.error('批量分析失败:', error);
+      toast.error('部分分析加载失败，请刷新页面重试');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleVideoChange = async (videoId: string) => {
+    const video = videos.find(v => v.videoId === videoId);
+    if (video) {
+      setSelectedVideo(video);
+      // 切换视频后自动重新分析
+      runAllAnalyses(video);
     }
   };
 
@@ -187,149 +224,101 @@ export default function SuggestionsPage() {
     setBasicSuggestions(tasks);
   };
 
-  const analyzeTitle = async () => {
-    if (!selectedVideo) {
-      toast.error('请先选择一个视频');
-      return;
-    }
-    setIsAnalyzing(true);
+  const analyzeTitle = async (video: Video) => {
     try {
       const response = await fetch('/api/suggestions/title', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: selectedVideo.title,
-          description: selectedVideo.description,
-          tags: selectedVideo.tags,
+          title: video.title,
+          description: video.description,
+          tags: video.tags,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
         setTitleAnalysis(data);
-        toast.success('标题分析完成');
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || '标题分析失败');
       }
     } catch (error) {
       console.error('标题分析失败:', error);
-      toast.error('标题分析失败，请重试');
-    } finally {
-      setIsAnalyzing(false);
     }
   };
 
-  const analyzeTags = async () => {
-    if (!selectedVideo) {
-      toast.error('请先选择一个视频');
-      return;
-    }
-    setIsAnalyzing(true);
+  const analyzeTags = async (video: Video) => {
     try {
       const response = await fetch('/api/suggestions/tags', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: selectedVideo.title,
-          description: selectedVideo.description,
-          tags: selectedVideo.tags,
+          title: video.title,
+          description: video.description,
+          tags: video.tags,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
         setTagAnalysis(data);
-        toast.success('标签分析完成');
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || '标签分析失败');
       }
     } catch (error) {
       console.error('标签分析失败:', error);
-      toast.error('标签分析失败，请重试');
-    } finally {
-      setIsAnalyzing(false);
     }
   };
 
-  const analyzeDescription = async () => {
-    if (!selectedVideo) {
-      toast.error('请先选择一个视频');
-      return;
-    }
-    setIsAnalyzing(true);
+  const analyzeDescription = async (video: Video) => {
     try {
       const response = await fetch('/api/suggestions/description', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: selectedVideo.title,
-          description: selectedVideo.description,
+          title: video.title,
+          description: video.description,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
         setDescriptionAnalysis(data);
-        toast.success('描述优化完成');
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || '描述优化失败');
       }
     } catch (error) {
       console.error('描述优化失败:', error);
-      toast.error('描述优化失败，请重试');
-    } finally {
-      setIsAnalyzing(false);
     }
   };
 
-  const analyzeThumbnail = async () => {
-    if (!selectedVideo) {
-      toast.error('请先选择一个视频');
-      return;
-    }
-    setIsAnalyzing(true);
+  const analyzeThumbnail = async (video: Video) => {
     try {
-      const response = await fetch(`/api/suggestions/thumbnail?videoId=${selectedVideo.videoId}`);
+      const response = await fetch(`/api/suggestions/thumbnail?videoId=${video.videoId}`);
       if (response.ok) {
         const data = await response.json();
         setThumbnailAnalysis(data);
-        toast.success('封面分析完成');
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || '封面分析失败');
       }
     } catch (error) {
       console.error('封面分析失败:', error);
-      toast.error('封面分析失败，请重试');
-    } finally {
-      setIsAnalyzing(false);
     }
   };
 
-  const analyzeCompetition = async () => {
-    if (!selectedVideo) {
-      toast.error('请先选择一个视频');
-      return;
-    }
-    setIsAnalyzing(true);
+  const analyzeCompetition = async (video: Video) => {
     try {
-      const response = await fetch(`/api/suggestions/competition?videoId=${selectedVideo.videoId}`);
+      const response = await fetch(`/api/suggestions/competition?videoId=${video.videoId}`);
       if (response.ok) {
         const data = await response.json();
         setCompetitionAnalysis(data);
-        toast.success('竞争分析完成');
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || '竞争分析失败');
       }
     } catch (error) {
       console.error('竞争分析失败:', error);
-      toast.error('竞争分析失败，请重试');
-    } finally {
-      setIsAnalyzing(false);
+    }
+  };
+
+  const analyzeContent = async (video: Video) => {
+    try {
+      const response = await fetch(`/api/suggestions/content-diagnosis?videoId=${video.videoId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setContentDiagnosis(data);
+      }
+    } catch (error) {
+      console.error('内容诊断失败:', error);
     }
   };
 
@@ -354,30 +343,6 @@ export default function SuggestionsPage() {
       }
     } catch (error) {
       console.error('加载受众数据失败:', error);
-    }
-  };
-
-  const analyzeContent = async () => {
-    if (!selectedVideo) {
-      toast.error('请先选择一个视频');
-      return;
-    }
-    setIsAnalyzing(true);
-    try {
-      const response = await fetch(`/api/suggestions/content-diagnosis?videoId=${selectedVideo.videoId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setContentDiagnosis(data);
-        toast.success('内容诊断完成');
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || '内容诊断失败');
-      }
-    } catch (error) {
-      console.error('内容诊断失败:', error);
-      toast.error('内容诊断失败，请重试');
-    } finally {
-      setIsAnalyzing(false);
     }
   };
 
@@ -434,17 +399,7 @@ export default function SuggestionsPage() {
           <span className="text-sm font-medium text-[#86868B]">选择视频：</span>
           <select
             value={selectedVideo?.videoId || ''}
-            onChange={(e) => {
-              const video = videos.find(v => v.videoId === e.target.value);
-              setSelectedVideo(video || null);
-              // 重置分析结果
-              setTitleAnalysis(null);
-              setTagAnalysis(null);
-              setDescriptionAnalysis(null);
-              setThumbnailAnalysis(null);
-              setCompetitionAnalysis(null);
-              setContentDiagnosis(null);
-            }}
+            onChange={(e) => handleVideoChange(e.target.value)}
             className="flex-1 max-w-md px-3 py-2 bg-white border border-[rgba(0,0,0,0.1)] rounded-lg text-sm"
           >
             {videos.map(video => (
@@ -453,6 +408,9 @@ export default function SuggestionsPage() {
               </option>
             ))}
           </select>
+          {isAnalyzing && (
+            <span className="text-sm text-[#007AFF]">分析中...</span>
+          )}
         </div>
       </Card>
 
@@ -520,17 +478,18 @@ export default function SuggestionsPage() {
 
         {/* 2. 标题优化 */}
         <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[#1D1D1F]">📝 标题优化</h2>
-            <Button onClick={analyzeTitle} disabled={isAnalyzing}>
-              {isAnalyzing ? '分析中...' : '开始分析'}
-            </Button>
-          </div>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">📝 标题优化</h2>
           
           {selectedVideo && (
             <div className="mb-4 p-3 bg-[#F5F5F7] rounded-lg">
               <div className="text-xs text-[#86868B] mb-1">当前标题</div>
               <div className="text-sm text-[#1D1D1F]">{selectedVideo.title}</div>
+            </div>
+          )}
+
+          {!titleAnalysis && !isAnalyzing && (
+            <div className="text-center py-8 text-[#86868B]">
+              分析失败，请刷新页面重试
             </div>
           )}
 
@@ -581,12 +540,13 @@ export default function SuggestionsPage() {
 
         {/* 3. 标签生成 */}
         <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[#1D1D1F]">🏷️ 标签生成</h2>
-            <Button onClick={analyzeTags} disabled={isAnalyzing}>
-              {isAnalyzing ? '生成中...' : '生成标签'}
-            </Button>
-          </div>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">🏷️ 标签生成</h2>
+
+          {!tagAnalysis && !isAnalyzing && (
+            <div className="text-center py-8 text-[#86868B]">
+              分析失败，请刷新页面重试
+            </div>
+          )}
 
           {tagAnalysis && (
             <div className="space-y-4">
@@ -640,12 +600,13 @@ export default function SuggestionsPage() {
 
         {/* 4. 描述优化 */}
         <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[#1D1D1F]">📄 描述优化</h2>
-            <Button onClick={analyzeDescription} disabled={isAnalyzing}>
-              {isAnalyzing ? '优化中...' : '优化描述'}
-            </Button>
-          </div>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">📄 描述优化</h2>
+
+          {!descriptionAnalysis && !isAnalyzing && (
+            <div className="text-center py-8 text-[#86868B]">
+              分析失败，请刷新页面重试
+            </div>
+          )}
 
           {descriptionAnalysis && (
             <div className="space-y-4">
@@ -675,12 +636,7 @@ export default function SuggestionsPage() {
 
         {/* 5. 封面分析 */}
         <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[#1D1D1F]">🖼️ 封面图分析</h2>
-            <Button onClick={analyzeThumbnail} disabled={isAnalyzing}>
-              {isAnalyzing ? '分析中...' : '分析封面'}
-            </Button>
-          </div>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">🖼️ 封面图分析</h2>
 
           {selectedVideo && selectedVideo.thumbnail && (
             <div className="mb-4 flex justify-center">
@@ -689,6 +645,12 @@ export default function SuggestionsPage() {
                 alt="封面"
                 className="max-w-md rounded-lg"
               />
+            </div>
+          )}
+
+          {!thumbnailAnalysis && !isAnalyzing && (
+            <div className="text-center py-8 text-[#86868B]">
+              分析失败，请刷新页面重试
             </div>
           )}
 
@@ -734,12 +696,13 @@ export default function SuggestionsPage() {
 
         {/* 6. 竞争分析 */}
         <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[#1D1D1F]">⚔️ 竞争分析</h2>
-            <Button onClick={analyzeCompetition} disabled={isAnalyzing}>
-              {isAnalyzing ? '分析中...' : '开始分析'}
-            </Button>
-          </div>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">⚔️ 竞争分析</h2>
+
+          {!competitionAnalysis && !isAnalyzing && (
+            <div className="text-center py-8 text-[#86868B]">
+              分析失败，请刷新页面重试
+            </div>
+          )}
 
           {competitionAnalysis && (
             <div className="space-y-4">
@@ -800,12 +763,13 @@ export default function SuggestionsPage() {
 
         {/* 7. 内容诊断 */}
         <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[#1D1D1F]">🔍 内容诊断</h2>
-            <Button onClick={analyzeContent} disabled={isAnalyzing}>
-              {isAnalyzing ? '诊断中...' : '开始诊断'}
-            </Button>
-          </div>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">🔍 内容诊断</h2>
+
+          {!contentDiagnosis && !isAnalyzing && (
+            <div className="text-center py-8 text-[#86868B]">
+              分析失败，请刷新页面重试
+            </div>
+          )}
 
           {contentDiagnosis && (
             <div className="space-y-4">
@@ -881,12 +845,13 @@ export default function SuggestionsPage() {
 
         {/* 8. 趋势洞察 */}
         <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[#1D1D1F]">🔥 趋势洞察</h2>
-            <Button onClick={loadTrendsData} disabled={isAnalyzing}>
-              {isAnalyzing ? '刷新中...' : '刷新数据'}
-            </Button>
-          </div>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">🔥 趋势洞察</h2>
+
+          {!trendsAnalysis && !isAnalyzing && (
+            <div className="text-center py-8 text-[#86868B]">
+              分析失败，请刷新页面重试
+            </div>
+          )}
 
           {trendsAnalysis && (
             <div className="space-y-4">
@@ -937,12 +902,13 @@ export default function SuggestionsPage() {
 
         {/* 9. 受众分析 */}
         <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[#1D1D1F]">👥 受众分析</h2>
-            <Button onClick={loadAudienceData} disabled={isAnalyzing}>
-              {isAnalyzing ? '分析中...' : '刷新数据'}
-            </Button>
-          </div>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">👥 受众分析</h2>
+
+          {!audienceAnalysis && !isAnalyzing && (
+            <div className="text-center py-8 text-[#86868B]">
+              分析失败，请刷新页面重试
+            </div>
+          )}
 
           {audienceAnalysis && (
             <div className="space-y-4">
@@ -1008,7 +974,13 @@ export default function SuggestionsPage() {
         <Card className="p-6">
           <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">⏰ 最佳发布时间分析</h2>
           
-          {publishTimeData ? (
+          {!publishTimeData && !isAnalyzing && (
+            <div className="text-center py-8 text-[#86868B]">
+              分析失败，请刷新页面重试
+            </div>
+          )}
+
+          {publishTimeData && (
             <div className="space-y-6">
               {/* TOP 5 黄金时段 */}
               {publishTimeData.topTimes && publishTimeData.topTimes.length > 0 && (
@@ -1076,8 +1048,6 @@ export default function SuggestionsPage() {
                 </div>
               )}
             </div>
-          ) : (
-            <div className="text-center py-8 text-[#86868B]">加载中...</div>
           )}
         </Card>
       </div>
