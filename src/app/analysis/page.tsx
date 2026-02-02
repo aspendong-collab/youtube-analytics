@@ -48,12 +48,15 @@ interface DescriptionAnalysis {
   tips: string[];
 }
 
+// 分析进度类型
+type AnalysisProgress = 'pending' | 'analyzing' | 'completed' | 'failed';
+
 export default function SuggestionsPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
-  
+
   // AI 分析状态
   const [titleAnalysis, setTitleAnalysis] = useState<TitleAnalysis | null>(null);
   const [tagAnalysis, setTagAnalysis] = useState<TagAnalysis | null>(null);
@@ -65,6 +68,19 @@ export default function SuggestionsPage() {
   const [audienceAnalysis, setAudienceAnalysis] = useState<any>(null);
   const [contentDiagnosis, setContentDiagnosis] = useState<any>(null);
 
+  // 分析进度状态
+  const [progress, setProgress] = useState<Record<string, AnalysisProgress>>({
+    title: 'pending',
+    tags: 'pending',
+    description: 'pending',
+    thumbnail: 'pending',
+    competition: 'pending',
+    content: 'pending',
+    trends: 'pending',
+    audience: 'pending',
+    publishTime: 'pending',
+  });
+
   // 基础建议
   const [basicSuggestions, setBasicSuggestions] = useState<any[]>([]);
 
@@ -75,6 +91,7 @@ export default function SuggestionsPage() {
 
   const loadGlobalData = async () => {
     // 加载不依赖选择视频的全局数据
+    setProgress(prev => ({ ...prev, trends: 'analyzing', audience: 'analyzing', publishTime: 'analyzing' }));
     await Promise.all([
       loadPublishTimeData(),
       loadTrendsData(),
@@ -104,6 +121,16 @@ export default function SuggestionsPage() {
 
   const runAllAnalyses = async (video: Video) => {
     setIsAnalyzing(true);
+    setProgress(prev => ({
+      ...prev,
+      title: 'analyzing',
+      tags: 'analyzing',
+      description: 'analyzing',
+      thumbnail: 'analyzing',
+      competition: 'analyzing',
+      content: 'analyzing',
+    }));
+
     try {
       // 并行执行所有分析
       await Promise.all([
@@ -148,9 +175,13 @@ export default function SuggestionsPage() {
             worstTimeSlot: '数据不足',
           },
         });
+        setProgress(prev => ({ ...prev, publishTime: 'completed' }));
+      } else {
+        setProgress(prev => ({ ...prev, publishTime: 'failed' }));
       }
     } catch (error) {
       console.error('加载发布时间数据失败:', error);
+      setProgress(prev => ({ ...prev, publishTime: 'failed' }));
       setPublishTimeData({
         topTimes: [],
         heatmap: [],
@@ -239,9 +270,13 @@ export default function SuggestionsPage() {
       if (response.ok) {
         const data = await response.json();
         setTitleAnalysis(data);
+        setProgress(prev => ({ ...prev, title: 'completed' }));
+      } else {
+        setProgress(prev => ({ ...prev, title: 'failed' }));
       }
     } catch (error) {
       console.error('标题分析失败:', error);
+      setProgress(prev => ({ ...prev, title: 'failed' }));
     }
   };
 
@@ -260,9 +295,13 @@ export default function SuggestionsPage() {
       if (response.ok) {
         const data = await response.json();
         setTagAnalysis(data);
+        setProgress(prev => ({ ...prev, tags: 'completed' }));
+      } else {
+        setProgress(prev => ({ ...prev, tags: 'failed' }));
       }
     } catch (error) {
       console.error('标签分析失败:', error);
+      setProgress(prev => ({ ...prev, tags: 'failed' }));
     }
   };
 
@@ -280,9 +319,13 @@ export default function SuggestionsPage() {
       if (response.ok) {
         const data = await response.json();
         setDescriptionAnalysis(data);
+        setProgress(prev => ({ ...prev, description: 'completed' }));
+      } else {
+        setProgress(prev => ({ ...prev, description: 'failed' }));
       }
     } catch (error) {
       console.error('描述优化失败:', error);
+      setProgress(prev => ({ ...prev, description: 'failed' }));
     }
   };
 
@@ -292,9 +335,13 @@ export default function SuggestionsPage() {
       if (response.ok) {
         const data = await response.json();
         setThumbnailAnalysis(data);
+        setProgress(prev => ({ ...prev, thumbnail: 'completed' }));
+      } else {
+        setProgress(prev => ({ ...prev, thumbnail: 'failed' }));
       }
     } catch (error) {
       console.error('封面分析失败:', error);
+      setProgress(prev => ({ ...prev, thumbnail: 'failed' }));
     }
   };
 
@@ -304,9 +351,13 @@ export default function SuggestionsPage() {
       if (response.ok) {
         const data = await response.json();
         setCompetitionAnalysis(data);
+        setProgress(prev => ({ ...prev, competition: 'completed' }));
+      } else {
+        setProgress(prev => ({ ...prev, competition: 'failed' }));
       }
     } catch (error) {
       console.error('竞争分析失败:', error);
+      setProgress(prev => ({ ...prev, competition: 'failed' }));
     }
   };
 
@@ -316,9 +367,13 @@ export default function SuggestionsPage() {
       if (response.ok) {
         const data = await response.json();
         setContentDiagnosis(data);
+        setProgress(prev => ({ ...prev, content: 'completed' }));
+      } else {
+        setProgress(prev => ({ ...prev, content: 'failed' }));
       }
     } catch (error) {
       console.error('内容诊断失败:', error);
+      setProgress(prev => ({ ...prev, content: 'failed' }));
     }
   };
 
@@ -328,9 +383,13 @@ export default function SuggestionsPage() {
       if (response.ok) {
         const data = await response.json();
         setTrendsAnalysis(data);
+        setProgress(prev => ({ ...prev, trends: 'completed' }));
+      } else {
+        setProgress(prev => ({ ...prev, trends: 'failed' }));
       }
     } catch (error) {
       console.error('加载趋势数据失败:', error);
+      setProgress(prev => ({ ...prev, trends: 'failed' }));
     }
   };
 
@@ -340,9 +399,13 @@ export default function SuggestionsPage() {
       if (response.ok) {
         const data = await response.json();
         setAudienceAnalysis(data);
+        setProgress(prev => ({ ...prev, audience: 'completed' }));
+      } else {
+        setProgress(prev => ({ ...prev, audience: 'failed' }));
       }
     } catch (error) {
       console.error('加载受众数据失败:', error);
+      setProgress(prev => ({ ...prev, audience: 'failed' }));
     }
   };
 
@@ -351,6 +414,44 @@ export default function SuggestionsPage() {
     if (num >= 10000) return (num / 10000).toFixed(1) + 'W';
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
     return num.toString();
+  };
+
+  // 渲染进度条组件
+  const renderProgressBar = (progressStatus: AnalysisProgress) => {
+    if (progressStatus === 'pending') return null;
+
+    const config = {
+      analyzing: { color: 'bg-blue-500', text: 'AI分析中...', width: 'w-1/3 animate-pulse' },
+      completed: { color: 'bg-green-500', text: '分析完成', width: 'w-full' },
+      failed: { color: 'bg-red-500', text: '分析失败', width: 'w-full' },
+    };
+
+    const { color, text, width } = config[progressStatus];
+
+    return (
+      <div className="mt-3 space-y-2">
+        <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className={`h-full ${color} ${width} transition-all duration-300`}
+            style={{
+              animation: progressStatus === 'analyzing' ? 'progressPulse 1.5s ease-in-out infinite' : undefined
+            }}
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-[#86868B]">{text}</span>
+          {progressStatus === 'analyzing' && (
+            <span className="text-xs text-[#007AFF]">AI正在分析...</span>
+          )}
+          {progressStatus === 'completed' && (
+            <span className="text-xs text-green-600">✓ 完成</span>
+          )}
+          {progressStatus === 'failed' && (
+            <span className="text-xs text-red-600">✗ 失败</span>
+          )}
+        </div>
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -478,7 +579,8 @@ export default function SuggestionsPage() {
 
         {/* 2. 标题优化 */}
         <Card className="p-6">
-          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">📝 标题优化</h2>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-2">📝 标题优化</h2>
+          {renderProgressBar(progress.title)}
           
           {selectedVideo && (
             <div className="mb-4 p-3 bg-[#F5F5F7] rounded-lg">
@@ -540,7 +642,8 @@ export default function SuggestionsPage() {
 
         {/* 3. 标签生成 */}
         <Card className="p-6">
-          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">🏷️ 标签生成</h2>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-2">🏷️ 标签生成</h2>
+          {renderProgressBar(progress.tags)}
 
           {!tagAnalysis && !isAnalyzing && (
             <div className="text-center py-8 text-[#86868B]">
@@ -600,7 +703,8 @@ export default function SuggestionsPage() {
 
         {/* 4. 描述优化 */}
         <Card className="p-6">
-          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">📄 描述优化</h2>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-2">📄 描述优化</h2>
+          {renderProgressBar(progress.description)}
 
           {!descriptionAnalysis && !isAnalyzing && (
             <div className="text-center py-8 text-[#86868B]">
@@ -636,7 +740,8 @@ export default function SuggestionsPage() {
 
         {/* 5. 封面分析 */}
         <Card className="p-6">
-          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">🖼️ 封面图分析</h2>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-2">🖼️ 封面图分析</h2>
+          {renderProgressBar(progress.thumbnail)}
 
           {selectedVideo && selectedVideo.thumbnail && (
             <div className="mb-4 flex justify-center">
@@ -696,7 +801,8 @@ export default function SuggestionsPage() {
 
         {/* 6. 竞争分析 */}
         <Card className="p-6">
-          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">⚔️ 竞争分析</h2>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-2">⚔️ 竞争分析</h2>
+          {renderProgressBar(progress.competition)}
 
           {!competitionAnalysis && !isAnalyzing && (
             <div className="text-center py-8 text-[#86868B]">
@@ -763,7 +869,8 @@ export default function SuggestionsPage() {
 
         {/* 7. 内容诊断 */}
         <Card className="p-6">
-          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">🔍 内容诊断</h2>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-2">🔍 内容诊断</h2>
+          {renderProgressBar(progress.content)}
 
           {!contentDiagnosis && !isAnalyzing && (
             <div className="text-center py-8 text-[#86868B]">
@@ -845,7 +952,8 @@ export default function SuggestionsPage() {
 
         {/* 8. 趋势洞察 */}
         <Card className="p-6">
-          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">🔥 趋势洞察</h2>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-2">🔥 趋势洞察</h2>
+          {renderProgressBar(progress.trends)}
 
           {!trendsAnalysis && !isAnalyzing && (
             <div className="text-center py-8 text-[#86868B]">
@@ -902,7 +1010,8 @@ export default function SuggestionsPage() {
 
         {/* 9. 受众分析 */}
         <Card className="p-6">
-          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">👥 受众分析</h2>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-2">👥 受众分析</h2>
+          {renderProgressBar(progress.audience)}
 
           {!audienceAnalysis && !isAnalyzing && (
             <div className="text-center py-8 text-[#86868B]">
@@ -972,7 +1081,8 @@ export default function SuggestionsPage() {
 
         {/* 10. 发布时间分析 */}
         <Card className="p-6">
-          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">⏰ 最佳发布时间分析</h2>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-2">⏰ 最佳发布时间分析</h2>
+          {renderProgressBar(progress.publishTime)}
           
           {!publishTimeData && !isAnalyzing && (
             <div className="text-center py-8 text-[#86868B]">
