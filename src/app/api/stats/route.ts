@@ -50,10 +50,6 @@ export async function GET(request: NextRequest) {
     const startDateStr = searchParams.get('startDate');
     const endDateStr = searchParams.get('endDate');
 
-    if (!client) {
-      throw new Error('Database client not available');
-    }
-
     // 计算时间范围
     let startDate: Date | null = null;
     let endDate: Date | null = null;
