@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { useStats } from '@/hooks/use-videos';
 
 export default function OverviewPage() {
-  const { data, isLoading } = useStats();
+  const { data, isLoading, isFetching, error, status } = useStats();
   const videos = data?.videos || [];
+
+  console.log('[OverviewPage] Status:', status, 'isLoading:', isLoading, 'videos count:', videos.length);
 
   // 计算统计数据
   const calculateStats = () => {
@@ -49,7 +51,10 @@ export default function OverviewPage() {
     return num.toString();
   };
 
-  if (isLoading && videos.length === 0) {
+  // 只有在第一次加载且没有任何数据时才显示加载中
+  const isFirstLoad = status === 'pending' && videos.length === 0;
+
+  if (isFirstLoad) {
     return (
       <div className="p-8 flex items-center justify-center">
         <div className="text-[#86868B]">加载中...</div>

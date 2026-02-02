@@ -9,14 +9,18 @@ import { useVideos, type Video } from '@/hooks/use-videos';
 
 export default function VideosPage() {
   const router = useRouter();
-  const { data, isLoading, error } = useVideos({ isActive: true, limit: 100 });
+  const { data, isLoading, isFetching, error, status } = useVideos({ isActive: true, limit: 100 });
   const [filterOwner, setFilterOwner] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   const videos = data?.videos || [];
 
+  // 调试信息
+  console.log('[VideosPage] Status:', status, 'isLoading:', isLoading, 'isFetching:', isFetching, 'videos count:', videos.length);
+
   // 如果有错误，显示错误信息
   if (error) {
+    console.error('[VideosPage] Error:', error);
     toast.error('加载视频列表失败');
   }
 
@@ -69,7 +73,10 @@ export default function VideosPage() {
   // 获取所有负责人
   const owners = Array.from(new Set(videos.map((v) => v.owner).filter(Boolean)));
 
-  if (isLoading && videos.length === 0) {
+  // 只有在第一次加载且没有任何数据时才显示加载中
+  const isFirstLoad = status === 'pending' && videos.length === 0;
+
+  if (isFirstLoad) {
     return (
       <div className="p-8 flex items-center justify-center">
         <div className="text-[#86868B]">加载中...</div>
