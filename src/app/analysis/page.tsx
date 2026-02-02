@@ -93,11 +93,19 @@ export default function SuggestionsPage() {
   const loadGlobalData = async () => {
     // 加载不依赖选择视频的全局数据
     setProgress(prev => ({ ...prev, trends: 'analyzing', audience: 'analyzing', publishTime: 'analyzing' }));
-    await Promise.all([
+
+    // 使用 Promise.allSettled 避免一个失败影响所有
+    const results = await Promise.allSettled([
       loadPublishTimeData(),
       loadTrendsData(),
       loadAudienceData()
     ]);
+
+    // 检查是否有加载失败
+    const failedCount = results.filter(r => r.status === 'rejected').length;
+    if (failedCount > 0) {
+      console.warn(`${failedCount} 个全局数据加载失败`);
+    }
   };
 
   const loadVideos = async () => {
@@ -109,8 +117,7 @@ export default function SuggestionsPage() {
         if (data.videos && data.videos.length > 0) {
           setSelectedVideo(data.videos[0]);
           generateBasicSuggestions(data.videos);
-          // 自动执行所有分析
-          runAllAnalyses(data.videos[0]);
+          // 不再自动执行分析，改为由用户手动点击"AI分析"按钮触发
         }
       }
     } catch (error) {
@@ -132,22 +139,36 @@ export default function SuggestionsPage() {
       content: 'analyzing',
     }));
 
-    try {
-      // 并行执行所有分析
-      await Promise.all([
-        analyzeTitle(video),
-        analyzeTags(video),
-        analyzeDescription(video),
-        analyzeThumbnail(video),
-        analyzeCompetition(video),
-        analyzeContent(video)
-      ]);
-    } catch (error) {
-      console.error('批量分析失败:', error);
-      toast.error('部分分析加载失败，请刷新页面重试');
-    } finally {
-      setIsAnalyzing(false);
+    // 独立执行每个分析，使用 Promise.allSettled 避免一个失败影响所有
+    const analyses = [
+      analyzeTitle(video),
+      analyzeTags(video),
+      analyzeDescription(video),
+      analyzeThumbnail(video),
+      analyzeCompetition(video),
+      analyzeContent(video)
+    ];
+
+    // 等待所有分析完成（无论成功或失败）
+    const results = await Promise.allSettled(analyses);
+
+    // 检查是否有分析失败，并给出提示
+    const failedCount = results.filter(r => r.status === 'rejected').length;
+    if (failedCount > 0) {
+      console.warn(`${failedCount} 个分析执行时发生异常`);
+      toast.warning(`${failedCount} 个分析执行失败，请刷新页面重试`);
     }
+
+    // 检查状态中是否有失败项（可能是 API 返回了错误）
+    const failedStatusCount = Object.entries(progress).filter(([key, value]) => {
+      return ['title', 'tags', 'description', 'thumbnail', 'competition', 'content'].includes(key) && value === 'failed';
+    }).length;
+
+    if (failedStatusCount > 0) {
+      console.warn(`${failedStatusCount} 个分析失败（API 错误）`);
+    }
+
+    setIsAnalyzing(false);
   };
 
   const handleVideoChange = (videoId: string) => {
@@ -271,6 +292,7 @@ export default function SuggestionsPage() {
           description: video.description,
           tags: video.tags,
         }),
+        signal: AbortSignal.timeout(60000), // 60秒超时
       });
 
       if (response.ok) {
@@ -279,6 +301,7 @@ export default function SuggestionsPage() {
         setProgress(prev => ({ ...prev, title: 'completed' }));
       } else {
         setProgress(prev => ({ ...prev, title: 'failed' }));
+        console.error('标题分析API返回错误:', response.status);
       }
     } catch (error) {
       console.error('标题分析失败:', error);
@@ -296,6 +319,7 @@ export default function SuggestionsPage() {
           description: video.description,
           tags: video.tags,
         }),
+        signal: AbortSignal.timeout(60000), // 60秒超时
       });
 
       if (response.ok) {
@@ -304,6 +328,7 @@ export default function SuggestionsPage() {
         setProgress(prev => ({ ...prev, tags: 'completed' }));
       } else {
         setProgress(prev => ({ ...prev, tags: 'failed' }));
+        console.error('标签分析API返回错误:', response.status);
       }
     } catch (error) {
       console.error('标签分析失败:', error);
@@ -320,6 +345,7 @@ export default function SuggestionsPage() {
           title: video.title,
           description: video.description,
         }),
+        signal: AbortSignal.timeout(60000), // 60秒超时
       });
 
       if (response.ok) {
@@ -328,6 +354,7 @@ export default function SuggestionsPage() {
         setProgress(prev => ({ ...prev, description: 'completed' }));
       } else {
         setProgress(prev => ({ ...prev, description: 'failed' }));
+        console.error('描述优化API返回错误:', response.status);
       }
     } catch (error) {
       console.error('描述优化失败:', error);
@@ -337,13 +364,17 @@ export default function SuggestionsPage() {
 
   const analyzeThumbnail = async (video: Video) => {
     try {
-      const response = await fetch(`/api/suggestions/thumbnail?videoId=${video.videoId}`);
+      const response = await fetch(`/api/suggestions/thumbnail?videoId=${video.videoId}`, {
+        signal: AbortSignal.timeout(60000), // 60秒超时
+      });
+
       if (response.ok) {
         const data = await response.json();
         setThumbnailAnalysis(data);
         setProgress(prev => ({ ...prev, thumbnail: 'completed' }));
       } else {
         setProgress(prev => ({ ...prev, thumbnail: 'failed' }));
+        console.error('封面分析API返回错误:', response.status);
       }
     } catch (error) {
       console.error('封面分析失败:', error);
@@ -353,13 +384,17 @@ export default function SuggestionsPage() {
 
   const analyzeCompetition = async (video: Video) => {
     try {
-      const response = await fetch(`/api/suggestions/competition?videoId=${video.videoId}`);
+      const response = await fetch(`/api/suggestions/competition?videoId=${video.videoId}`, {
+        signal: AbortSignal.timeout(60000), // 60秒超时
+      });
+
       if (response.ok) {
         const data = await response.json();
         setCompetitionAnalysis(data);
         setProgress(prev => ({ ...prev, competition: 'completed' }));
       } else {
         setProgress(prev => ({ ...prev, competition: 'failed' }));
+        console.error('竞争分析API返回错误:', response.status);
       }
     } catch (error) {
       console.error('竞争分析失败:', error);
@@ -369,13 +404,17 @@ export default function SuggestionsPage() {
 
   const analyzeContent = async (video: Video) => {
     try {
-      const response = await fetch(`/api/suggestions/content-diagnosis?videoId=${video.videoId}`);
+      const response = await fetch(`/api/suggestions/content-diagnosis?videoId=${video.videoId}`, {
+        signal: AbortSignal.timeout(60000), // 60秒超时
+      });
+
       if (response.ok) {
         const data = await response.json();
         setContentDiagnosis(data);
         setProgress(prev => ({ ...prev, content: 'completed' }));
       } else {
         setProgress(prev => ({ ...prev, content: 'failed' }));
+        console.error('内容诊断API返回错误:', response.status);
       }
     } catch (error) {
       console.error('内容诊断失败:', error);
