@@ -64,7 +64,7 @@ export async function GET(
             'stat_date', vs.stat_date
           )
           FROM video_stats vs
-          WHERE vs.video_id = v.id
+          WHERE vs.video_id = v.video_id
           ORDER BY vs.stat_date DESC
           LIMIT 1
         ) as latest_stats

@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
             'stat_date', vs.stat_date
           )
           FROM video_stats vs
-          WHERE vs.video_id = v.id
+          WHERE vs.video_id = v.video_id
           ORDER BY vs.stat_date DESC
           LIMIT 1
         ) as latest_stats
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
             'comment_count', vs.comment_count
           )
           FROM video_stats vs
-          WHERE vs.video_id = v.id
+          WHERE vs.video_id = v.video_id
           ORDER BY vs.stat_date DESC
           LIMIT 1
         ) as latest_stats
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
         (
           SELECT view_count 
           FROM video_stats vs 
-          WHERE vs.video_id = v.id 
+          WHERE vs.video_id = v.video_id 
           ORDER BY stat_date DESC 
           LIMIT 1
         ) DESC
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
             'comment_count', vs.comment_count
           )
           FROM video_stats vs
-          WHERE vs.video_id = v.id
+          WHERE vs.video_id = v.video_id
           ORDER BY vs.stat_date DESC
           LIMIT 1
         ) as latest_stats
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
         (
           SELECT view_count 
           FROM video_stats vs 
-          WHERE vs.video_id = v.id 
+          WHERE vs.video_id = v.video_id 
           ORDER BY stat_date DESC 
           LIMIT 1
         ) DESC
