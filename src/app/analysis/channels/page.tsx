@@ -81,7 +81,7 @@ export default function ChannelsAnalysisPage() {
       const views = video.latestStats?.viewCount || 0;
       const likes = video.latestStats?.likeCount || 0;
       const comments = video.latestStats?.commentCount || 0;
-      const cost = video.cooperationCost || 0;
+      const cost = parseFloat(String(video.cooperationCost || 0));
       const engagement = views > 0 ? ((likes + comments) / views) * 100 : 0;
 
       channelMap.set(channelName, {
@@ -137,7 +137,7 @@ export default function ChannelsAnalysisPage() {
 
   const totalVideos = videos.length;
   const totalViews = videos.reduce((sum, v) => sum + (v.latestStats?.viewCount || 0), 0);
-  const totalCost = videos.reduce((sum, v) => sum + (v.cooperationCost || 0), 0);
+  const totalCost = videos.reduce((sum, v) => sum + parseFloat(String(v.cooperationCost || 0)), 0);
   const avgEngagement = videos.reduce((sum, v) => {
     const views = v.latestStats?.viewCount || 0;
     const likes = v.latestStats?.likeCount || 0;

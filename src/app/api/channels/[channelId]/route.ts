@@ -91,7 +91,7 @@ export async function GET(
       const views = stats?.view_count || 0;
       const likes = stats?.like_count || 0;
       const comments = stats?.comment_count || 0;
-      const cost = v.cooperation_cost || 0;
+      const cost = parseFloat(String(v.cooperation_cost || 0));
 
       totalViews += views;
       totalLikes += likes;
@@ -189,7 +189,7 @@ export async function GET(
           ? (((v.latest_stats?.like_count || 0) + (v.latest_stats?.comment_count || 0)) / v.latest_stats.view_count) * 100
           : 0,
         publishDate: v.publish_date,
-        cost: v.cooperation_cost || 0,
+        cost: parseFloat(String(v.cooperation_cost || 0)),
       }));
 
     const response = {
