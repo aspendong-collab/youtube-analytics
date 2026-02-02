@@ -46,12 +46,12 @@ export async function GET(request: NextRequest) {
     const todayPublishedVideos = Number(todayPublishedResult.count) || 0;
 
     const [todayCostResult] = await client.unsafe(
-      `SELECT COALESCE(SUM(cooperation_cost), 0) as sum FROM videos WHERE is_active = true AND publish_date >= $1 AND publish_date <= $2`,
+      `SELECT COALESCE(SUM(CAST(cooperation_cost AS NUMERIC)), 0) as sum FROM videos WHERE is_active = true AND publish_date >= $1 AND publish_date <= $2`,
       [todayStart, todayEnd]
     );
     const todayCost = Number(todayCostResult.sum) || 0;
 
-    const todayCPV = todayViews > 0 ? todayCost / todayViews : 0;
+    const todayCPV = todayViews > 0 ? (todayCost / (todayViews / 1000)) : 0;
 
     // 获取本周指标
     const [weekViewsResult] = await client.unsafe(
@@ -67,16 +67,16 @@ export async function GET(request: NextRequest) {
     const weekPublishedVideos = Number(weekPublishedResult.count) || 0;
 
     const [weekCostResult] = await client.unsafe(
-      `SELECT COALESCE(SUM(cooperation_cost), 0) as sum FROM videos WHERE is_active = true AND publish_date >= $1`,
+      `SELECT COALESCE(SUM(CAST(cooperation_cost AS NUMERIC)), 0) as sum FROM videos WHERE is_active = true AND publish_date >= $1`,
       [weekStart]
     );
     const weekCost = Number(weekCostResult.sum) || 0;
 
-    const weekCPV = weekViews > 0 ? weekCost / weekViews : 0;
+    const weekCPV = weekViews > 0 ? (weekCost / (weekViews / 1000)) : 0;
 
     // 获取累计指标
     const [totalViewsResult] = await client.unsafe(
-      `SELECT COALESCE(SUM(total_views), 0) as sum FROM videos WHERE is_active = true`
+      `SELECT COALESCE(SUM(view_count), 0) as sum FROM video_stats`
     );
     const totalViews = Number(totalViewsResult.sum) || 0;
 
@@ -86,11 +86,11 @@ export async function GET(request: NextRequest) {
     const totalPublishedVideos = Number(totalPublishedResult.count) || 0;
 
     const [totalCostResult] = await client.unsafe(
-      `SELECT COALESCE(SUM(cooperation_cost), 0) as sum FROM videos WHERE is_active = true`
+      `SELECT COALESCE(SUM(CAST(cooperation_cost AS NUMERIC)), 0) as sum FROM videos WHERE is_active = true`
     );
     const totalCost = Number(totalCostResult.sum) || 0;
 
-    const totalCPV = totalViews > 0 ? totalCost / totalViews : 0;
+    const totalCPV = totalViews > 0 ? (totalCost / (totalViews / 1000)) : 0;
 
     // 获取其他指标
     const [totalVideosResult] = await client.unsafe(`SELECT COUNT(*) as count FROM videos`);

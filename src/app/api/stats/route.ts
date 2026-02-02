@@ -75,17 +75,17 @@ export async function GET(request: NextRequest) {
     const [totalVideosResult] = await client.unsafe(`SELECT COUNT(*) as count FROM videos`);
     const totalVideos = Number(totalVideosResult.count) || 0;
 
-    const [totalViewsResult] = await client.unsafe(`SELECT COALESCE(SUM(total_views), 0) as sum FROM videos WHERE is_active = true`);
+    const [totalViewsResult] = await client.unsafe(`SELECT COALESCE(SUM(view_count), 0) as sum FROM video_stats`);
     const totalHistoricalViews = Number(totalViewsResult.sum) || 0;
 
     const [totalPublishedResult] = await client.unsafe(`SELECT COUNT(*) as count FROM videos WHERE publish_status = 'published' AND is_active = true`);
     const totalPublishedVideos = Number(totalPublishedResult.count) || 0;
 
-    const [totalCostResult] = await client.unsafe(`SELECT COALESCE(SUM(cooperation_cost), 0) as sum FROM videos WHERE is_active = true`);
+    const [totalCostResult] = await client.unsafe(`SELECT COALESCE(SUM(CAST(cooperation_cost AS NUMERIC)), 0) as sum FROM videos WHERE is_active = true`);
     const totalCooperationCost = Number(totalCostResult.sum) || 0;
 
     const overallAverageCPV = totalHistoricalViews > 0
-      ? totalCooperationCost / totalHistoricalViews
+      ? totalCooperationCost / (totalHistoricalViews / 1000)
       : 0;
 
     const [totalChannelsResult] = await client.unsafe(`SELECT COUNT(DISTINCT channel_id) as count FROM videos WHERE is_active = true AND channel_id IS NOT NULL`);
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
 
       // 期间合作费用
       const [periodCostResult] = await client.unsafe(
-        `SELECT COALESCE(SUM(cooperation_cost), 0) as sum FROM videos WHERE is_active = true AND publish_date >= $1 AND publish_date <= $2`,
+        `SELECT COALESCE(SUM(CAST(cooperation_cost AS NUMERIC)), 0) as sum FROM videos WHERE is_active = true AND publish_date >= $1 AND publish_date <= $2`,
         [startDate, endDate]
       );
       periodCooperationCost = Number(periodCostResult.sum) || 0;
@@ -123,9 +123,9 @@ export async function GET(request: NextRequest) {
       );
       periodTotalViews = Number(periodViewsResult.sum) || 0;
 
-      // 计算期间平均 CPV
+      // 计算期间平均 CPV（$/千次播放）
       periodAverageCPV = periodTotalViews > 0
-        ? periodCooperationCost / periodTotalViews
+        ? periodCooperationCost / (periodTotalViews / 1000)
         : 0;
     }
 
