@@ -29,15 +29,6 @@ export const navItems: NavItem[] = [
     label: '深度分析',
     icon: '🔍',
     path: '/analysis',
-    children: [
-      { id: 'content-optimization', label: '内容优化', path: '/analysis/content' },
-      { id: 'publishing-strategy', label: '发布策略', path: '/analysis/publishing' },
-      { id: 'competition-analysis', label: '竞争分析', path: '/analysis/competition' },
-      { id: 'audience-insights', label: '受众洞察', path: '/analysis/audience' },
-      { id: 'cost-analysis', label: '成本分析', path: '/analysis/cost' },
-      { id: 'content-diagnosis', label: '内容诊断', path: '/analysis/diagnosis' },
-      { id: 'trend-insights', label: '趋势洞察', path: '/analysis/trends' },
-    ],
   },
   {
     id: 'owners',
