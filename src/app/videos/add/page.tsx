@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+
+interface Owner {
+  id: string;
+  name: string;
+  email: string | null;
+}
 
 export default function AddVideoPage() {
   const router = useRouter();
@@ -30,6 +36,28 @@ export default function AddVideoPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [owners, setOwners] = useState<Owner[]>([]);
+  const [isLoadingOwners, setIsLoadingOwners] = useState(false);
+
+  // 加载负责人列表
+  useEffect(() => {
+    loadOwners();
+  }, []);
+
+  const loadOwners = async () => {
+    try {
+      setIsLoadingOwners(true);
+      const response = await fetch('/api/owners?isActive=true');
+      if (response.ok) {
+        const data = await response.json();
+        setOwners(data.owners || []);
+      }
+    } catch (error) {
+      console.error('加载负责人列表失败:', error);
+    } finally {
+      setIsLoadingOwners(false);
+    }
+  };
 
   const fetchVideoInfo = async () => {
     if (!formData.videoUrl.trim()) {
@@ -216,12 +244,28 @@ export default function AddVideoPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="owner">负责人</Label>
-              <Input
+              <select
                 id="owner"
-                placeholder="输入负责人姓名"
+                className="w-full px-3 py-2 bg-white border border-[rgba(0,0,0,0.1)] rounded-lg text-sm"
                 value={formData.owner}
                 onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
-              />
+              >
+                <option value="">请选择负责人</option>
+                {isLoadingOwners ? (
+                  <option disabled>加载中...</option>
+                ) : owners.length === 0 ? (
+                  <option disabled>暂无负责人</option>
+                ) : (
+                  owners.map((owner) => (
+                    <option key={owner.id} value={owner.name}>
+                      {owner.name}
+                    </option>
+                  ))
+                )}
+              </select>
+              <p className="text-xs text-[#86868B]">
+                如果没有找到合适的负责人，请先在"负责人管理"中添加
+              </p>
             </div>
 
             <div className="space-y-2">
