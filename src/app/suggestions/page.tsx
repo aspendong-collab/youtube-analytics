@@ -94,10 +94,33 @@ export default function SuggestionsPage() {
       const response = await fetch('/api/suggestions/publish-time');
       if (response.ok) {
         const data = await response.json();
-        setPublishTimeData(data);
+        setPublishTimeData(data || {
+          topTimes: [],
+          heatmap: [],
+          averageViews: 0,
+          recommendations: [],
+          summary: {
+            totalAnalyzed: 0,
+            uniqueTimeSlots: 0,
+            bestTimeSlot: '数据不足',
+            worstTimeSlot: '数据不足',
+          },
+        });
       }
     } catch (error) {
       console.error('加载发布时间数据失败:', error);
+      setPublishTimeData({
+        topTimes: [],
+        heatmap: [],
+        averageViews: 0,
+        recommendations: [],
+        summary: {
+          totalAnalyzed: 0,
+          uniqueTimeSlots: 0,
+          bestTimeSlot: '数据不足',
+          worstTimeSlot: '数据不足',
+        },
+      });
     }
   };
 
@@ -706,19 +729,19 @@ export default function SuggestionsPage() {
                     <div className="p-4 bg-[#F5F5F7] rounded-lg">
                       <div className="text-sm text-[#86868B] mb-1">播放量</div>
                       <div className="text-2xl font-bold text-[#1D1D1F]">
-                        {formatNumber(competitionAnalysis.targetVideo.views)}
+                        {formatNumber(competitionAnalysis.targetVideo.views || 0)}
                       </div>
                     </div>
                     <div className="p-4 bg-[#F5F5F7] rounded-lg">
                       <div className="text-sm text-[#86868B] mb-1">互动率</div>
                       <div className="text-2xl font-bold text-[#007AFF]">
-                        {competitionAnalysis.targetVideo.engagement.toFixed(1)}%
+                        {(competitionAnalysis.targetVideo.engagement || 0).toFixed(1)}%
                       </div>
                     </div>
                     <div className="p-4 bg-[#F5F5F7] rounded-lg">
                       <div className="text-sm text-[#86868B] mb-1">合作费用</div>
                       <div className="text-2xl font-bold text-[#1D1D1F]">
-                        ${competitionAnalysis.targetVideo.cost.toLocaleString()}
+                        ${(competitionAnalysis.targetVideo.cost || 0).toLocaleString()}
                       </div>
                     </div>
                   </div>
@@ -735,10 +758,10 @@ export default function SuggestionsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-lg font-semibold text-[#1D1D1F]">
-                          {formatNumber(competitionAnalysis.categoryBenchmark.avgViews)}
+                          {formatNumber(competitionAnalysis.categoryBenchmark.avgViews || 0)}
                         </span>
-                        <Badge variant={competitionAnalysis.comparison.viewsAboveCategoryAvg.startsWith('+') ? 'default' : 'destructive'}>
-                          {competitionAnalysis.comparison.viewsAboveCategoryAvg}
+                        <Badge variant={competitionAnalysis.comparison?.viewsAboveCategoryAvg?.startsWith('+') ? 'default' : 'destructive'}>
+                          {competitionAnalysis.comparison?.viewsAboveCategoryAvg || '0%'}
                         </Badge>
                       </div>
                     </div>
@@ -750,10 +773,10 @@ export default function SuggestionsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-lg font-semibold text-[#1D1D1F]">
-                          {competitionAnalysis.categoryBenchmark.avgEngagement.toFixed(1)}%
+                          {(competitionAnalysis.categoryBenchmark.avgEngagement || 0).toFixed(1)}%
                         </span>
-                        <Badge variant={competitionAnalysis.comparison.engagementAboveCategoryAvg.startsWith('+') ? 'default' : 'destructive'}>
-                          {competitionAnalysis.comparison.engagementAboveCategoryAvg}
+                        <Badge variant={competitionAnalysis.comparison?.engagementAboveCategoryAvg?.startsWith('+') ? 'default' : 'destructive'}>
+                          {competitionAnalysis.comparison?.engagementAboveCategoryAvg || '0%'}
                         </Badge>
                       </div>
                     </div>
@@ -781,10 +804,10 @@ export default function SuggestionsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-lg font-semibold text-[#1D1D1F]">
-                          {formatNumber(competitionAnalysis.channelBenchmark.avgViews)}
+                          {formatNumber(competitionAnalysis.channelBenchmark.avgViews || 0)}
                         </span>
-                        <Badge variant={competitionAnalysis.comparison.viewsAboveChannelAvg.startsWith('+') ? 'default' : 'destructive'}>
-                          {competitionAnalysis.comparison.viewsAboveChannelAvg}
+                        <Badge variant={competitionAnalysis.comparison?.viewsAboveChannelAvg?.startsWith('+') ? 'default' : 'destructive'}>
+                          {competitionAnalysis.comparison?.viewsAboveChannelAvg || '0%'}
                         </Badge>
                       </div>
                     </div>
@@ -795,7 +818,7 @@ export default function SuggestionsPage() {
                         <span className="text-sm text-[#1D1D1F]">博主平均互动率</span>
                       </div>
                       <div className="text-lg font-semibold text-[#1D1D1F]">
-                        {competitionAnalysis.channelBenchmark.avgEngagement.toFixed(1)}%
+                        {(competitionAnalysis.channelBenchmark.avgEngagement || 0).toFixed(1)}%
                       </div>
                     </div>
                   </div>
@@ -818,7 +841,7 @@ export default function SuggestionsPage() {
                 <div>
                   <div className="text-sm font-medium text-[#86868B] mb-3">TOP 5 竞品视频：</div>
                   <div className="space-y-2">
-                    {competitionAnalysis.topCompetitors.map((competitor: any, index: number) => (
+                    {competitionAnalysis.topCompetitors?.map((competitor: any, index: number) => (
                       <div key={index} className="p-4 bg-[#F5F5F7] rounded-lg">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-3">
@@ -831,27 +854,27 @@ export default function SuggestionsPage() {
                               {index + 1}
                             </div>
                             <span className="text-sm font-medium text-[#1D1D1F] truncate max-w-xs">
-                              {competitor.title}
+                              {competitor.title || '未命名视频'}
                             </span>
                           </div>
-                          <Badge variant="secondary">{competitor.channelTitle}</Badge>
+                          <Badge variant="secondary">{competitor.channelTitle || '未知博主'}</Badge>
                         </div>
                         <div className="grid grid-cols-4 gap-2 text-sm">
                           <div>
                             <div className="text-[#86868B]">播放量</div>
-                            <div className="font-medium text-[#1D1D1F]">{formatNumber(competitor.views)}</div>
+                            <div className="font-medium text-[#1D1D1F]">{formatNumber(competitor.views || 0)}</div>
                           </div>
                           <div>
                             <div className="text-[#86868B]">互动率</div>
-                            <div className="font-medium text-[#007AFF]">{competitor.engagement.toFixed(1)}%</div>
+                            <div className="font-medium text-[#007AFF]">{(competitor.engagement || 0).toFixed(1)}%</div>
                           </div>
                           <div>
                             <div className="text-[#86868B]">成本</div>
-                            <div className="font-medium text-[#1D1D1F]">${competitor.cost.toLocaleString()}</div>
+                            <div className="font-medium text-[#1D1D1F]">${(competitor.cost || 0).toLocaleString()}</div>
                           </div>
                           <div>
                             <div className="text-[#86868B]">CPV</div>
-                            <div className="font-medium text-[#1D1D1F]">${competitor.cpv.toFixed(2)}</div>
+                            <div className="font-medium text-[#1D1D1F]">${(competitor.cpv || 0).toFixed(2)}</div>
                           </div>
                         </div>
                       </div>
@@ -931,19 +954,19 @@ export default function SuggestionsPage() {
                   <div className="p-4 bg-[#F5F5F7] rounded-lg">
                     <div className="text-sm text-[#86868B] mb-1">分析视频数</div>
                     <div className="text-2xl font-bold text-[#1D1D1F]">
-                      {publishTimeData.summary.totalAnalyzed}
+                      {publishTimeData.summary?.totalAnalyzed || 0}
                     </div>
                   </div>
                   <div className="p-4 bg-[#F5F5F7] rounded-lg">
                     <div className="text-sm text-[#86868B] mb-1">最佳时段</div>
                     <div className="text-lg font-bold text-[#007AFF]">
-                      {publishTimeData.summary.bestTimeSlot}
+                      {publishTimeData.summary?.bestTimeSlot || '数据不足'}
                     </div>
                   </div>
                   <div className="p-4 bg-[#F5F5F7] rounded-lg">
                     <div className="text-sm text-[#86868B] mb-1">平均播放量</div>
                     <div className="text-2xl font-bold text-[#1D1D1F]">
-                      {formatNumber(publishTimeData.averageViews)}
+                      {formatNumber(publishTimeData.averageViews || 0)}
                     </div>
                   </div>
                 </div>

@@ -55,8 +55,8 @@ export async function GET(request: NextRequest) {
     }
 
     const targetVideo = targetVideoResult[0];
-    const categoryId = targetVideo.category_id;
-    const channelId = targetVideo.channel_id;
+    const categoryId = targetVideo.category_id || null;
+    const channelId = targetVideo.channel_id || null;
 
     // 获取同类分类视频
     const categoryVideosResult = await client.unsafe(`
@@ -199,9 +199,9 @@ export async function GET(request: NextRequest) {
         engagement: v.latest_stats?.view_count > 0
           ? (((v.latest_stats?.like_count || 0) + (v.latest_stats?.comment_count || 0)) / v.latest_stats.view_count) * 100
           : 0,
-        cost: v.cooperation_cost || 0,
+        cost: parseFloat(v.cooperation_cost || '0'),
         cpv: v.cooperation_cost > 0 && v.latest_stats?.view_count > 0
-          ? v.cooperation_cost / v.latest_stats.view_count
+          ? parseFloat(v.cooperation_cost) / v.latest_stats.view_count
           : 0,
       }));
 
@@ -211,7 +211,7 @@ export async function GET(request: NextRequest) {
         title: targetVideo.title,
         views: targetViews,
         engagement: targetEngagement,
-        cost: targetVideo.cooperation_cost || 0,
+        cost: parseFloat(targetVideo.cooperation_cost || '0'),
       },
       categoryBenchmark: {
         avgViews: categoryAvgViews,
@@ -227,9 +227,15 @@ export async function GET(request: NextRequest) {
         sampleSize: channelVideos.length,
       },
       comparison: {
-        viewsAboveCategoryAvg: ((targetViews - categoryAvgViews) / categoryAvgViews * 100).toFixed(1) + '%',
-        engagementAboveCategoryAvg: ((targetEngagement - categoryAvgEngagement) / categoryAvgEngagement * 100).toFixed(1) + '%',
-        viewsAboveChannelAvg: ((targetViews - channelAvgViews) / channelAvgViews * 100).toFixed(1) + '%',
+        viewsAboveCategoryAvg: categoryAvgViews > 0
+          ? ((targetViews - categoryAvgViews) / categoryAvgViews * 100).toFixed(1) + '%'
+          : '0%',
+        engagementAboveCategoryAvg: categoryAvgEngagement > 0
+          ? ((targetEngagement - categoryAvgEngagement) / categoryAvgEngagement * 100).toFixed(1) + '%'
+          : '0%',
+        viewsAboveChannelAvg: channelAvgViews > 0
+          ? ((targetViews - channelAvgViews) / channelAvgViews * 100).toFixed(1) + '%'
+          : '0%',
       },
       suggestions,
       topCompetitors,
