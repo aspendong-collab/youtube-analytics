@@ -111,7 +111,7 @@ export default function OwnersPerformancePage() {
     return (
       <div className="p-8 space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold text-[#1D1D1F]">负责人绩效</h1>
+          <h1 className="text-2xl font-semibold text-[#1D1D1F]">排行榜</h1>
           <p className="text-sm text-[#86868B] mt-1">查看负责人的工作绩效和表现</p>
         </div>
         <Card className="p-12 text-center">
@@ -134,7 +134,7 @@ export default function OwnersPerformancePage() {
   return (
     <div className="p-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-[#1D1D1F]">负责人绩效</h1>
+        <h1 className="text-2xl font-semibold text-[#1D1D1F]">排行榜</h1>
         <p className="text-sm text-[#86868B] mt-1">查看负责人的工作绩效和表现</p>
       </div>
 

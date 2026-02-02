@@ -33,6 +33,7 @@ interface Video {
   channelTitle?: string;
   categoryId?: string;
   owner?: string;
+  thumbnail?: string;
   createdAt: string | Date;
   latestStats?: VideoStats | null;
 }

@@ -21,7 +21,7 @@ export const navItems: NavItem[] = [
     children: [
       { id: 'video-list', label: '视频列表', path: '/monitoring' },
       { id: 'channel-analysis', label: '博主分析', path: '/monitoring/channels' },
-      { id: 'owner-performance', label: '负责人绩效', path: '/monitoring/owners' },
+      { id: 'owner-performance', label: '排行榜', path: '/monitoring/owners' },
     ],
   },
   {
