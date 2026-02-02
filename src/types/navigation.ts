@@ -40,11 +40,6 @@ export const navItems: NavItem[] = [
     label: '优化建议',
     icon: '💡',
     path: '/suggestions',
-    children: [
-      { id: 'video-suggestions', label: '视频优化', path: '/suggestions' },
-      { id: 'batch-suggestions', label: '批量优化', path: '/suggestions/batch' },
-      { id: 'tracking', label: '优化追踪', path: '/suggestions/tracking' },
-    ],
   },
   {
     id: 'trends',
