@@ -65,7 +65,6 @@ export default function SuggestionsPage() {
   const [audienceAnalysis, setAudienceAnalysis] = useState<any>(null);
   const [contentDiagnosis, setContentDiagnosis] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [activeTab, setActiveTab] = useState('basic');
 
   // 基础建议
   const [basicSuggestions, setBasicSuggestions] = useState<any[]>([]);
@@ -200,9 +199,11 @@ export default function SuggestionsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: selectedVideo.title,
-          category: selectedVideo.categoryId,
+          description: selectedVideo.description,
+          tags: selectedVideo.tags,
         }),
       });
+
       if (response.ok) {
         const data = await response.json();
         setTitleAnalysis(data);
@@ -232,20 +233,21 @@ export default function SuggestionsPage() {
         body: JSON.stringify({
           title: selectedVideo.title,
           description: selectedVideo.description,
-          category: selectedVideo.categoryId,
+          tags: selectedVideo.tags,
         }),
       });
+
       if (response.ok) {
         const data = await response.json();
         setTagAnalysis(data);
-        toast.success('标签生成完成');
+        toast.success('标签分析完成');
       } else {
         const errorData = await response.json();
-        toast.error(errorData.error || '标签生成失败');
+        toast.error(errorData.error || '标签分析失败');
       }
     } catch (error) {
       console.error('标签分析失败:', error);
-      toast.error('标签生成失败，请重试');
+      toast.error('标签分析失败，请重试');
     } finally {
       setIsAnalyzing(false);
     }
@@ -264,9 +266,9 @@ export default function SuggestionsPage() {
         body: JSON.stringify({
           title: selectedVideo.title,
           description: selectedVideo.description,
-          category: selectedVideo.categoryId,
         }),
       });
+
       if (response.ok) {
         const data = await response.json();
         setDescriptionAnalysis(data);
@@ -276,7 +278,7 @@ export default function SuggestionsPage() {
         toast.error(errorData.error || '描述优化失败');
       }
     } catch (error) {
-      console.error('描述分析失败:', error);
+      console.error('描述优化失败:', error);
       toast.error('描述优化失败，请重试');
     } finally {
       setIsAnalyzing(false);
@@ -290,15 +292,7 @@ export default function SuggestionsPage() {
     }
     setIsAnalyzing(true);
     try {
-      const response = await fetch('/api/suggestions/thumbnail', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          thumbnailUrl: selectedVideo.thumbnail,
-          title: selectedVideo.title,
-          category: selectedVideo.categoryId,
-        }),
-      });
+      const response = await fetch(`/api/suggestions/thumbnail?videoId=${selectedVideo.videoId}`);
       if (response.ok) {
         const data = await response.json();
         setThumbnailAnalysis(data);
@@ -449,6 +443,7 @@ export default function SuggestionsPage() {
               setDescriptionAnalysis(null);
               setThumbnailAnalysis(null);
               setCompetitionAnalysis(null);
+              setContentDiagnosis(null);
             }}
             className="flex-1 max-w-md px-3 py-2 bg-white border border-[rgba(0,0,0,0.1)] rounded-lg text-sm"
           >
@@ -461,607 +456,336 @@ export default function SuggestionsPage() {
         </div>
       </Card>
 
-      {/* AI 优化建议 - 竖向布局 */}
-      <div className="flex gap-6">
-        {/* 左侧导航 */}
-        <Card className="w-64 p-4 h-fit sticky top-8">
-          <h2 className="text-sm font-medium text-[#86868B] mb-3">分析板块</h2>
-          <nav className="space-y-1">
-            {[
-              { id: 'basic', label: '基础分析', icon: '📊' },
-              { id: 'title', label: '标题优化', icon: '📝' },
-              { id: 'tags', label: '标签生成', icon: '🏷️' },
-              { id: 'description', label: '描述优化', icon: '📄' },
-              { id: 'thumbnail', label: '封面分析', icon: '🖼️' },
-              { id: 'competition', label: '竞争分析', icon: '⚔️' },
-              { id: 'content-diagnosis', label: '内容诊断', icon: '🔍' },
-              { id: 'trends', label: '趋势洞察', icon: '🔥' },
-              { id: 'audience', label: '受众分析', icon: '👥' },
-              { id: 'publish-time', label: '发布时间', icon: '⏰' },
-            ].map((item) => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                }}
-                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-all duration-200 flex items-center gap-3 ${
-                  activeTab === item.id
-                    ? 'bg-[#007AFF] text-white font-medium'
-                    : 'text-[#1D1D1F] hover:bg-[rgba(0,122,255,0.08)]'
-                }`}
-              >
-                <span className="text-base">{item.icon}</span>
-                <span>{item.label}</span>
-              </button>
+      {/* AI 优化建议 - 全部展开 */}
+      <div className="space-y-6">
+        {/* 1. 基础分析 */}
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">📊 基础数据概览</h2>
+          {selectedVideo && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-[#F5F5F7] p-4 rounded-lg">
+                <div className="text-sm text-[#86868B] mb-1">播放量</div>
+                <div className="text-2xl font-bold text-[#1D1D1F]">
+                  {formatNumber(selectedVideo.latestStats?.viewCount || 0)}
+                </div>
+              </div>
+              <div className="bg-[#F5F5F7] p-4 rounded-lg">
+                <div className="text-sm text-[#86868B] mb-1">互动率</div>
+                <div className="text-2xl font-bold text-[#007AFF]">
+                  {(
+                    ((selectedVideo.latestStats?.likeCount || 0) + (selectedVideo.latestStats?.commentCount || 0)) / 
+                    (selectedVideo.latestStats?.viewCount || 1) * 100
+                  ).toFixed(1)}%
+                </div>
+              </div>
+              <div className="bg-[#F5F5F7] p-4 rounded-lg">
+                <div className="text-sm text-[#86868B] mb-1">标题长度</div>
+                <div className="text-2xl font-bold text-[#1D1D1F]">
+                  {selectedVideo.title.length}
+                </div>
+              </div>
+              <div className="bg-[#F5F5F7] p-4 rounded-lg">
+                <div className="text-sm text-[#86868B] mb-1">标签数量</div>
+                <div className="text-2xl font-bold text-[#1D1D1F]">
+                  {selectedVideo.tags?.length || 0}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <h3 className="text-md font-medium text-[#1D1D1F] mb-3">所有视频优化建议</h3>
+          <div className="space-y-3">
+            {basicSuggestions.map((task) => (
+              <div key={task.videoId} className="p-4 bg-[#F5F5F7] rounded-lg">
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="font-medium text-[#1D1D1F]">{task.videoTitle}</h4>
+                  <Badge
+                    variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'}
+                  >
+                    {task.priority === 'high' ? '高优先级' : task.priority === 'medium' ? '中优先级' : '低优先级'}
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  {task.suggestions.map((suggestion: string, index: number) => (
+                    <div key={index} className="flex items-start gap-2">
+                      <span className="text-[#007AFF] mt-1">💡</span>
+                      <p className="text-sm text-[#1D1D1F]">{suggestion}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             ))}
-          </nav>
+          </div>
         </Card>
 
-        {/* 右侧内容 */}
-        <div className="flex-1 space-y-6">
-          {activeTab === 'basic' && (
-            <>
-              <Card className="p-6">
-                <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">基础数据概览</h2>
-                {selectedVideo && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-[#F5F5F7] p-4 rounded-lg">
-                  <div className="text-sm text-[#86868B] mb-1">播放量</div>
-                  <div className="text-2xl font-bold text-[#1D1D1F]">
-                    {formatNumber(selectedVideo.latestStats?.viewCount || 0)}
-                  </div>
+        {/* 2. 标题优化 */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-[#1D1D1F]">📝 标题优化</h2>
+            <Button onClick={analyzeTitle} disabled={isAnalyzing}>
+              {isAnalyzing ? '分析中...' : '开始分析'}
+            </Button>
+          </div>
+          
+          {selectedVideo && (
+            <div className="mb-4 p-3 bg-[#F5F5F7] rounded-lg">
+              <div className="text-xs text-[#86868B] mb-1">当前标题</div>
+              <div className="text-sm text-[#1D1D1F]">{selectedVideo.title}</div>
+            </div>
+          )}
+
+          {titleAnalysis && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-xs text-[#86868B] mb-1">标题评分</div>
+                  <div className="text-2xl font-bold text-[#007AFF]">{titleAnalysis.score}/100</div>
                 </div>
-                <div className="bg-[#F5F5F7] p-4 rounded-lg">
-                  <div className="text-sm text-[#86868B] mb-1">互动率</div>
-                  <div className="text-2xl font-bold text-[#007AFF]">
-                    {(
-                      ((selectedVideo.latestStats?.likeCount || 0) + (selectedVideo.latestStats?.commentCount || 0)) / 
-                      (selectedVideo.latestStats?.viewCount || 1) * 100
-                    ).toFixed(1)}%
-                  </div>
-                </div>
-                <div className="bg-[#F5F5F7] p-4 rounded-lg">
-                  <div className="text-sm text-[#86868B] mb-1">标题长度</div>
-                  <div className="text-2xl font-bold text-[#1D1D1F]">
-                    {selectedVideo.title.length}
-                  </div>
-                </div>
-                <div className="bg-[#F5F5F7] p-4 rounded-lg">
-                  <div className="text-sm text-[#86868B] mb-1">标签数量</div>
-                  <div className="text-2xl font-bold text-[#1D1D1F]">
-                    {selectedVideo.tags?.length || 0}
-                  </div>
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-xs text-[#86868B] mb-1">关键词覆盖率</div>
+                  <div className="text-2xl font-bold text-[#1D1D1F]">{titleAnalysis.keywordCoverage}</div>
                 </div>
               </div>
-            )}
-          </Card>
 
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">所有视频优化建议</h2>
-            <div className="space-y-3">
-              {basicSuggestions.map((task) => (
-                <div key={task.videoId} className="p-4 bg-[#F5F5F7] rounded-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-medium text-[#1D1D1F]">{task.videoTitle}</h3>
-                    <Badge
-                      variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'}
-                    >
-                      {task.priority === 'high' ? '高优先级' : task.priority === 'medium' ? '中优先级' : '低优先级'}
-                    </Badge>
+              <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                <div className="text-sm font-medium text-[#1D1D1F] mb-2">长度分析</div>
+                <p className="text-sm text-[#1D1D1F]">{titleAnalysis.lengthAnalysis}</p>
+              </div>
+
+              <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                <div className="text-sm font-medium text-[#1D1D1F] mb-2">优化建议</div>
+                <div className="space-y-2">
+                  {titleAnalysis.suggestions.map((suggestion, index) => (
+                    <div key={index} className="flex items-start gap-2">
+                      <span className="text-[#007AFF] mt-1">•</span>
+                      <p className="text-sm text-[#1D1D1F]">{suggestion}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                <div className="text-sm font-medium text-[#1D1D1F] mb-2">优化理由</div>
+                <div className="space-y-2">
+                  {titleAnalysis.optimizationReasons.map((reason, index) => (
+                    <div key={index} className="flex items-start gap-2">
+                      <span className="text-[#007AFF] mt-1">💡</span>
+                      <p className="text-sm text-[#1D1D1F]">{reason}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </Card>
+
+        {/* 3. 标签生成 */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-[#1D1D1F]">🏷️ 标签生成</h2>
+            <Button onClick={analyzeTags} disabled={isAnalyzing}>
+              {isAnalyzing ? '生成中...' : '生成标签'}
+            </Button>
+          </div>
+
+          {tagAnalysis && (
+            <div className="space-y-4">
+              {tagAnalysis.coreKeywords && tagAnalysis.coreKeywords.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">核心关键词</div>
+                  <div className="flex flex-wrap gap-2">
+                    {tagAnalysis.coreKeywords.map((item, index) => (
+                      <Badge key={index} variant="default" className="bg-[#007AFF]">
+                        {item.tag} ({item.searchVolume})
+                      </Badge>
+                    ))}
                   </div>
+                  <div className="mt-2 text-xs text-[#86868B]">
+                    {tagAnalysis.coreKeywords[0]?.reason}
+                  </div>
+                </div>
+              )}
+
+              {tagAnalysis.longTailKeywords && tagAnalysis.longTailKeywords.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">长尾关键词</div>
+                  <div className="flex flex-wrap gap-2">
+                    {tagAnalysis.longTailKeywords.map((item, index) => (
+                      <Badge key={index} variant="secondary">
+                        {item.tag} ({item.searchVolume})
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="mt-2 text-xs text-[#86868B]">
+                    {tagAnalysis.longTailKeywords[0]?.reason}
+                  </div>
+                </div>
+              )}
+
+              {tagAnalysis.allTags && tagAnalysis.allTags.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">推荐标签列表</div>
+                  <div className="flex flex-wrap gap-2">
+                    {tagAnalysis.allTags.map((tag, index) => (
+                      <Badge key={index} variant="outline">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+
+        {/* 4. 描述优化 */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-[#1D1D1F]">📄 描述优化</h2>
+            <Button onClick={analyzeDescription} disabled={isAnalyzing}>
+              {isAnalyzing ? '优化中...' : '优化描述'}
+            </Button>
+          </div>
+
+          {descriptionAnalysis && (
+            <div className="space-y-4">
+              <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                <div className="text-sm font-medium text-[#1D1D1F] mb-2">优化后的描述</div>
+                <p className="text-sm text-[#1D1D1F] whitespace-pre-wrap">
+                  {descriptionAnalysis.optimizedDescription}
+                </p>
+              </div>
+
+              {descriptionAnalysis.tips && descriptionAnalysis.tips.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">优化提示</div>
                   <div className="space-y-2">
-                    {task.suggestions.map((suggestion: string, index: number) => (
+                    {descriptionAnalysis.tips.map((tip, index) => (
                       <div key={index} className="flex items-start gap-2">
                         <span className="text-[#007AFF] mt-1">💡</span>
+                        <p className="text-sm text-[#1D1D1F]">{tip}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+
+        {/* 5. 封面分析 */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-[#1D1D1F]">🖼️ 封面图分析</h2>
+            <Button onClick={analyzeThumbnail} disabled={isAnalyzing}>
+              {isAnalyzing ? '分析中...' : '分析封面'}
+            </Button>
+          </div>
+
+          {selectedVideo && selectedVideo.thumbnail && (
+            <div className="mb-4 flex justify-center">
+              <img
+                src={selectedVideo.thumbnail}
+                alt="封面"
+                className="max-w-md rounded-lg"
+              />
+            </div>
+          )}
+
+          {thumbnailAnalysis && (
+            <div className="space-y-4">
+              {thumbnailAnalysis.score && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                    <div className="text-xs text-[#86868B] mb-1">封面评分</div>
+                    <div className="text-2xl font-bold text-[#007AFF]">{thumbnailAnalysis.score}/100</div>
+                  </div>
+                  {thumbnailAnalysis.colorAnalysis && (
+                    <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                      <div className="text-xs text-[#86868B] mb-1">主色调</div>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-6 h-6 rounded"
+                          style={{ backgroundColor: thumbnailAnalysis.colorAnalysis?.mainColor || '#000' }}
+                        />
+                        <div className="text-sm text-[#1D1D1F]">{thumbnailAnalysis.colorAnalysis?.mainColor || '未知'}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {thumbnailAnalysis.suggestions && thumbnailAnalysis.suggestions.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">优化建议</div>
+                  <div className="space-y-2">
+                    {thumbnailAnalysis.suggestions.map((suggestion: string, index: number) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <span className="text-[#007AFF] mt-1">•</span>
                         <p className="text-sm text-[#1D1D1F]">{suggestion}</p>
                       </div>
                     ))}
                   </div>
                 </div>
-              ))}
+              )}
             </div>
-              </Card>
-            </>
           )}
+        </Card>
 
-          {/* 标题优化 */}
-          {activeTab === 'title' && (
-            <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[#1D1D1F]">标题优化</h2>
-              <Button onClick={analyzeTitle} disabled={isAnalyzing}>
-                {isAnalyzing ? '分析中...' : '开始分析'}
-              </Button>
-            </div>
-            
-            {selectedVideo && (
-              <div className="mb-4">
-                <div className="text-sm text-[#86868B] mb-2">原标题：</div>
-                <div className="p-3 bg-[#F5F5F7] rounded-lg">{selectedVideo.title}</div>
-              </div>
-            )}
+        {/* 6. 竞争分析 */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-[#1D1D1F]">⚔️ 竞争分析</h2>
+            <Button onClick={analyzeCompetition} disabled={isAnalyzing}>
+              {isAnalyzing ? '分析中...' : '开始分析'}
+            </Button>
+          </div>
 
-            {titleAnalysis && (
-              <div className="space-y-4">
-                <div>
-                  <div className="text-sm text-[#86868B] mb-2">吸引力评分：</div>
-                  <div className="flex items-center gap-2">
-                    <div className="text-3xl font-bold text-[#007AFF]">{titleAnalysis.score}/10</div>
-                    <Badge variant={titleAnalysis.score >= 7 ? 'default' : titleAnalysis.score >= 5 ? 'secondary' : 'destructive'}>
-                      {titleAnalysis.score >= 7 ? '优秀' : titleAnalysis.score >= 5 ? '良好' : '需改进'}
-                    </Badge>
-                  </div>
+          {competitionAnalysis && (
+            <div className="space-y-4">
+              {competitionAnalysis.overview && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">竞争概况</div>
+                  <p className="text-sm text-[#1D1D1F]">{competitionAnalysis.overview}</p>
                 </div>
+              )}
 
-                <div>
-                  <div className="text-sm text-[#86868B] mb-2">关键词覆盖度：</div>
-                  <div className="p-3 bg-[#F5F5F7] rounded-lg">{titleAnalysis.keywordCoverage}</div>
-                </div>
-
-                <div>
-                  <div className="text-sm text-[#86868B] mb-2">标题长度分析：</div>
-                  <div className="p-3 bg-[#F5F5F7] rounded-lg">{titleAnalysis.lengthAnalysis}</div>
-                </div>
-
-                <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-2">优化建议：</div>
+              {competitionAnalysis.competitors && competitionAnalysis.competitors.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">竞品视频</div>
                   <div className="space-y-2">
-                    {titleAnalysis.suggestions.map((suggestion, index) => (
-                      <div key={index} className="p-3 bg-[#F5F5F7] rounded-lg">
-                        <span className="text-sm text-[#1D1D1F]">{index + 1}. {suggestion}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-2">优化理由：</div>
-                  <div className="space-y-1">
-                    {titleAnalysis.optimizationReasons.map((reason, index) => (
-                      <div key={index} className="text-sm text-[#1D1D1F]">• {reason}</div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </Card>
-          )}
-
-          {/* 标签生成 */}
-          {activeTab === 'tags' && (
-            <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[#1D1D1F]">标签生成</h2>
-              <Button onClick={analyzeTags} disabled={isAnalyzing}>
-                {isAnalyzing ? '生成中...' : '生成标签'}
-              </Button>
-            </div>
-
-            {tagAnalysis && (
-              <div className="space-y-4">
-                <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-2">核心关键词：</div>
-                  <div className="flex flex-wrap gap-2">
-                    {tagAnalysis.coreKeywords.map((keyword, index) => (
-                      <Badge key={index} variant="default">
-                        {keyword.tag} <span className="ml-1 text-xs opacity-70">({keyword.searchVolume})</span>
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-2">长尾关键词：</div>
-                  <div className="flex flex-wrap gap-2">
-                    {tagAnalysis.longTailKeywords.map((keyword, index) => (
-                      <Badge key={index} variant="secondary">
-                        {keyword.tag} <span className="ml-1 text-xs opacity-70">({keyword.searchVolume})</span>
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-2">所有标签（可直接复制）：</div>
-                  <div className="p-3 bg-[#F5F5F7] rounded-lg">
-                    <code className="text-sm text-[#1D1D1F]">
-                      {tagAnalysis.allTags.join(', ')}
-                    </code>
-                  </div>
-                </div>
-              </div>
-            )}
-          </Card>
-          )}
-
-          {/* 描述优化 */}
-          {activeTab === 'description' && (
-            <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[#1D1D1F]">描述优化</h2>
-              <Button onClick={analyzeDescription} disabled={isAnalyzing}>
-                {isAnalyzing ? '生成中...' : '生成描述'}
-              </Button>
-            </div>
-
-            {selectedVideo && selectedVideo.description && (
-              <div className="mb-4">
-                <div className="text-sm text-[#86868B] mb-2">原描述：</div>
-                <div className="p-3 bg-[#F5F5F7] rounded-lg text-sm max-h-40 overflow-y-auto">
-                  {selectedVideo.description}
-                </div>
-              </div>
-            )}
-
-            {descriptionAnalysis && (
-              <div className="space-y-4">
-                <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-2">优化后的描述：</div>
-                  <div className="p-3 bg-[#F5F5F7] rounded-lg text-sm whitespace-pre-wrap">
-                    {descriptionAnalysis.optimizedDescription}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-2">优化提示：</div>
-                  <div className="space-y-1">
-                    {descriptionAnalysis.tips.map((tip, index) => (
-                      <div key={index} className="text-sm text-[#1D1D1F]">• {tip}</div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </Card>
-          )}
-
-          {/* 封面分析 */}
-          {activeTab === 'thumbnail' && (
-            <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[#1D1D1F]">封面图分析</h2>
-              <Button onClick={analyzeThumbnail} disabled={isAnalyzing}>
-                {isAnalyzing ? '分析中...' : '开始分析'}
-              </Button>
-            </div>
-
-            {selectedVideo && selectedVideo.thumbnail && (
-              <div className="mb-6">
-                <div className="text-sm text-[#86868B] mb-2">当前封面图：</div>
-                <div className="flex justify-center">
-                  <img
-                    src={selectedVideo.thumbnail}
-                    alt="封面图"
-                    className="rounded-lg max-w-md w-full object-cover"
-                  />
-                </div>
-              </div>
-            )}
-
-            {thumbnailAnalysis && (
-              <div className="space-y-6">
-                {/* 综合评分 */}
-                <div>
-                  <div className="text-sm text-[#86868B] mb-2">综合评分：</div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-4xl font-bold text-[#007AFF]">{thumbnailAnalysis.overallScore}/10</div>
-                    <Badge variant={thumbnailAnalysis.overallScore >= 7 ? 'default' : thumbnailAnalysis.overallScore >= 5 ? 'secondary' : 'destructive'}>
-                      {thumbnailAnalysis.overallScore >= 7 ? '优秀' : thumbnailAnalysis.overallScore >= 5 ? '良好' : '需改进'}
-                    </Badge>
-                  </div>
-                </div>
-
-                {/* 分项评分 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                    <div className="text-sm text-[#86868B] mb-2">视觉冲击力</div>
-                    <div className="flex items-center justify-between">
-                      <div className="text-2xl font-bold text-[#1D1D1F]">{thumbnailAnalysis.visualImpact}/10</div>
-                      <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-[#007AFF]"
-                          style={{ width: `${thumbnailAnalysis.visualImpact * 10}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                    <div className="text-sm text-[#86868B] mb-2">文字可读性</div>
-                    <div className="flex items-center justify-between">
-                      <div className="text-2xl font-bold text-[#1D1D1F]">{thumbnailAnalysis.textReadability}/10</div>
-                      <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-[#007AFF]"
-                          style={{ width: `${thumbnailAnalysis.textReadability * 10}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                    <div className="text-sm text-[#86868B] mb-2">标题相关性</div>
-                    <div className="flex items-center justify-between">
-                      <div className="text-2xl font-bold text-[#1D1D1F]">{thumbnailAnalysis.titleRelevance}/10</div>
-                      <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-[#007AFF]"
-                          style={{ width: `${thumbnailAnalysis.titleRelevance * 10}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                    <div className="text-sm text-[#86868B] mb-2">分类风格</div>
-                    <div className="flex items-center justify-between">
-                      <div className="text-2xl font-bold text-[#1D1D1F]">{thumbnailAnalysis.categoryStyle}/10</div>
-                      <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-[#007AFF]"
-                          style={{ width: `${thumbnailAnalysis.categoryStyle * 10}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 改进建议 */}
-                <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-2">改进建议：</div>
-                  <div className="space-y-2">
-                    {thumbnailAnalysis.improvements?.map((suggestion: string, index: number) => (
-                      <div key={index} className="flex items-start gap-2 p-3 bg-[#F5F5F7] rounded-lg">
-                        <span className="text-[#007AFF] mt-1">💡</span>
-                        <p className="text-sm text-[#1D1D1F]">{suggestion}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 理想设计 */}
-                <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-2">理想封面设计：</div>
-                  <div className="p-3 bg-[#F5F5F7] rounded-lg text-sm">
-                    {thumbnailAnalysis.idealDesign}
-                  </div>
-                </div>
-              </div>
-            )}
-          </Card>
-        )}
-
-          {/* 竞争分析 */}
-          {activeTab === 'competition' && (
-            <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[#1D1D1F]">竞争分析</h2>
-              <Button onClick={analyzeCompetition} disabled={isAnalyzing}>
-                {isAnalyzing ? '分析中...' : '开始分析'}
-              </Button>
-            </div>
-
-            {competitionAnalysis && (
-              <div className="space-y-6">
-                {/* 目标视频表现 */}
-                <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-3">目标视频表现：</div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                      <div className="text-sm text-[#86868B] mb-1">播放量</div>
-                      <div className="text-2xl font-bold text-[#1D1D1F]">
-                        {formatNumber(competitionAnalysis.targetVideo.views || 0)}
-                      </div>
-                    </div>
-                    <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                      <div className="text-sm text-[#86868B] mb-1">互动率</div>
-                      <div className="text-2xl font-bold text-[#007AFF]">
-                        {(competitionAnalysis.targetVideo.engagement || 0).toFixed(1)}%
-                      </div>
-                    </div>
-                    <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                      <div className="text-sm text-[#86868B] mb-1">合作费用</div>
-                      <div className="text-2xl font-bold text-[#1D1D1F]">
-                        ${(competitionAnalysis.targetVideo.cost || 0).toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 同类视频基准 */}
-                <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-3">同类视频基准对比：</div>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-4 bg-[#F5F5F7] rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[#007AFF]">📊</span>
-                        <span className="text-sm text-[#1D1D1F]">同类视频平均播放量</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-semibold text-[#1D1D1F]">
-                          {formatNumber(competitionAnalysis.categoryBenchmark.avgViews || 0)}
-                        </span>
-                        <Badge variant={competitionAnalysis.comparison?.viewsAboveCategoryAvg?.startsWith('+') ? 'default' : 'destructive'}>
-                          {competitionAnalysis.comparison?.viewsAboveCategoryAvg || '0%'}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 bg-[#F5F5F7] rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[#007AFF]">📊</span>
-                        <span className="text-sm text-[#1D1D1F]">同类视频平均互动率</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-semibold text-[#1D1D1F]">
-                          {(competitionAnalysis.categoryBenchmark.avgEngagement || 0).toFixed(1)}%
-                        </span>
-                        <Badge variant={competitionAnalysis.comparison?.engagementAboveCategoryAvg?.startsWith('+') ? 'default' : 'destructive'}>
-                          {competitionAnalysis.comparison?.engagementAboveCategoryAvg || '0%'}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 bg-[#F5F5F7] rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[#007AFF]">📊</span>
-                        <span className="text-sm text-[#1D1D1F]">同类视频排名</span>
-                      </div>
-                      <div className="text-lg font-semibold text-[#1D1D1F]">
-                        第 {competitionAnalysis.categoryBenchmark.yourRanking} / {competitionAnalysis.categoryBenchmark.sampleSize}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 博主历史基准 */}
-                <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-3">博主历史基准对比：</div>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-4 bg-[#F5F5F7] rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[#007AFF]">📈</span>
-                        <span className="text-sm text-[#1D1D1F]">博主平均播放量</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-semibold text-[#1D1D1F]">
-                          {formatNumber(competitionAnalysis.channelBenchmark.avgViews || 0)}
-                        </span>
-                        <Badge variant={competitionAnalysis.comparison?.viewsAboveChannelAvg?.startsWith('+') ? 'default' : 'destructive'}>
-                          {competitionAnalysis.comparison?.viewsAboveChannelAvg || '0%'}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 bg-[#F5F5F7] rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[#007AFF]">📈</span>
-                        <span className="text-sm text-[#1D1D1F]">博主平均互动率</span>
-                      </div>
-                      <div className="text-lg font-semibold text-[#1D1D1F]">
-                        {(competitionAnalysis.channelBenchmark.avgEngagement || 0).toFixed(1)}%
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 优化建议 */}
-                <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-2">竞争分析建议：</div>
-                  <div className="space-y-2">
-                    {competitionAnalysis.suggestions.map((suggestion: string, index: number) => (
-                      <div key={index} className="flex items-start gap-2 p-3 bg-[#F5F5F7] rounded-lg">
-                        <span className="text-[#007AFF] mt-1">💡</span>
-                        <p className="text-sm text-[#1D1D1F]">{suggestion}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* TOP 竞品视频 */}
-                <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-3">TOP 5 竞品视频：</div>
-                  <div className="space-y-2">
-                    {competitionAnalysis.topCompetitors?.map((competitor: any, index: number) => (
-                      <div key={index} className="p-4 bg-[#F5F5F7] rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                              index === 0 ? 'bg-yellow-100 text-yellow-800' :
-                              index === 1 ? 'bg-gray-100 text-gray-800' :
-                              index === 2 ? 'bg-orange-100 text-orange-800' :
-                              'bg-gray-50 text-gray-600'
-                            }`}>
-                              {index + 1}
-                            </div>
-                            <span className="text-sm font-medium text-[#1D1D1F] truncate max-w-xs">
-                              {competitor.title || '未命名视频'}
-                            </span>
-                          </div>
-                          <Badge variant="secondary">{competitor.channelTitle || '未知博主'}</Badge>
+                    {competitionAnalysis.competitors.map((competitor: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-white rounded">
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-[#1D1D1F]">{competitor.title}</div>
+                          <div className="text-xs text-[#86868B]">{competitor.views} 观看</div>
                         </div>
-                        <div className="grid grid-cols-4 gap-2 text-sm">
-                          <div>
-                            <div className="text-[#86868B]">播放量</div>
-                            <div className="font-medium text-[#1D1D1F]">{formatNumber(competitor.views || 0)}</div>
-                          </div>
-                          <div>
-                            <div className="text-[#86868B]">互动率</div>
-                            <div className="font-medium text-[#007AFF]">{(competitor.engagement || 0).toFixed(1)}%</div>
-                          </div>
-                          <div>
-                            <div className="text-[#86868B]">成本</div>
-                            <div className="font-medium text-[#1D1D1F]">${(competitor.cost || 0).toLocaleString()}</div>
-                          </div>
-                          <div>
-                            <div className="text-[#86868B]">CPV</div>
-                            <div className="font-medium text-[#1D1D1F]">${(competitor.cpv || 0).toFixed(2)}</div>
-                          </div>
-                        </div>
+                        <Badge variant="outline">{index + 1}</Badge>
                       </div>
                     ))}
                   </div>
                 </div>
-              </div>
-            )}
-          </Card>
-        )}
+              )}
 
-          {/* 发布时间分析 */}
-          {activeTab === 'publish-time' && (
-            <Card className="p-6">
-            <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">最佳发布时间分析</h2>
-            
-            {publishTimeData ? (
-              <div className="space-y-6">
-                {/* TOP 5 黄金时段 */}
-                <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-3">TOP 5 黄金时段：</div>
+              {competitionAnalysis.gaps && competitionAnalysis.gaps.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">竞争差距分析</div>
                   <div className="space-y-2">
-                    {publishTimeData.topTimes.map((time: any, index: number) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-[#F5F5F7] rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                            index === 0 ? 'bg-yellow-100 text-yellow-800' :
-                            index === 1 ? 'bg-gray-100 text-gray-800' :
-                            index === 2 ? 'bg-orange-100 text-orange-800' :
-                            'bg-gray-50 text-gray-600'
-                          }`}>
-                            {index + 1}
-                          </div>
-                          <span className="font-medium text-[#1D1D1F]">{time.dayName} {time.hour}:00</span>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-semibold text-[#007AFF]">
-                            {formatNumber(time.avgViews)}
-                          </div>
-                          <div className="text-xs text-[#86868B]">
-                            高于平均 {time.aboveAvg}
-                          </div>
-                        </div>
+                    {competitionAnalysis.gaps.map((gap: string, index: number) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <span className="text-[#007AFF] mt-1">📊</span>
+                        <p className="text-sm text-[#1D1D1F]">{gap}</p>
                       </div>
                     ))}
                   </div>
                 </div>
+              )}
 
-                {/* 发布时间热力图 */}
-                <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-3">发布时间热力图：</div>
-                  <div className="flex justify-center">
-                    <Heatmap
-                      data={publishTimeData.heatmap}
-                      valueLabel="平均播放量"
-                      cellSize={32}
-                      colorScale={['#F5F5F7', '#FFE5E5', '#FFCCCC', '#FF9999', '#FF6666', '#FF3333', '#FF0000']}
-                    />
-                  </div>
-                </div>
-
-                {/* 优化建议 */}
-                <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-2">优化建议：</div>
+              {competitionAnalysis.recommendations && competitionAnalysis.recommendations.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">优化建议</div>
                   <div className="space-y-2">
-                    {publishTimeData.recommendations.map((rec: string, index: number) => (
+                    {competitionAnalysis.recommendations.map((rec: string, index: number) => (
                       <div key={index} className="flex items-start gap-2">
                         <span className="text-[#007AFF] mt-1">💡</span>
                         <p className="text-sm text-[#1D1D1F]">{rec}</p>
@@ -1069,425 +793,293 @@ export default function SuggestionsPage() {
                     ))}
                   </div>
                 </div>
-
-                {/* 数据概览 */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                    <div className="text-sm text-[#86868B] mb-1">分析视频数</div>
-                    <div className="text-2xl font-bold text-[#1D1D1F]">
-                      {publishTimeData.summary?.totalAnalyzed || 0}
-                    </div>
-                  </div>
-                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                    <div className="text-sm text-[#86868B] mb-1">最佳时段</div>
-                    <div className="text-lg font-bold text-[#007AFF]">
-                      {publishTimeData.summary?.bestTimeSlot || '数据不足'}
-                    </div>
-                  </div>
-                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                    <div className="text-sm text-[#86868B] mb-1">平均播放量</div>
-                    <div className="text-2xl font-bold text-[#1D1D1F]">
-                      {formatNumber(publishTimeData.averageViews || 0)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-[#86868B]">加载中...</div>
-            )}
-          </Card>
-          )}
-
-          {/* 内容诊断 */}
-          {activeTab === 'content-diagnosis' && (
-            <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[#1D1D1F]">内容诊断</h2>
-              <Button onClick={analyzeContent} disabled={isAnalyzing}>
-                {isAnalyzing ? '诊断中...' : '开始诊断'}
-              </Button>
+              )}
             </div>
-
-            {contentDiagnosis && (
-              <div className="space-y-6">
-                {/* 综合得分 */}
-                <div className="text-center p-6 bg-[#F5F5F7] rounded-lg">
-                  <div className="text-sm text-[#86868B] mb-2">内容综合得分</div>
-                  <div className="text-5xl font-bold text-[#007AFF]">{contentDiagnosis.overallScore}/100</div>
-                  <Badge 
-                    variant={parseFloat(contentDiagnosis.overallScore) >= 80 ? 'default' : 
-                            parseFloat(contentDiagnosis.overallScore) >= 60 ? 'secondary' : 'destructive'}
-                    className="mt-2"
-                  >
-                    {parseFloat(contentDiagnosis.overallScore) >= 80 ? '优秀' : 
-                     parseFloat(contentDiagnosis.overallScore) >= 60 ? '良好' : '需改进'}
-                  </Badge>
-                </div>
-
-                {/* 优势 */}
-                {contentDiagnosis.strengths && contentDiagnosis.strengths.length > 0 && (
-                  <div>
-                    <div className="text-sm font-medium text-[#86868B] mb-2">✅ 内容优势：</div>
-                    <div className="space-y-2">
-                      {contentDiagnosis.strengths.map((strength: string, index: number) => (
-                        <div key={index} className="flex items-start gap-2 p-3 bg-green-50 rounded-lg">
-                          <span className="text-green-600 mt-1">💪</span>
-                          <p className="text-sm text-[#1D1D1F]">{strength}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 问题 */}
-                {contentDiagnosis.issues && contentDiagnosis.issues.length > 0 && (
-                  <div>
-                    <div className="text-sm font-medium text-[#86868B] mb-2">⚠️ 需要改进的问题：</div>
-                    <div className="space-y-2">
-                      {contentDiagnosis.issues.map((issue: string, index: number) => (
-                        <div key={index} className="flex items-start gap-2 p-3 bg-red-50 rounded-lg">
-                          <span className="text-red-600 mt-1">⚠️</span>
-                          <p className="text-sm text-[#1D1D1F]">{issue}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 建议 */}
-                {contentDiagnosis.recommendations && contentDiagnosis.recommendations.length > 0 && (
-                  <div>
-                    <div className="text-sm font-medium text-[#86868B] mb-2">💡 优化建议：</div>
-                    <div className="space-y-2">
-                      {contentDiagnosis.recommendations.map((rec: string, index: number) => (
-                        <div key={index} className="flex items-start gap-2 p-3 bg-[#F5F5F7] rounded-lg">
-                          <span className="text-[#007AFF] mt-1">💡</span>
-                          <p className="text-sm text-[#1D1D1F]">{rec}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 分项评分 */}
-                {contentDiagnosis.dimensions && (
-                  <div>
-                    <div className="text-sm font-medium text-[#86868B] mb-3">分项评分：</div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {Object.entries(contentDiagnosis.dimensions).map(([key, dim]: [string, any]) => (
-                        <div key={key} className="p-4 bg-[#F5F5F7] rounded-lg">
-                          <div className="text-sm text-[#86868B] mb-2">
-                            {key === 'title' ? '标题' :
-                             key === 'description' ? '描述' :
-                             key === 'tags' ? '标签' :
-                             key === 'duration' ? '时长' :
-                             key === 'publishTime' ? '发布时间' :
-                             key === 'engagement' ? '互动数据' :
-                             key === 'cost' ? '成本效益' :
-                             key === 'channelPerformance' ? '博主表现' : key}
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div className="text-2xl font-bold text-[#1D1D1F]">{dim.score || 0}/100</div>
-                            <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-[#007AFF]"
-                                style={{ width: `${dim.score || 0}%` }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </Card>
           )}
+        </Card>
 
-          {/* 趋势洞察 */}
-          {activeTab === 'trends' && (
-            <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[#1D1D1F]">趋势洞察</h2>
-              <Button onClick={loadTrendsData} disabled={isAnalyzing}>
-                {isAnalyzing ? '分析中...' : '刷新数据'}
-              </Button>
-            </div>
+        {/* 7. 内容诊断 */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-[#1D1D1F]">🔍 内容诊断</h2>
+            <Button onClick={analyzeContent} disabled={isAnalyzing}>
+              {isAnalyzing ? '诊断中...' : '开始诊断'}
+            </Button>
+          </div>
 
-            {trendsAnalysis && (
-              <div className="space-y-6">
-                {/* 数据概览 */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {contentDiagnosis && (
+            <div className="space-y-4">
+              {contentDiagnosis.overallScore !== undefined && (
+                <div className="grid grid-cols-4 gap-4">
                   <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                    <div className="text-sm text-[#86868B] mb-1">分析视频数</div>
-                    <div className="text-2xl font-bold text-[#1D1D1F]">{trendsAnalysis.summary?.totalVideosAnalyzed || 0}</div>
+                    <div className="text-xs text-[#86868B] mb-1">综合评分</div>
+                    <div className="text-2xl font-bold text-[#007AFF]">{contentDiagnosis.overallScore}/100</div>
                   </div>
-                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                    <div className="text-sm text-[#86868B] mb-1">高增长视频</div>
-                    <div className="text-2xl font-bold text-[#007AFF]">{trendsAnalysis.summary?.highGrowthVideosCount || 0}</div>
-                  </div>
-                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                    <div className="text-sm text-[#86868B] mb-1">平均增长率</div>
-                    <div className="text-2xl font-bold text-[#1D1D1F]">{trendsAnalysis.summary?.avgGrowthRate || 0}</div>
-                  </div>
-                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                    <div className="text-sm text-[#86868B] mb-1">TOP趋势</div>
-                    <div className="text-lg font-bold text-[#007AFF] truncate">{trendsAnalysis.summary?.topTrend || '暂无'}</div>
+                  {contentDiagnosis.scoreBreakdown && (
+                    <>
+                      <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                        <div className="text-xs text-[#86868B] mb-1">内容质量</div>
+                        <div className="text-2xl font-bold text-[#1D1D1F]">{contentDiagnosis.scoreBreakdown.contentQuality}/100</div>
+                      </div>
+                      <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                        <div className="text-xs text-[#86868B] mb-1">互动表现</div>
+                        <div className="text-2xl font-bold text-[#1D1D1F]">{contentDiagnosis.scoreBreakdown.engagement}/100</div>
+                      </div>
+                      <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                        <div className="text-xs text-[#86868B] mb-1">传播潜力</div>
+                        <div className="text-2xl font-bold text-[#1D1D1F]">{contentDiagnosis.scoreBreakdown.viralPotential}/100</div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {contentDiagnosis.strengths && contentDiagnosis.strengths.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">✅ 优势分析</div>
+                  <div className="space-y-2">
+                    {contentDiagnosis.strengths.map((strength: string, index: number) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <span className="text-green-500 mt-1">✓</span>
+                        <p className="text-sm text-[#1D1D1F]">{strength}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
+              )}
 
-                {/* 热门话题 */}
+              {contentDiagnosis.weaknesses && contentDiagnosis.weaknesses.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">❌ 需要改进</div>
+                  <div className="space-y-2">
+                    {contentDiagnosis.weaknesses.map((weakness: string, index: number) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <span className="text-red-500 mt-1">✗</span>
+                        <p className="text-sm text-[#1D1D1F]">{weakness}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {contentDiagnosis.recommendations && contentDiagnosis.recommendations.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">💡 改进建议</div>
+                  <div className="space-y-2">
+                    {contentDiagnosis.recommendations.map((rec: string, index: number) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <span className="text-[#007AFF] mt-1">•</span>
+                        <p className="text-sm text-[#1D1D1F]">{rec}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+
+        {/* 8. 趋势洞察 */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-[#1D1D1F]">🔥 趋势洞察</h2>
+            <Button onClick={loadTrendsData} disabled={isAnalyzing}>
+              {isAnalyzing ? '刷新中...' : '刷新数据'}
+            </Button>
+          </div>
+
+          {trendsAnalysis && (
+            <div className="space-y-4">
+              {trendsAnalysis.hotTopics && trendsAnalysis.hotTopics.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">热门话题</div>
+                  <div className="space-y-2">
+                    {trendsAnalysis.hotTopics.map((topic: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-white rounded">
+                        <span className="text-sm text-[#1D1D1F]">{topic.topic}</span>
+                        <Badge variant="outline">{topic.trend}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {trendsAnalysis.growthVideos && trendsAnalysis.growthVideos.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">快速增长视频</div>
+                  <div className="space-y-2">
+                    {trendsAnalysis.growthVideos.map((video: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-white rounded">
+                        <span className="text-sm text-[#1D1D1F]">{video.title}</span>
+                        <Badge className="bg-green-500">{video.growthRate}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {trendsAnalysis.contentIdeas && trendsAnalysis.contentIdeas.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">内容创作建议</div>
+                  <div className="space-y-2">
+                    {trendsAnalysis.contentIdeas.map((idea: string, index: number) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <span className="text-[#007AFF] mt-1">💡</span>
+                        <p className="text-sm text-[#1D1D1F]">{idea}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+
+        {/* 9. 受众分析 */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-[#1D1D1F]">👥 受众分析</h2>
+            <Button onClick={loadAudienceData} disabled={isAnalyzing}>
+              {isAnalyzing ? '分析中...' : '刷新数据'}
+            </Button>
+          </div>
+
+          {audienceAnalysis && (
+            <div className="space-y-4">
+              {audienceAnalysis.overview && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">受众概览</div>
+                  <p className="text-sm text-[#1D1D1F]">{audienceAnalysis.overview}</p>
+                </div>
+              )}
+
+              {audienceAnalysis.interests && audienceAnalysis.interests.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">兴趣偏好</div>
+                  <div className="flex flex-wrap gap-2">
+                    {audienceAnalysis.interests.map((interest: any, index: number) => (
+                      <Badge key={index} variant="outline">
+                        {interest.topic} ({interest.percentage}%)
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {audienceAnalysis.contentPreferences && audienceAnalysis.contentPreferences.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">内容偏好</div>
+                  <div className="space-y-2">
+                    {audienceAnalysis.contentPreferences.map((pref: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-white rounded">
+                        <span className="text-sm text-[#1D1D1F]">{pref.type}</span>
+                        <Badge variant="secondary">{pref.percentage}%</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {audienceAnalysis.bestPublishTime && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">最佳发布时间</div>
+                  <p className="text-sm text-[#1D1D1F]">{audienceAnalysis.bestPublishTime}</p>
+                </div>
+              )}
+
+              {audienceAnalysis.recommendations && audienceAnalysis.recommendations.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">💡 受众优化建议</div>
+                  <div className="space-y-2">
+                    {audienceAnalysis.recommendations.map((rec: string, index: number) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <span className="text-[#007AFF] mt-1">💡</span>
+                        <p className="text-sm text-[#1D1D1F]">{rec}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+
+        {/* 10. 发布时间分析 */}
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">⏰ 最佳发布时间分析</h2>
+          
+          {publishTimeData ? (
+            <div className="space-y-6">
+              {/* TOP 5 黄金时段 */}
+              {publishTimeData.topTimes && publishTimeData.topTimes.length > 0 && (
                 <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-3">🔥 当前热门话题：</div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-                    {trendsAnalysis.hotTopics?.map((topic: any, index: number) => (
-                      <div key={index} className={`p-3 rounded-lg ${
-                        index === 0 ? 'bg-red-50 border border-red-200' :
-                        index === 1 ? 'bg-orange-50 border border-orange-200' :
-                        index === 2 ? 'bg-yellow-50 border border-yellow-200' :
-                        'bg-[#F5F5F7]'
-                      }`}>
-                        <div className="font-medium text-[#1D1D1F] mb-1">{topic.topic}</div>
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-[#86868B]">{formatNumber(topic.totalViews)} 播放</span>
-                          <Badge variant="outline" className="text-xs">{topic.popularity}</Badge>
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">🏆 TOP 5 黄金时段</div>
+                  <div className="space-y-2">
+                    {publishTimeData.topTimes.map((timeSlot: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-[#F5F5F7] rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Badge className="bg-[#007AFF]">#{index + 1}</Badge>
+                          <span className="text-sm text-[#1D1D1F]">{timeSlot.time}</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-medium text-[#007AFF]">{formatNumber(timeSlot.averageViews)}</div>
+                          <div className="text-xs text-[#86868B]">平均观看</div>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
+              )}
 
-                {/* 高增长视频 */}
-                {trendsAnalysis.highGrowthVideos && trendsAnalysis.highGrowthVideos.length > 0 && (
-                  <div>
-                    <div className="text-sm font-medium text-[#86868B] mb-3">📈 高增长视频案例：</div>
-                    <div className="space-y-2">
-                      {trendsAnalysis.highGrowthVideos.slice(0, 5).map((video: any, index: number) => (
-                        <div key={index} className="p-3 bg-[#F5F5F7] rounded-lg">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="font-medium text-[#1D1D1F] mb-1">{video.title}</div>
-                              <div className="text-xs text-[#86868B] mb-2">{video.channelTitle}</div>
-                              <div className="flex flex-wrap gap-1">
-                                {video.tags?.slice(0, 3).map((tag: string, i: number) => (
-                                  <Badge key={i} variant="outline" className="text-xs">{tag}</Badge>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="text-right ml-4">
-                              <div className="text-sm font-semibold text-[#007AFF]">{video.growthRate}</div>
-                              <div className="text-xs text-[#86868B]">{video.engagement}</div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 高增长特征 */}
-                {trendsAnalysis.highGrowthFeatures && (
-                  <div>
-                    <div className="text-sm font-medium text-[#86868B] mb-3">📊 高增长视频共同特征：</div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                        <div className="text-sm text-[#86868B] mb-2">常见标签</div>
-                        <div className="flex flex-wrap gap-2">
-                          {trendsAnalysis.highGrowthFeatures.commonTags?.map((tag: string, index: number) => (
-                            <Badge key={index} variant="secondary">{tag}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                        <div className="text-sm text-[#86868B] mb-2">平均增长率</div>
-                        <div className="text-2xl font-bold text-[#007AFF]">{trendsAnalysis.highGrowthFeatures.avgGrowthRate}</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 内容创作建议 */}
-                {trendsAnalysis.suggestions && trendsAnalysis.suggestions.length > 0 && (
-                  <div>
-                    <div className="text-sm font-medium text-[#86868B] mb-2">💡 内容创作建议：</div>
-                    <div className="space-y-2">
-                      {trendsAnalysis.suggestions.map((suggestion: string, index: number) => (
-                        <div key={index} className="flex items-start gap-2 p-3 bg-[#F5F5F7] rounded-lg">
-                          <span className="text-[#007AFF] mt-1">💡</span>
-                          <p className="text-sm text-[#1D1D1F]">{suggestion}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </Card>
-          )}
-
-          {/* 受众分析 */}
-          {activeTab === 'audience' && (
-            <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[#1D1D1F]">受众分析</h2>
-              <Button onClick={loadAudienceData} disabled={isAnalyzing}>
-                {isAnalyzing ? '分析中...' : '刷新数据'}
-              </Button>
-            </div>
-
-            {audienceAnalysis && (
-              <div className="space-y-6">
-                {/* 数据概览 */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                    <div className="text-sm text-[#86868B] mb-1">视频总数</div>
-                    <div className="text-2xl font-bold text-[#1D1D1F]">{audienceAnalysis.summary?.totalVideos || 0}</div>
-                  </div>
-                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                    <div className="text-sm text-[#86868B] mb-1">总播放量</div>
-                    <div className="text-2xl font-bold text-[#1D1D1F]">{formatNumber(audienceAnalysis.summary?.totalViews || 0)}</div>
-                  </div>
-                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                    <div className="text-sm text-[#86868B] mb-1">平均互动率</div>
-                    <div className="text-2xl font-bold text-[#007AFF]">{audienceAnalysis.summary?.avgEngagementRate || 0}</div>
-                  </div>
-                  <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                    <div className="text-sm text-[#86868B] mb-1">最受欢迎分类</div>
-                    <div className="text-lg font-bold text-[#007AFF] truncate">{audienceAnalysis.summary?.topCategory || '无'}</div>
-                  </div>
-                </div>
-
-                {/* 受众偏好 */}
+              {/* 热力图 */}
+              {publishTimeData.heatmap && publishTimeData.heatmap.length > 0 && (
                 <div>
-                  <div className="text-sm font-medium text-[#86868B] mb-3">👥 受众内容偏好：</div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                      <div className="text-sm text-[#86868B] mb-2">偏好内容类型</div>
-                      <div className="space-y-2">
-                        {audienceAnalysis.audiencePreferences?.preferredContentTypes?.slice(0, 3).map((type: string, index: number) => (
-                          <div key={index} className="flex items-center gap-2">
-                            <span className="w-2 h-2 bg-[#007AFF] rounded-full" />
-                            <span className="text-sm text-[#1D1D1F]">{type}</span>
-                          </div>
-                        ))}
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">📊 发布时间热力图</div>
+                  <Heatmap data={publishTimeData.heatmap} />
+                </div>
+              )}
+
+              {/* 推荐时段 */}
+              {publishTimeData.recommendations && publishTimeData.recommendations.length > 0 && (
+                <div className="p-4 bg-[#F5F5F7] rounded-lg">
+                  <div className="text-sm font-medium text-[#1D1D1F] mb-2">💡 发布建议</div>
+                  <div className="space-y-2">
+                    {publishTimeData.recommendations.map((rec: string, index: number) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <span className="text-[#007AFF] mt-1">•</span>
+                        <p className="text-sm text-[#1D1D1F]">{rec}</p>
                       </div>
-                    </div>
-                    <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                      <div className="text-sm text-[#86868B] mb-2">偏好时长</div>
-                      <div className="text-lg font-semibold text-[#007AFF]">{audienceAnalysis.audiencePreferences?.preferredDuration || '未知'}</div>
-                    </div>
-                    <div className="p-4 bg-[#F5F5F7] rounded-lg">
-                      <div className="text-sm text-[#86868B] mb-2">平均观看时长</div>
-                      <div className="text-lg font-semibold text-[#1D1D1F]">{audienceAnalysis.audiencePreferences?.avgWatchTime || '未知'}</div>
-                    </div>
+                    ))}
                   </div>
                 </div>
+              )}
 
-                {/* 分类表现 */}
-                {audienceAnalysis.audiencePreferences?.preferredCategories && (
-                  <div>
-                    <div className="text-sm font-medium text-[#86868B] mb-3">📊 分类表现：</div>
-                    <div className="space-y-2">
-                      {audienceAnalysis.audiencePreferences.preferredCategories.slice(0, 5).map((cat: any, index: number) => (
-                        <div key={index} className="p-3 bg-[#F5F5F7] rounded-lg">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                                index === 0 ? 'bg-yellow-500' :
-                                index === 1 ? 'bg-gray-500' :
-                                index === 2 ? 'bg-orange-500' :
-                                'bg-gray-400'
-                              }`}>
-                                {index + 1}
-                              </span>
-                              <span className="font-medium text-[#1D1D1F]">{cat.category}</span>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-sm text-[#86868B]">{cat.share}</div>
-                              <div className="text-xs text-[#007AFF]">{cat.avgEngagement}</div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+              {/* 数据摘要 */}
+              {publishTimeData.summary && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-3 bg-[#F5F5F7] rounded-lg">
+                    <div className="text-xs text-[#86868B] mb-1">分析视频数</div>
+                    <div className="text-lg font-bold text-[#1D1D1F]">{publishTimeData.summary.totalAnalyzed}</div>
                   </div>
-                )}
-
-                {/* 最佳发布时间 */}
-                {audienceAnalysis.optimalPostingTimes && audienceAnalysis.optimalPostingTimes.length > 0 && (
-                  <div>
-                    <div className="text-sm font-medium text-[#86868B] mb-3">⏰ 最佳发布时间：</div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {audienceAnalysis.optimalPostingTimes.slice(0, 3).map((time: any, index: number) => (
-                        <div key={index} className={`p-4 rounded-lg ${
-                          index === 0 ? 'bg-yellow-50 border border-yellow-200' :
-                          index === 1 ? 'bg-gray-50 border border-gray-200' :
-                          index === 2 ? 'bg-orange-50 border border-orange-200' :
-                          'bg-[#F5F5F7]'
-                        }`}>
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                              index === 0 ? 'bg-yellow-500' :
-                              index === 1 ? 'bg-gray-500' :
-                              index === 2 ? 'bg-orange-500' :
-                              'bg-gray-400'
-                            }`}>
-                              {index + 1}
-                            </span>
-                            <span className="font-medium text-[#1D1D1F]">{time.day}</span>
-                          </div>
-                          <div className="text-xs text-[#86868B]">占比 {time.share}</div>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="p-3 bg-[#F5F5F7] rounded-lg">
+                    <div className="text-xs text-[#86868B] mb-1">覆盖时段数</div>
+                    <div className="text-lg font-bold text-[#1D1D1F]">{publishTimeData.summary.uniqueTimeSlots}</div>
                   </div>
-                )}
-
-                {/* 高互动视频 */}
-                {audienceAnalysis.engagementPatterns?.topEngagingVideos && audienceAnalysis.engagementPatterns.topEngagingVideos.length > 0 && (
-                  <div>
-                    <div className="text-sm font-medium text-[#86868B] mb-3">🏆 高互动视频案例：</div>
-                    <div className="space-y-2">
-                      {audienceAnalysis.engagementPatterns.topEngagingVideos.slice(0, 5).map((video: any, index: number) => (
-                        <div key={index} className="p-3 bg-[#F5F5F7] rounded-lg">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="font-medium text-[#1D1D1F] mb-1">{video.title}</div>
-                              <div className="text-xs text-[#86868B]">
-                                {video.channelTitle} · {video.duration} · {video.category}
-                              </div>
-                            </div>
-                            <div className="text-right ml-4">
-                              <div className="text-sm font-semibold text-[#007AFF]">{video.engagement}</div>
-                              <div className="text-xs text-[#86868B]">{formatNumber(video.views)} 播放</div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="p-3 bg-[#F5F5F7] rounded-lg">
+                    <div className="text-xs text-[#86868B] mb-1">最佳时段</div>
+                    <div className="text-sm font-bold text-[#007AFF]">{publishTimeData.summary.bestTimeSlot}</div>
                   </div>
-                )}
-
-                {/* 受众建议 */}
-                {audienceAnalysis.recommendations && audienceAnalysis.recommendations.length > 0 && (
-                  <div>
-                    <div className="text-sm font-medium text-[#86868B] mb-2">💡 受众优化建议：</div>
-                    <div className="space-y-2">
-                      {audienceAnalysis.recommendations.map((rec: string, index: number) => (
-                        <div key={index} className="flex items-start gap-2 p-3 bg-[#F5F5F7] rounded-lg">
-                          <span className="text-[#007AFF] mt-1">💡</span>
-                          <p className="text-sm text-[#1D1D1F]">{rec}</p>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="p-3 bg-[#F5F5F7] rounded-lg">
+                    <div className="text-xs text-[#86868B] mb-1">平均观看</div>
+                    <div className="text-lg font-bold text-[#1D1D1F]">{formatNumber(publishTimeData.averageViews)}</div>
                   </div>
-                )}
-              </div>
-            )}
-          </Card>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-[#86868B]">加载中...</div>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );
