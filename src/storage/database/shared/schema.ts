@@ -8,6 +8,7 @@ import {
   integer,
   jsonb,
   index,
+  decimal,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -28,6 +29,11 @@ export const videos = pgTable(
     tags: jsonb("tags").$type<string[]>(),
     categoryId: varchar("category_id", { length: 10 }),
     owner: varchar("owner", { length: 100 }),
+    // 新增字段
+    publishDate: timestamp("publish_date", { withTimezone: true }),
+    publishStatus: varchar("publish_status", { length: 20 }).default('draft'),
+    cooperationCost: decimal("cooperation_cost", { precision: 10, scale: 2 }).default('0'),
+    totalViews: integer("total_views").default(0),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -36,6 +42,9 @@ export const videos = pgTable(
   },
   (table) => ({
     videoIdIdx: index("videos_video_id_idx").on(table.videoId),
+    publishDateIdx: index("videos_publish_date_idx").on(table.publishDate),
+    publishStatusIdx: index("videos_publish_status_idx").on(table.publishStatus),
+    statusDateIdx: index("videos_status_date_idx").on(table.publishStatus, table.publishDate),
     createdAtIdx: index("videos_created_at_idx").on(table.createdAt),
   })
 );
@@ -95,6 +104,9 @@ export const insertVideoSchema = createInsertSchema(videos).pick({
   tags: true,
   categoryId: true,
   owner: true,
+  publishDate: true,
+  publishStatus: true,
+  cooperationCost: true,
 });
 
 export const updateVideoSchema = createInsertSchema(videos)

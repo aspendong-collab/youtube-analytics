@@ -7,6 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 export default function AddVideoPage() {
@@ -18,10 +22,14 @@ export default function AddVideoPage() {
     owner: '',
     tags: '',
     category: '',
+    cooperationCost: '',
+    publishDate: null as Date | null,
+    publishStatus: 'published' as 'draft' | 'published',
   });
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const fetchVideoInfo = async () => {
     if (!formData.videoUrl.trim()) {
@@ -86,6 +94,9 @@ export default function AddVideoPage() {
           owner: formData.owner,
           tags: formData.tags,
           category: formData.category,
+          cooperationCost: formData.cooperationCost ? parseFloat(formData.cooperationCost) : 0,
+          publishDate: formData.publishDate ? formData.publishDate.toISOString() : null,
+          publishStatus: formData.publishStatus,
         }),
       });
 
@@ -232,6 +243,72 @@ export default function AddVideoPage() {
               value={formData.tags}
               onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
             />
+          </div>
+
+          {/* 新增字段 */}
+          <div className="space-y-2">
+            <Label htmlFor="cooperationCost">合作费用（元）</Label>
+            <Input
+              id="cooperationCost"
+              type="number"
+              step="0.01"
+              placeholder="请输入合作费用"
+              value={formData.cooperationCost}
+              onChange={(e) => setFormData({ ...formData, cooperationCost: e.target.value })}
+            />
+            <p className="text-xs text-[#86868B]">
+              用于计算 CPV 成本分析
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="publishDate">发布时间</Label>
+            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                  type="button"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {formData.publishDate ? (
+                    format(formData.publishDate, 'yyyy-MM-dd HH:mm:ss')
+                  ) : (
+                    <span>请选择发布时间</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={formData.publishDate}
+                  onSelect={(date) => {
+                    setFormData({ ...formData, publishDate: date });
+                    setIsCalendarOpen(false);
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            <p className="text-xs text-[#86868B]">
+              请选择视频在 YouTube 上的实际发布时间，此时间将用于统计发布量和成本分析
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="publishStatus">发布状态</Label>
+            <select
+              id="publishStatus"
+              value={formData.publishStatus}
+              onChange={(e) => setFormData({ ...formData, publishStatus: e.target.value as any })}
+              className="w-full px-3 py-2 border rounded-md"
+            >
+              <option value="draft">草稿</option>
+              <option value="published">已发布</option>
+            </select>
+            <p className="text-xs text-[#86868B]">
+              只有"已发布"的视频才会计入发布量统计
+            </p>
           </div>
 
           <div className="flex gap-3 pt-4">
