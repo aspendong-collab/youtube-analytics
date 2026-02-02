@@ -4,14 +4,29 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { useVideos, type Video } from '@/hooks/use-videos';
+import { Trash2, Loader2 } from 'lucide-react';
 
 export default function VideosPage() {
   const router = useRouter();
-  const { data, isLoading, isFetching, error, status } = useVideos({ isActive: true, limit: 100 });
+  const { data, isLoading, isFetching, error, status, refetch } = useVideos({ isActive: true, limit: 100 });
   const [filterOwner, setFilterOwner] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // 删除相关状态
+  const [deleteVideoId, setDeleteVideoId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const videos = data?.videos || [];
 
@@ -72,6 +87,37 @@ export default function VideosPage() {
 
   // 获取所有负责人
   const owners = Array.from(new Set(videos.map((v) => v.owner).filter(Boolean)));
+
+  // 删除视频
+  const handleDeleteVideo = async () => {
+    if (!deleteVideoId) return;
+
+    setIsDeleting(true);
+
+    try {
+      const response = await fetch(`/api/videos/${deleteVideoId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || '删除视频失败');
+      }
+
+      const data = await response.json();
+
+      toast.success(data.message || '视频删除成功');
+
+      // 刷新视频列表
+      refetch();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '删除视频失败';
+      toast.error(errorMessage);
+    } finally {
+      setIsDeleting(false);
+      setDeleteVideoId(null);
+    }
+  };
 
   // 只有在第一次加载且没有任何数据时才显示加载中
   const isFirstLoad = status === 'pending' && videos.length === 0;
@@ -169,11 +215,44 @@ export default function VideosPage() {
                 engagement={engagementStr}
                 publishedAt={formatDate(video.createdAt)}
                 status={status}
+                onDelete={() => setDeleteVideoId(video.id)}
               />
             );
           })}
         </div>
       )}
+
+      {/* 删除确认对话框 */}
+      <AlertDialog open={!!deleteVideoId} onOpenChange={(open) => !open && !isDeleting && setDeleteVideoId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除视频？</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作将删除该视频及其所有相关统计数据（包括历史统计数据）。此操作无法撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteVideo}
+              disabled={isDeleting}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  删除中...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  确认删除
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -191,6 +270,7 @@ function VideoCard({
   engagement,
   publishedAt,
   status,
+  onDelete,
 }: {
   id: string;
   videoId: string;
@@ -203,6 +283,7 @@ function VideoCard({
   engagement: string;
   publishedAt: string;
   status: 'excellent' | 'normal' | 'warning';
+  onDelete: () => void;
 }) {
   const statusConfig = {
     excellent: { label: '优秀', color: 'bg-[#34C759]' },
@@ -298,6 +379,18 @@ function VideoCard({
               onClick={() => window.open(videoUrl, '_blank')}
             >
               在 YouTube 打开
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-red-500 hover:text-red-600 hover:bg-red-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            >
+              <Trash2 className="w-3 h-3 mr-1" />
+              删除
             </Button>
           </div>
         </div>

@@ -316,6 +316,57 @@ export class VideoManager {
   async getActiveVideosForUpdate(): Promise<Video[]> {
     return this.getVideos({ isActive: true, limit: 1000 });
   }
+
+  /**
+   * 删除视频的所有统计数据
+   */
+  async deleteVideoStatsByVideoId(videoId: string): Promise<number> {
+    const db = this.getDb();
+
+    // 先查询有多少条记录
+    const stats = await db
+      .select()
+      .from(videoStats)
+      .where(eq(videoStats.videoId, videoId));
+
+    const count = stats.length;
+
+    // 删除记录
+    await db
+      .delete(videoStats)
+      .where(eq(videoStats.videoId, videoId));
+
+    return count;
+  }
+
+  /**
+   * 完全删除视频（包括视频记录和所有统计数据）
+   */
+  async deleteVideoWithStats(id: string): Promise<{ success: boolean; deletedStats: number }> {
+    const db = this.getDb();
+
+    try {
+      // 获取视频信息
+      const video = await this.getVideoById(id);
+      if (!video) {
+        return { success: false, deletedStats: 0 };
+      }
+
+      // 删除所有视频统计数据
+      const deletedStats = await this.deleteVideoStatsByVideoId(video.videoId);
+
+      // 软删除视频记录
+      await db
+        .update(videos)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(videos.id, id));
+
+      return { success: true, deletedStats };
+    } catch (error) {
+      console.error('[VideoManager] 删除视频失败:', error);
+      return { success: false, deletedStats: 0 };
+    }
+  }
 }
 
 export const videoManager = new VideoManager();
