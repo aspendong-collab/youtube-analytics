@@ -41,32 +41,53 @@ export default function OverviewPage() {
   });
 
   // 使用 useMemo 缓存数据处理，避免每次渲染重新计算
-  const viewsData = useMemo(() => ({
-    today: { label: '今日播放量', value: multiStats?.today.views || 0, unit: '次' },
-    thisWeek: { label: '本周播放量', value: multiStats?.thisWeek.views || 0, unit: '次' },
-    total: { label: '累计历史播放量', value: multiStats?.total.views || 0, unit: '次' },
-  }), [multiStats]);
+  const viewsData = useMemo(() => {
+    const stats = multiStats || {};
+    const today = stats.today || {};
+    const thisWeek = stats.thisWeek || {};
+    const total = stats.total || {};
 
-  const publishData = useMemo(() => ({
-    today: { label: '今日发布视频数', value: multiStats?.today.publishedVideos || 0, unit: '个' },
-    thisWeek: { label: '本周发布视频数', value: multiStats?.thisWeek.publishedVideos || 0, unit: '个' },
-    total: { label: '累计发布视频数', value: multiStats?.total.publishedVideos || 0, unit: '个' },
-  }), [multiStats]);
+    return {
+      today: { label: '今日播放量', value: today.views || 0, unit: '次' },
+      thisWeek: { label: '本周播放量', value: thisWeek.views || 0, unit: '次' },
+      total: { label: '累计历史播放量', value: total.views || 0, unit: '次' },
+    };
+  }, [multiStats]);
 
-  const costData = useMemo(() => ({
-    today: {
-      cost: { label: '今日合作费用', value: multiStats?.today.cooperationCost || 0, unit: '元' },
-      cpv: { label: '今日平均 CPV', value: multiStats?.today.averageCPV || 0, unit: '元/千次播放' },
-    },
-    thisWeek: {
-      cost: { label: '本周合作费用', value: multiStats?.thisWeek.cooperationCost || 0, unit: '元' },
-      cpv: { label: '本周平均 CPV', value: multiStats?.thisWeek.averageCPV || 0, unit: '元/千次播放' },
-    },
-    total: {
-      cost: { label: '累计合作费用', value: multiStats?.total.cooperationCost || 0, unit: '元' },
-      cpv: { label: '累计平均 CPV', value: multiStats?.total.averageCPV || 0, unit: '元/千次播放' },
-    },
-  }), [multiStats]);
+  const publishData = useMemo(() => {
+    const stats = multiStats || {};
+    const today = stats.today || {};
+    const thisWeek = stats.thisWeek || {};
+    const total = stats.total || {};
+
+    return {
+      today: { label: '今日发布视频数', value: today.publishedVideos || 0, unit: '个' },
+      thisWeek: { label: '本周发布视频数', value: thisWeek.publishedVideos || 0, unit: '个' },
+      total: { label: '累计发布视频数', value: total.publishedVideos || 0, unit: '个' },
+    };
+  }, [multiStats]);
+
+  const costData = useMemo(() => {
+    const stats = multiStats || {};
+    const today = stats.today || {};
+    const thisWeek = stats.thisWeek || {};
+    const total = stats.total || {};
+
+    return {
+      today: {
+        cost: { label: '今日合作费用', value: today.cooperationCost || 0, unit: '元' },
+        cpv: { label: '今日平均 CPV', value: today.averageCPV || 0, unit: '元/千次播放' },
+      },
+      thisWeek: {
+        cost: { label: '本周合作费用', value: thisWeek.cooperationCost || 0, unit: '元' },
+        cpv: { label: '本周平均 CPV', value: thisWeek.averageCPV || 0, unit: '元/千次播放' },
+      },
+      total: {
+        cost: { label: '累计合作费用', value: total.cooperationCost || 0, unit: '元' },
+        cpv: { label: '累计平均 CPV', value: total.averageCPV || 0, unit: '元/千次播放' },
+      },
+    };
+  }, [multiStats]);
 
   const customViewsData = useMemo(() => showViewsCustom ? {
     label: '自定义期间播放量',
@@ -157,19 +178,19 @@ export default function OverviewPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <MetricCard
             title="总视频数"
-            value={multiStats?.other.totalVideos || 0}
+            value={multiStats?.other?.totalVideos || 0}
             unit="个"
             icon="📋"
           />
           <MetricCard
             title="总频道数"
-            value={multiStats?.other.totalChannels || 0}
+            value={multiStats?.other?.totalChannels || 0}
             unit="个"
             icon="📺"
           />
           <MetricCard
             title="总负责人数"
-            value={multiStats?.other.totalOwners || 0}
+            value={multiStats?.other?.totalOwners || 0}
             unit="人"
             icon="👥"
           />

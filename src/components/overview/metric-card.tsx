@@ -19,13 +19,16 @@ export const MetricCard = React.memo<MetricCardProps>(({
   formatAsCurrency,
 }) => {
   const formatValue = (num: number): string => {
+    // 确保是有效数字
+    const value = typeof num === 'number' && !isNaN(num) && isFinite(num) ? num : 0;
+
     if (formatAsCurrency) {
-      return prefix + num.toFixed(4);
+      return prefix + value.toFixed(4);
     }
-    if (num >= 1000000) return prefix + (num / 1000000).toFixed(1) + 'M';
-    if (num >= 10000) return prefix + (num / 10000).toFixed(1) + 'W';
-    if (num >= 1000) return prefix + (num / 1000).toFixed(1) + 'K';
-    return prefix + num.toString();
+    if (value >= 1000000) return prefix + (value / 1000000).toFixed(1) + 'M';
+    if (value >= 10000) return prefix + (value / 10000).toFixed(1) + 'W';
+    if (value >= 1000) return prefix + (value / 1000).toFixed(1) + 'K';
+    return prefix + value.toString();
   };
 
   return (
