@@ -13,6 +13,32 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Users 表 - 存储用户信息
+export const users = pgTable(
+  "users",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    email: varchar("email", { length: 255 }).notNull().unique(),
+    password: varchar("password", { length: 255 }).notNull(),
+    name: varchar("name", { length: 100 }).notNull(),
+    role: varchar("role", { length: 20 }).notNull().default("user"),
+    status: varchar("status", { length: 20 }).notNull().default("pending"),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+    lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+  },
+  (table) => ({
+    emailIdx: index("users_email_idx").on(table.email),
+    statusIdx: index("users_status_idx").on(table.status),
+    roleIdx: index("users_role_idx").on(table.role),
+  })
+);
+
 // Videos 表 - 存储视频基本信息
 export const videos = pgTable(
   "videos",
@@ -34,6 +60,7 @@ export const videos = pgTable(
     publishStatus: varchar("publish_status", { length: 20 }).default('draft'),
     cooperationCost: decimal("cooperation_cost", { precision: 10, scale: 2 }).default('0'),
     totalViews: integer("total_views").default(0),
+    userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: 'cascade' }),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -45,6 +72,7 @@ export const videos = pgTable(
     publishDateIdx: index("videos_publish_date_idx").on(table.publishDate),
     publishStatusIdx: index("videos_publish_status_idx").on(table.publishStatus),
     statusDateIdx: index("videos_status_date_idx").on(table.publishStatus, table.publishDate),
+    userIdIdx: index("videos_user_id_idx").on(table.userId),
     createdAtIdx: index("videos_created_at_idx").on(table.createdAt),
   })
 );
@@ -93,6 +121,22 @@ export const videoStats = pgTable(
   })
 );
 
+// Users schemas
+export const insertUserSchema = createInsertSchema(users).pick({
+  email: true,
+  password: true,
+  name: true,
+});
+
+export const updateUserSchema = createInsertSchema(users)
+  .pick({
+    name: true,
+    role: true,
+    status: true,
+    isActive: true,
+  })
+  .partial();
+
 // Videos schemas
 export const insertVideoSchema = createInsertSchema(videos).pick({
   videoId: true,
@@ -107,6 +151,7 @@ export const insertVideoSchema = createInsertSchema(videos).pick({
   publishDate: true,
   publishStatus: true,
   cooperationCost: true,
+  userId: true,
 });
 
 export const updateVideoSchema = createInsertSchema(videos)
@@ -148,6 +193,10 @@ export const insertVideoStatsSchema = createInsertSchema(videoStats).pick({
 });
 
 // TypeScript types
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpdateUser = z.infer<typeof updateUserSchema>;
+
 export type Video = typeof videos.$inferSelect;
 export type InsertVideo = z.infer<typeof insertVideoSchema>;
 export type UpdateVideo = z.infer<typeof updateVideoSchema>;
@@ -158,3 +207,7 @@ export type InsertVideoStats = z.infer<typeof insertVideoStatsSchema>;
 export type Owner = typeof owners.$inferSelect;
 export type InsertOwner = z.infer<typeof insertOwnerSchema>;
 export type UpdateOwner = z.infer<typeof updateOwnerSchema>;
+
+// User status types
+export type UserStatus = 'pending' | 'approved' | 'rejected';
+export type UserRole = 'user' | 'admin';

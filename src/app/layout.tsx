@@ -4,6 +4,7 @@ import './globals.css';
 import { Sidebar } from '@/components/sidebar';
 import { QueryProvider } from '@/lib/query-client';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { AuthProvider } from '@/components/providers';
 
 export const metadata: Metadata = {
   title: {
@@ -23,17 +24,19 @@ export default function RootLayout({
     <html lang="zh-CN">
       <body className={`antialiased`}>
         <ErrorBoundary>
-          <QueryProvider>
-            <div className="flex min-h-screen bg-[#F5F5F7]">
-              {/* 左侧边栏 */}
-              <Sidebar />
-              {/* 主内容区域 */}
-              <main className="flex-1 ml-64 p-8 bg-white min-h-screen">
-                {children}
-              </main>
-            </div>
-            <Toaster position="top-right" />
-          </QueryProvider>
+          <AuthProvider>
+            <QueryProvider>
+              <div className="flex min-h-screen bg-[#F5F5F7]">
+                {/* 左侧边栏 */}
+                <Sidebar />
+                {/* 主内容区域 */}
+                <main className="flex-1 ml-64 p-8 bg-white min-h-screen">
+                  {children}
+                </main>
+              </div>
+              <Toaster position="top-right" />
+            </QueryProvider>
+          </AuthProvider>
         </ErrorBoundary>
       </body>
     </html>
