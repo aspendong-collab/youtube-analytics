@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       try {
         console.log('[API /api/videos] 调用 video-info API 获取详细信息...');
         const videoInfoResponse = await fetch(
-          `http://localhost:5000/api/video-info?url=${encodeURIComponent(videoUrl)}`,
+          `${request.nextUrl.origin}/api/video-info?url=${encodeURIComponent(videoUrl)}`,
           {
             method: 'GET',
           }

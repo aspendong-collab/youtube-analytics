@@ -240,6 +240,9 @@ export const insertVideoSchema = createInsertSchema(videos).pick({
   publishDate: true,
   publishStatus: true,
   cooperationCost: true,
+  duration: true,
+  region: true,
+  language: true,
   userId: true,
 });
 
