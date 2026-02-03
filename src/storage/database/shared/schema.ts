@@ -60,7 +60,8 @@ export const videos = pgTable(
     publishStatus: varchar("publish_status", { length: 20 }).default('draft'),
     cooperationCost: decimal("cooperation_cost", { precision: 10, scale: 2 }).default('0'),
     totalViews: integer("total_views").default(0),
-    userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: 'cascade' }),
+    // TODO: 生产环境暂时禁用 userId 字段，待数据库迁移后再启用
+    // userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: 'cascade' }),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -72,7 +73,8 @@ export const videos = pgTable(
     publishDateIdx: index("videos_publish_date_idx").on(table.publishDate),
     publishStatusIdx: index("videos_publish_status_idx").on(table.publishStatus),
     statusDateIdx: index("videos_status_date_idx").on(table.publishStatus, table.publishDate),
-    userIdIdx: index("videos_user_id_idx").on(table.userId),
+    // TODO: 生产环境暂时禁用 userIdIdx 索引，待数据库迁移后再启用
+    // userIdIdx: index("videos_user_id_idx").on(table.userId),
     createdAtIdx: index("videos_created_at_idx").on(table.createdAt),
   })
 );
@@ -86,7 +88,8 @@ export const owners = pgTable(
       .default(sql`gen_random_uuid()`),
     name: varchar("name", { length: 100 }).notNull(),
     email: varchar("email", { length: 255 }),
-    userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: 'cascade' }),
+    // TODO: 生产环境暂时禁用 userId 字段，待数据库迁移后再启用
+    // userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: 'cascade' }),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -95,7 +98,8 @@ export const owners = pgTable(
   },
   (table) => ({
     emailIdx: index("owners_email_idx").on(table.email),
-    userIdIdx: index("owners_user_id_idx").on(table.userId),
+    // TODO: 生产环境暂时禁用 userIdIdx 索引，待数据库迁移后再启用
+    // userIdIdx: index("owners_user_id_idx").on(table.userId),
   })
 );
 
@@ -188,7 +192,8 @@ export const influencers = pgTable(
     isFavorite: boolean("is_favorite").default(false), // 是否收藏
     cooperationCount: integer("cooperation_count").default(0), // 合作次数
     // 元数据
-    userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: 'cascade' }), // 创建者
+    // TODO: 生产环境暂时禁用 userId 字段，待数据库迁移后再启用
+    // userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: 'cascade' }), // 创建者
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -201,7 +206,8 @@ export const influencers = pgTable(
     statusIdx: index("influencers_status_idx").on(table.status),
     levelIdx: index("influencers_level_idx").on(table.level),
     categoryIdx: index("influencers_category_idx").on(table.category),
-    userIdIdx: index("influencers_user_id_idx").on(table.userId),
+    // TODO: 生产环境暂时禁用 userIdIdx 索引，待数据库迁移后再启用
+    // userIdIdx: index("influencers_user_id_idx").on(table.userId),
     isFavoriteIdx: index("influencers_is_favorite_idx").on(table.isFavorite),
     createdAtIdx: index("influencers_created_at_idx").on(table.createdAt),
   })
