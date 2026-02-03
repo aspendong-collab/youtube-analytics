@@ -18,6 +18,9 @@ export const navItems: NavItem[] = [
     label: '发现',
     icon: '🔎',
     path: '/discovery',
+    children: [
+      { id: 'competitor-analysis', label: '竞品检测', path: '/discovery/competitor' },
+    ],
   },
   {
     id: 'monitoring',
