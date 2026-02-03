@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Trash2, Search, Loader2, ShieldCheck, UserClock, UserCheck, ShieldAlert } from 'lucide-react';
+import { Trash2, Search, Loader2, ShieldCheck, Clock, UserCheck, ShieldAlert } from 'lucide-react';
 
 interface User {
   id: string;
@@ -103,7 +103,7 @@ export default function UsersManagementPage() {
       case 'pending':
         return (
           <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-            <UserClock className="w-3 h-3 mr-1" />
+            <Clock className="w-3 h-3 mr-1" />
             待审核
           </Badge>
         );

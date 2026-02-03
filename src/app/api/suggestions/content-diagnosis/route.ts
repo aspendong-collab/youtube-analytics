@@ -153,7 +153,7 @@ function performContentDiagnosis(targetVideo: any, categoryVideos: any[]): any {
   diagnosis.dimensions.tags = tagsDiagnosis;
 
   // 4. 时长诊断 - 由于videos表没有duration字段，跳过
-  const durationDiagnosis = diagnoseDuration(undefined, categoryVideos);
+  const durationDiagnosis = diagnoseDuration(0, categoryVideos);
   diagnosis.dimensions.duration = durationDiagnosis;
 
   // 5. 发布时间诊断

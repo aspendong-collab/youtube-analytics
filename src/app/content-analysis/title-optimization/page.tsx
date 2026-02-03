@@ -37,7 +37,7 @@ export default function TitleOptimizationPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          currentTitle: currentTitle || selectedVideo.title,
+          title: currentTitle || selectedVideo.title,
         }),
       });
 

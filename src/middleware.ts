@@ -22,6 +22,7 @@ export function middleware(req: NextRequest) {
     '/api/search',
     '/api/comments',
     '/api/competitor-analysis',
+    '/api/suggestions',
     '/api/test',
     '/api/health',
     '/api/check-env',
