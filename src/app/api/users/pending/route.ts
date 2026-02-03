@@ -10,7 +10,7 @@ export async function GET() {
     const session = await getServerSession(authOptions);
 
     // 检查是否已登录且是管理员
-    if (!session || session.user.role !== "admin") {
+    if (!session || !session.user || session.user.role !== "admin") {
       return NextResponse.json(
         { error: "无权限执行此操作" },
         { status: 403 }

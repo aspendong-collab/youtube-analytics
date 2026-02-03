@@ -9,6 +9,10 @@ export async function requireAuth() {
     redirect("/login");
   }
 
+  if (!session.user) {
+    redirect("/login");
+  }
+
   if (session.user.status !== "approved") {
     if (session.user.status === "pending") {
       redirect("/pending-approval");
@@ -23,7 +27,7 @@ export async function requireAuth() {
 export async function requireAdmin() {
   const session = await requireAuth();
 
-  if (session.user.role !== "admin") {
+  if (!session.user || session.user.role !== "admin") {
     redirect("/");
   }
 
