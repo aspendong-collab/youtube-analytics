@@ -15,7 +15,11 @@ import type {
 import * as schema from "./shared/schema";
 
 // 使用环境变量
-const DATABASE_URL = process.env.PGDATABASE_URL || 'postgresql://neondb_owner:npg_zw0a2RgOhAXY@ep-winter-cherry-a1cs4q75-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+const DATABASE_URL = process.env.PGDATABASE_URL;
+
+if (!DATABASE_URL) {
+  console.error('[OwnerManager] ERROR: PGDATABASE_URL environment variable is not set!');
+}
 
 let dbClient: ReturnType<typeof postgres> | null = null;
 let dbInstance: ReturnType<typeof drizzle> | null = null;
@@ -23,6 +27,11 @@ let dbInstance: ReturnType<typeof drizzle> | null = null;
 export class OwnerManager {
   private getDb() {
     if (!dbInstance) {
+      if (!DATABASE_URL) {
+        console.error('[OwnerManager] ERROR: DATABASE_URL is undefined');
+        return null;
+      }
+
       try {
         const maskedUrl = DATABASE_URL.replace(/\/\/[^@]+@/, '/***@');
         console.log('[OwnerManager] Connecting to database:', maskedUrl);

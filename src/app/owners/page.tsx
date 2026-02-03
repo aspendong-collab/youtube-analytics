@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from 'sonner';
 
 interface Owner {
-  id: number;
+  id: string;
   name: string;
   email: string | null;
   videos: number;
@@ -32,16 +32,24 @@ export default function OwnersPage() {
   const loadOwners = async () => {
     try {
       setIsLoading(true);
+      console.log('[OwnersPage] 开始加载负责人列表');
       const response = await fetch('/api/owners');
+
+      console.log('[OwnersPage] API 响应状态:', response.status);
+
       if (!response.ok) {
-        throw new Error('加载失败');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[OwnersPage] API 错误响应:', errorData);
+        throw new Error(errorData.error || errorData.details || '加载失败');
       }
+
       const data = await response.json();
+      console.log('[OwnersPage] API 响应数据:', data);
       setOwners(data.owners || []);
     } catch (error) {
-      console.error('加载负责人失败:', error);
+      console.error('[OwnersPage] 加载负责人失败:', error);
       toast.error('加载失败', {
-        description: '无法加载负责人列表',
+        description: error instanceof Error ? error.message : '无法加载负责人列表',
       });
     } finally {
       setIsLoading(false);
@@ -88,14 +96,19 @@ export default function OwnersPage() {
     }
   };
 
-  const handleDeleteOwner = async (id: number) => {
+  const handleDeleteOwner = async (id: string) => {
     try {
+      console.log('[OwnersPage] 删除负责人, ID:', id);
       const response = await fetch(`/api/owners/${id}`, {
         method: 'DELETE',
       });
 
+      console.log('[OwnersPage] 删除 API 响应状态:', response.status);
+
       if (!response.ok) {
-        throw new Error('删除失败');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[OwnersPage] 删除 API 错误响应:', errorData);
+        throw new Error(errorData.error || errorData.details || '删除失败');
       }
 
       toast.success('删除成功', {
@@ -103,9 +116,9 @@ export default function OwnersPage() {
       });
       loadOwners();
     } catch (error) {
-      console.error('删除负责人失败:', error);
+      console.error('[OwnersPage] 删除负责人失败:', error);
       toast.error('删除失败', {
-        description: '无法删除该负责人',
+        description: error instanceof Error ? error.message : '无法删除该负责人',
       });
     }
   };
