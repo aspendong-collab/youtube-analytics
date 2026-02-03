@@ -34,6 +34,7 @@ export const navItems: NavItem[] = [
       { id: 'channel-analysis', label: '博主分析', path: '/monitoring/channels' },
       { id: 'owner-performance', label: '排行榜', path: '/monitoring/owners' },
       { id: 'competitor-tracking', label: '竞品追踪', path: '/monitoring/competitors' },
+      { id: 'comments-analysis', label: '评论分析', path: '/analysis/comments' },
     ],
   },
   {
@@ -81,12 +82,6 @@ export const navItems: NavItem[] = [
         icon: '⏰'
       },
     ],
-  },
-  {
-    id: 'comments-analysis',
-    label: '评论分析',
-    icon: '💬',
-    path: '/analysis/comments',
   },
   {
     id: 'owners',
