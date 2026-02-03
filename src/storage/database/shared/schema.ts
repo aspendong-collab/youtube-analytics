@@ -156,6 +156,88 @@ export const comments = pgTable(
   })
 );
 
+// A/B Tests 表 - 存储 A/B 测试实验
+export const abTests = pgTable(
+  "ab_tests",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    name: varchar("name", { length: 255 }).notNull(), // 测试名称
+    type: varchar("type", { length: 50 }).notNull(), // 测试类型: title, description, thumbnail
+    videoId: varchar("video_id", { length: 20 }), // 关联的视频ID（可选）
+    userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: 'cascade' }), // 创建者
+    status: varchar("status", { length: 20 }).notNull().default('draft'), // 状态: draft, running, completed, paused
+    startDate: timestamp("start_date", { withTimezone: true }), // 开始时间
+    endDate: timestamp("end_date", { withTimezone: true }), // 结束时间
+    winnerVariantId: varchar("winner_variant_id", { length: 36 }), // 获胜变体ID
+    confidence: decimal("confidence", { precision: 5, scale: 2 }), // 统计显著性
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+  },
+  (table) => ({
+    userIdIdx: index("ab_tests_user_id_idx").on(table.userId),
+    videoIdIdx: index("ab_tests_video_id_idx").on(table.videoId),
+    statusIdx: index("ab_tests_status_idx").on(table.status),
+    typeIdx: index("ab_tests_type_idx").on(table.type),
+  })
+);
+
+// A/B Test Variants 表 - 存储每个测试的变体
+export const abTestVariants = pgTable(
+  "ab_test_variants",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    testId: varchar("test_id", { length: 36 }).notNull().references(() => abTests.id, { onDelete: 'cascade' }),
+    variantName: varchar("variant_name", { length: 100 }).notNull(), // 变体名称: A, B, C...
+    title: varchar("title", { length: 500 }), // 标题变体
+    description: text("description"), // 描述变体
+    thumbnail: text("thumbnail"), // 封面变体
+    impressions: integer("impressions").default(0), // 展示次数
+    clicks: integer("clicks").default(0), // 点击次数
+    views: integer("views").default(0), // 完整观看次数
+    ctr: decimal("ctr", { precision: 5, scale: 4 }), // 点击率
+    conversionRate: decimal("conversion_rate", { precision: 5, scale: 4 }), // 转化率
+    avgWatchTime: integer("avg_watch_time").default(0), // 平均观看时长（秒）
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+  },
+  (table) => ({
+    testIdIdx: index("ab_test_variants_test_id_idx").on(table.testId),
+  })
+);
+
+// A/B Test Results 表 - 存储详细的测试结果数据
+export const abTestResults = pgTable(
+  "ab_test_results",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    variantId: varchar("variant_id", { length: 36 }).notNull().references(() => abTestVariants.id, { onDelete: 'cascade' }),
+    statDate: timestamp("stat_date", { withTimezone: true }).notNull(), // 统计日期
+    impressions: integer("impressions").notNull().default(0), // 当日展示次数
+    clicks: integer("clicks").notNull().default(0), // 当日点击次数
+    views: integer("views").notNull().default(0), // 当日观看次数
+    watchTime: integer("watch_time").notNull().default(0), // 当日总观看时长（秒）
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    variantIdIdx: index("ab_test_results_variant_id_idx").on(table.variantId),
+    statDateIdx: index("ab_test_results_stat_date_idx").on(table.statDate),
+    variantDateIdx: index("ab_test_results_variant_date_idx").on(table.variantId, table.statDate),
+  })
+);
+
 // Users schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
@@ -242,6 +324,62 @@ export const insertCommentSchema = createInsertSchema(comments).pick({
   qualityScore: true,
 });
 
+// A/B Tests schemas
+export const insertABTestSchema = createInsertSchema(abTests).pick({
+  name: true,
+  type: true,
+  videoId: true,
+  userId: true,
+  status: true,
+  startDate: true,
+  endDate: true,
+  winnerVariantId: true,
+  confidence: true,
+});
+
+export const updateABTestSchema = createInsertSchema(abTests)
+  .pick({
+    name: true,
+    type: true,
+    videoId: true,
+    status: true,
+    startDate: true,
+    endDate: true,
+    winnerVariantId: true,
+    confidence: true,
+  })
+  .partial();
+
+// A/B Test Variants schemas
+export const insertABTestVariantSchema = createInsertSchema(abTestVariants).pick({
+  testId: true,
+  variantName: true,
+  title: true,
+  description: true,
+  thumbnail: true,
+  isActive: true,
+});
+
+export const updateABTestVariantSchema = createInsertSchema(abTestVariants)
+  .pick({
+    variantName: true,
+    title: true,
+    description: true,
+    thumbnail: true,
+    isActive: true,
+  })
+  .partial();
+
+// A/B Test Results schemas
+export const insertABTestResultSchema = createInsertSchema(abTestResults).pick({
+  variantId: true,
+  statDate: true,
+  impressions: true,
+  clicks: true,
+  views: true,
+  watchTime: true,
+});
+
 // TypeScript types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -260,16 +398,24 @@ export type InsertVideoStats = z.infer<typeof insertVideoStatsSchema>;
 
 export type Comment = typeof comments.$inferSelect;
 export type InsertComment = z.infer<typeof insertCommentSchema>;
-export type InsertVideo = z.infer<typeof insertVideoSchema>;
-export type UpdateVideo = z.infer<typeof updateVideoSchema>;
 
-export type VideoStats = typeof videoStats.$inferSelect;
-export type InsertVideoStats = z.infer<typeof insertVideoStatsSchema>;
+export type ABTest = typeof abTests.$inferSelect;
+export type InsertABTest = z.infer<typeof insertABTestSchema>;
+export type UpdateABTest = z.infer<typeof updateABTestSchema>;
 
-export type Owner = typeof owners.$inferSelect;
-export type InsertOwner = z.infer<typeof insertOwnerSchema>;
-export type UpdateOwner = z.infer<typeof updateOwnerSchema>;
+export type ABTestVariant = typeof abTestVariants.$inferSelect;
+export type InsertABTestVariant = z.infer<typeof insertABTestVariantSchema>;
+export type UpdateABTestVariant = z.infer<typeof updateABTestVariantSchema>;
+
+export type ABTestResult = typeof abTestResults.$inferSelect;
+export type InsertABTestResult = z.infer<typeof insertABTestResultSchema>;
 
 // User status types
 export type UserStatus = 'pending' | 'approved' | 'rejected';
 export type UserRole = 'user' | 'admin';
+
+// A/B Test types
+export type ABTestType = 'title' | 'description' | 'thumbnail';
+export type ABTestStatus = 'draft' | 'running' | 'completed' | 'paused';
+export type ABTestVariantName = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+export type SentimentType = 'positive' | 'neutral' | 'negative';

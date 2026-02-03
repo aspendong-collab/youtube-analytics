@@ -50,34 +50,37 @@ export default function TagOptimizationPage() {
 
     setIsLoading(true);
 
-    // 模拟生成标签建议
-    setTimeout(() => {
-      const keywords = [...title.split(/\s+/), ...description.split(/\s+/)]
-        .filter(word => word.length > 2)
-        .slice(0, 10);
+    try {
+      const response = await fetch('/api/ai/optimize-tags', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title, description }),
+      });
 
-      const suggestions: Tag[] = [
-        ...keywords.slice(0, 5).map((kw, i) => ({
-          id: `s-${i}`,
-          text: kw,
-          category: 'primary' as const,
-        })),
-        ...keywords.slice(5, 8).map((kw, i) => ({
-          id: `s-${i + 5}`,
-          text: `${kw} 教程`,
-          category: 'secondary' as const,
-        })),
-        ...keywords.slice(8, 10).map((kw, i) => ({
-          id: `s-${i + 8}`,
-          text: `${kw} 入门到精通`,
-          category: 'long-tail' as const,
-        })),
-      ];
+      if (!response.ok) {
+        throw new Error('生成失败');
+      }
+
+      const data = await response.json();
+
+      // 转换 AI 响应为前端格式
+      const suggestions: Tag[] = data.suggestions.map((s: any, i: number) => ({
+        id: `ai-${i}`,
+        text: s.tag,
+        category: s.category,
+      }));
 
       setSuggestedTags(suggestions);
       setIsLoading(false);
       toast.success('标签建议生成完成');
-    }, 1500);
+    } catch (error) {
+      console.error('生成失败:', error);
+      toast.error(error instanceof Error ? error.message : '生成失败');
+      setSuggestedTags([]);
+      setIsLoading(false);
+    }
   };
 
   const handleAddSuggestedTag = (tag: Tag) => {

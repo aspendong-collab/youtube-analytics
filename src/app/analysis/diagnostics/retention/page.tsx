@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { PlayCircle, TrendingUp, Clock, AlertCircle } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface RetentionData {
   videoId: string;
@@ -48,11 +49,14 @@ export default function RetentionAnalysisPage() {
         duration: 1200, // 20分钟
         avgRetention: 45.2,
         dropOffPoints: [
+          { time: 0, percentage: 100, reason: '视频开始' },
           { time: 30, percentage: 85, reason: '开头过长，内容进入慢' },
           { time: 120, percentage: 72, reason: '第二段内容不够吸引人' },
           { time: 300, percentage: 55, reason: '讲解节奏变慢' },
           { time: 480, percentage: 38, reason: '进入广告/赞助环节' },
           { time: 720, percentage: 28, reason: '内容过于技术性' },
+          { time: 900, percentage: 22, reason: '视频结尾部分' },
+          { time: 1200, percentage: 20, reason: '视频结束' },
         ],
         recommendations: [
           '在前30秒添加精彩预告',
@@ -91,9 +95,9 @@ export default function RetentionAnalysisPage() {
   };
 
   const getRetentionColor = (percentage: number) => {
-    if (percentage >= 70) return 'bg-green-500';
-    if (percentage >= 40) return 'bg-yellow-500';
-    return 'bg-red-500';
+    if (percentage >= 70) return '#22c55e';
+    if (percentage >= 40) return '#eab308';
+    return '#ef4444';
   };
 
   return (
@@ -163,46 +167,44 @@ export default function RetentionAnalysisPage() {
             </div>
           </Card>
 
-          {/* 保留率曲线 */}
+          {/* 保留率曲线图表 */}
           <Card className="p-6">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <TrendingUp className="w-5 h-5" />
               观众保留率曲线
             </h3>
-            <div className="space-y-2">
-              {/* 模拟保留率曲线 */}
-              {retentionData.dropOffPoints.map((point, index) => {
-                const prevPoint = index > 0 ? retentionData.dropOffPoints[index - 1] : { time: 0, percentage: 100 };
-                const barWidth = `${point.percentage}%`;
-                const timeStart = prevPoint.time;
-                const timeEnd = point.time;
-
-                return (
-                  <div key={index} className="space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        {formatTime(timeStart)} - {formatTime(timeEnd)}
-                      </span>
-                      <span className={point.percentage < 50 ? 'text-red-600 font-semibold' : ''}>
-                        {point.percentage.toFixed(0)}%
-                      </span>
-                    </div>
-                    <div className="h-6 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${getRetentionColor(point.percentage)} transition-all`}
-                        style={{ width: barWidth }}
-                      />
-                    </div>
-                    {point.reason && point.percentage < 50 && (
-                      <div className="flex items-start gap-2 text-sm text-red-600 mt-1">
-                        <AlertCircle className="w-4 h-4 mt-0.5" />
-                        <span>{point.reason}</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="h-96">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={retentionData.dropOffPoints}>
+                  <defs>
+                    <linearGradient id="colorRetention" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="time"
+                    tickFormatter={(value) => formatTime(value)}
+                    label={{ value: '时间', position: 'insideBottom', offset: -5 }}
+                  />
+                  <YAxis
+                    label={{ value: '保留率 (%)', angle: -90, position: 'insideLeft' }}
+                  />
+                  <Tooltip
+                    labelFormatter={(value) => formatTime(value)}
+                    formatter={(value: number) => `${value.toFixed(0)}%`}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="percentage"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorRetention)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </Card>
 
@@ -212,9 +214,9 @@ export default function RetentionAnalysisPage() {
               <AlertCircle className="w-5 h-5" />
               关键流失点
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {retentionData.dropOffPoints
-                .filter(point => point.percentage < 50)
+                .filter(point => point.percentage < 50 && point.time > 0)
                 .map((point, index) => (
                   <div
                     key={index}

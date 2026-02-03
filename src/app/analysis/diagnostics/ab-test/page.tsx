@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { FlaskConical, TrendingUp, Users, Eye } from 'lucide-react';
+import { FlaskConical, TrendingUp, Users, Eye, RefreshCw, Play, Square } from 'lucide-react';
 
 interface Variant {
   id: string;
@@ -30,8 +30,11 @@ export default function ABTestPage() {
   const [variantB, setVariantB] = useState({ title: '', description: '' });
   const [isCreating, setIsCreating] = useState(false);
   const [variants, setVariants] = useState<Variant[]>([]);
+  const [testId, setTestId] = useState<string | null>(null);
+  const [testStatus, setTestStatus] = useState<'draft' | 'running' | 'completed'>('draft');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const handleCreateTest = () => {
+  const handleCreateTest = async () => {
     if (!testName.trim()) {
       toast.error('请输入测试名称');
       return;
@@ -43,55 +46,153 @@ export default function ABTestPage() {
 
     setIsCreating(true);
 
-    // 模拟创建A/B测试
-    setTimeout(() => {
-      const newVariants: Variant[] = [
-        {
-          id: 'A',
-          name: `变体 A`,
-          title: variantA.title,
-          description: variantA.description,
-          metrics: {
-            views: Math.floor(Math.random() * 10000),
-            ctr: Math.random() * 0.15,
-            avgWatchTime: Math.floor(Math.random() * 300),
-            engagement: Math.random() * 0.1,
-          },
+    try {
+      // 获取用户ID（简化处理，实际应该从session获取）
+      const userId = 'default-user';
+
+      const response = await fetch('/api/ab-tests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: testName,
+          type: 'title',
+          userId,
+          variants: [
+            { variantName: 'A', title: variantA.title, description: variantA.description },
+            { variantName: 'B', title: variantB.title, description: variantB.description },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('创建测试失败');
+      }
+
+      const data = await response.json();
+      setTestId(data.test.id);
+
+      // 转换数据格式
+      const newVariants: Variant[] = data.test.variants.map((v: any) => ({
+        id: v.id,
+        name: `变体 ${v.variantName}`,
+        title: v.title,
+        description: v.description,
+        thumbnail: v.thumbnail,
+        metrics: {
+          views: v.views || 0,
+          ctr: parseFloat(v.ctr || 0),
+          avgWatchTime: v.avgWatchTime || 0,
+          engagement: 0,
         },
-        {
-          id: 'B',
-          name: `变体 B`,
-          title: variantB.title,
-          description: variantB.description,
-          metrics: {
-            views: Math.floor(Math.random() * 10000),
-            ctr: Math.random() * 0.15,
-            avgWatchTime: Math.floor(Math.random() * 300),
-            engagement: Math.random() * 0.1,
-          },
-        },
-      ];
+      }));
 
       setVariants(newVariants);
-      setIsCreating(false);
+      setTestStatus('draft');
       toast.success('A/B测试创建成功');
 
       // 重置表单
       setTestName('');
       setVariantA({ title: '', description: '' });
       setVariantB({ title: '', description: '' });
-    }, 1500);
+    } catch (error) {
+      console.error('创建失败:', error);
+      toast.error(error instanceof Error ? error.message : '创建失败');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleStartTest = async () => {
+    if (!testId) return;
+
+    try {
+      const response = await fetch('/api/ab-tests', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testId, status: 'running' }),
+      });
+
+      if (!response.ok) throw new Error('启动测试失败');
+
+      setTestStatus('running');
+      toast.success('测试已启动');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '启动失败');
+    }
+  };
+
+  const handleStopTest = async () => {
+    if (!testId) return;
+
+    try {
+      const response = await fetch('/api/ab-tests', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testId, status: 'completed' }),
+      });
+
+      if (!response.ok) throw new Error('停止测试失败');
+
+      setTestStatus('completed');
+      toast.success('测试已停止');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '停止失败');
+    }
+  };
+
+  const refreshData = async () => {
+    if (!testId) return;
+
+    setIsRefreshing(true);
+    try {
+      const response = await fetch(`/api/ab-tests/${testId}`);
+      if (!response.ok) throw new Error('获取数据失败');
+
+      const data = await response.json();
+
+      const updatedVariants: Variant[] = data.test.variants.map((v: any) => ({
+        id: v.id,
+        name: `变体 ${v.variantName}`,
+        title: v.title,
+        description: v.description,
+        thumbnail: v.thumbnail,
+        metrics: {
+          views: v.views || 0,
+          ctr: parseFloat(v.ctr || 0),
+          avgWatchTime: v.avgWatchTime || 0,
+          engagement: parseFloat(v.conversionRate || 0),
+        },
+      }));
+
+      setVariants(updatedVariants);
+      setTestStatus(data.test.status);
+      toast.success('数据已更新');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '刷新失败');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // 模拟记录事件（实际应用中应该由前端自动记录）
+  const simulateImpression = async (variantId: string) => {
+    try {
+      await fetch('/api/ab-tests/record-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variantId, eventType: 'impression' }),
+      });
+      refreshData();
+    } catch (error) {
+      console.error('记录展示失败:', error);
+    }
   };
 
   const getWinner = () => {
     if (variants.length === 0) return null;
-
-    // 基于点击率判断胜者
-    const winner = variants.reduce((prev, current) =>
+    return variants.reduce((prev, current) =>
       prev.metrics.ctr > current.metrics.ctr ? prev : current
     );
-
-    return winner;
   };
 
   const formatPercent = (value: number) => {
@@ -168,11 +269,55 @@ export default function ABTestPage() {
         </div>
       </Card>
 
-      {/* 测试结果 */}
+      {/* 测试控制和结果 */}
       {variants.length > 0 && (
         <div className="space-y-6">
+          {/* 控制面板 */}
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Badge variant={testStatus === 'running' ? 'default' : testStatus === 'completed' ? 'secondary' : 'outline'}>
+                  {testStatus === 'draft' && '草稿'}
+                  {testStatus === 'running' && '进行中'}
+                  {testStatus === 'completed' && '已完成'}
+                </Badge>
+                <span className="text-sm text-gray-600">
+                  {testStatus === 'draft' && '点击启动开始测试'}
+                  {testStatus === 'running' && '测试进行中，数据实时更新'}
+                  {testStatus === 'completed' && '测试已结束，查看结果'}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                {testStatus === 'draft' && (
+                  <Button onClick={handleStartTest}>
+                    <Play className="w-4 h-4 mr-2" />
+                    启动测试
+                  </Button>
+                )}
+                {testStatus === 'running' && (
+                  <>
+                    <Button onClick={handleStopTest} variant="outline">
+                      <Square className="w-4 h-4 mr-2" />
+                      停止测试
+                    </Button>
+                    <Button onClick={refreshData} disabled={isRefreshing} variant="outline">
+                      <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      刷新数据
+                    </Button>
+                  </>
+                )}
+                {testStatus === 'completed' && (
+                  <Button onClick={refreshData} disabled={isRefreshing} variant="outline">
+                    <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    刷新数据
+                  </Button>
+                )}
+              </div>
+            </div>
+          </Card>
+
           {/* 胜者展示 */}
-          {(() => {
+          {testStatus === 'completed' && (() => {
             const winner = getWinner();
             if (!winner) return null;
             return (
@@ -204,7 +349,7 @@ export default function ABTestPage() {
                 >
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-semibold">{variant.name}</h3>
-                    {isWinner && (
+                    {isWinner && testStatus === 'completed' && (
                       <Badge className="bg-green-100 text-green-700">🏆 胜者</Badge>
                     )}
                   </div>
@@ -226,10 +371,10 @@ export default function ABTestPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Eye className="w-4 h-4" />
-                        播放量
+                        展示次数
                       </div>
                       <span className="font-semibold">
-                        {variant.metrics.views.toLocaleString()}
+                        {variant.metrics.views || 0}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -252,13 +397,24 @@ export default function ABTestPage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        互动率
+                        转化率
                       </div>
                       <span className="font-semibold">
                         {formatPercent(variant.metrics.engagement)}
                       </span>
                     </div>
                   </div>
+
+                  {testStatus === 'running' && (
+                    <Button
+                      onClick={() => simulateImpression(variant.id)}
+                      variant="outline"
+                      className="w-full mt-4"
+                      size="sm"
+                    >
+                      模拟一次展示
+                    </Button>
+                  )}
                 </Card>
               );
             })}

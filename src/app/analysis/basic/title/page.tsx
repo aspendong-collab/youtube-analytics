@@ -29,40 +29,29 @@ export default function TitleOptimizationPage() {
 
     setIsLoading(true);
 
-    // 模拟标题优化
-    setTimeout(() => {
-      const mockSuggestions: TitleSuggestion[] = [
-        {
-          title: `${inputTitle} - 零基础入门完整教程`,
-          score: 92,
-          reasons: ['增加了教程属性', '强调零基础友好', '完整教程增加价值感'],
+    try {
+      const response = await fetch('/api/ai/optimize-title', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        {
-          title: `【${inputTitle}】从入门到精通`,
-          score: 88,
-          reasons: ['使用方括号增加视觉突出', '从入门到精通覆盖全阶段'],
-        },
-        {
-          title: `${inputTitle} | 实战案例演示`,
-          score: 85,
-          reasons: ['强调实战价值', '增加案例演示元素'],
-        },
-        {
-          title: `必看！${inputTitle} 详细讲解`,
-          score: 82,
-          reasons: ['使用"必看"引发注意', '强调详细讲解'],
-        },
-        {
-          title: `${inputTitle}：新手也能学会的技巧`,
-          score: 78,
-          reasons: ['针对新手定位', '强调可学性'],
-        },
-      ];
+        body: JSON.stringify({ title: inputTitle }),
+      });
 
-      setSuggestions(mockSuggestions);
-      setIsLoading(false);
+      if (!response.ok) {
+        throw new Error('优化失败');
+      }
+
+      const data = await response.json();
+      setSuggestions(data.suggestions || []);
       toast.success('优化建议生成完成');
-    }, 1500);
+    } catch (error) {
+      console.error('优化失败:', error);
+      toast.error(error instanceof Error ? error.message : '优化失败');
+      setSuggestions([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCopy = async (index: number, title: string) => {

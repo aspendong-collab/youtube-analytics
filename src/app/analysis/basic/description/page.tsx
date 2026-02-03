@@ -31,32 +31,29 @@ export default function DescriptionOptimizationPage() {
 
     setIsLoading(true);
 
-    // 模拟描述优化
-    setTimeout(() => {
-      const baseText = inputDescription || title;
+    try {
+      const response = await fetch('/api/ai/optimize-description', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title, description: inputDescription }),
+      });
 
-      const mockSuggestions: DescriptionSuggestion[] = [
-        {
-          description: `【${title}】\n\n${baseText}\n\n📚 本视频将帮助你：\n• 快速掌握核心概念\n• 学习实用技巧和方法\n• 避免常见错误\n\n🔗 相关资源链接\n💬 欢迎在评论区交流互动\n👍 觉得有用请点赞关注`,
-          score: 92,
-          highlights: ['清晰的结构', '包含要点总结', '引导互动', '相关资源链接'],
-        },
-        {
-          description: `${title} | 完整教程\n\n${baseText}\n\n⏰ 时间戳：\n00:00 - 开场介绍\n05:00 - 核心内容\n15:00 - 案例演示\n20:00 - 总结\n\n📢 订阅频道，获取更多精彩内容！`,
-          score: 88,
-          highlights: ['添加时间戳', '改善可读性', '包含章节导航'],
-        },
-        {
-          description: `🎯 ${title}\n\n${baseText}\n\n🎓 学习目标：\n1. 理解基本原理\n2. 掌握实际应用\n3. 提升专业能力\n\n📌 关键点：\n- 详细讲解\n- 实战案例\n- 最佳实践\n\n✅ 适合人群：\n• 初学者\n• 进阶用户\n• 专业人士`,
-          score: 85,
-          highlights: ['明确学习目标', '分类清晰', '目标用户定位'],
-        },
-      ];
+      if (!response.ok) {
+        throw new Error('优化失败');
+      }
 
-      setSuggestions(mockSuggestions);
+      const data = await response.json();
+      setSuggestions(data.suggestions || []);
       setIsLoading(false);
       toast.success('优化建议生成完成');
-    }, 1500);
+    } catch (error) {
+      console.error('优化失败:', error);
+      toast.error(error instanceof Error ? error.message : '优化失败');
+      setSuggestions([]);
+      setIsLoading(false);
+    }
   };
 
   const handleCopy = async (index: number, description: string) => {

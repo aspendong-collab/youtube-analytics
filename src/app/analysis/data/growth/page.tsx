@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { TrendingUp, Users, Calendar, Activity, ArrowUp, ArrowDown } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 interface GrowthData {
   channelId: string;
@@ -88,12 +89,6 @@ export default function GrowthAnalysisPage() {
     return num.toString();
   };
 
-  const getMaxChange = () => {
-    if (!growthData) return 0;
-    const changes = growthData.growthHistory.map(h => Math.abs(h.dailyChange));
-    return Math.max(...changes);
-  };
-
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
@@ -148,26 +143,64 @@ export default function GrowthAnalysisPage() {
               </div>
             </div>
 
-            {/* 增长历史曲线 */}
+            {/* 增长历史曲线图表 */}
             <div>
-              <h4 className="font-medium mb-3">30天增长趋势</h4>
-              <div className="h-48 flex items-end gap-1">
-                {growthData.growthHistory.map((day, index) => {
-                  const barHeight = Math.abs(day.dailyChange) / getMaxChange() * 100;
-                  const isPositive = day.dailyChange >= 0;
-                  return (
-                    <div key={index} className="flex-1 flex flex-col items-center">
-                      <div
-                        className={`w-full transition-all ${isPositive ? 'bg-green-500' : 'bg-red-500'}`}
-                        style={{ height: `${Math.max(barHeight, 5)}%` }}
-                      />
-                      <div className="text-xs mt-1 text-gray-500">
-                        {day.date.split('-').slice(1).join('/')}
-                      </div>
-                    </div>
-                  );
-                })}
+              <h4 className="font-medium mb-3">30天粉丝增长趋势</h4>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={growthData.growthHistory}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(value) => value.split('-').slice(1).join('/')}
+                    />
+                    <YAxis
+                      tickFormatter={(value) => formatNumber(value)}
+                    />
+                    <Tooltip
+                      labelFormatter={(value) => value}
+                      formatter={(value: number) => formatNumber(value)}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="subscribers"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      dot={{ fill: '#3b82f6' }}
+                      activeDot={{ r: 8 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
+            </div>
+          </Card>
+
+          {/* 每日变化柱状图 */}
+          <Card className="p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Activity className="w-5 h-5" />
+              每日变化趋势
+            </h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={growthData.growthHistory}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(value) => value.split('-').slice(1).join('/')}
+                  />
+                  <YAxis tickFormatter={(value) => `${value >= 0 ? '+' : ''}${value}`} />
+                  <Tooltip
+                    labelFormatter={(value) => value}
+                    formatter={(value: number) => `${value >= 0 ? '+' : ''}${value}`}
+                  />
+                  <Bar
+                    dataKey="dailyChange"
+                    fill={(entry) => entry.dailyChange >= 0 ? '#22c55e' : '#ef4444'}
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </Card>
 
@@ -218,7 +251,7 @@ export default function GrowthAnalysisPage() {
               <TrendingUp className="w-5 h-5" />
               未来预测
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               {growthData.predictions.map((prediction, index) => (
                 <div key={index} className="text-center p-4 bg-white rounded-lg border">
                   <div className="text-sm text-gray-600 mb-1">{prediction.month}</div>
@@ -230,6 +263,17 @@ export default function GrowthAnalysisPage() {
                   </div>
                 </div>
               ))}
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={growthData.predictions}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis tickFormatter={(value) => formatNumber(value)} />
+                  <Tooltip formatter={(value: number) => formatNumber(value)} />
+                  <Bar dataKey="predictedSubscribers" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </Card>
         </div>
