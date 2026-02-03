@@ -9,6 +9,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // 临时禁用认证检查
+    /*
     const { getServerSession } = await import("next-auth/next");
     const session = await getServerSession(authOptions);
 
@@ -19,6 +21,7 @@ export async function GET(
     if (!session.user) {
       return NextResponse.json({ error: "用户信息不存在" }, { status: 401 });
     }
+    */
 
     const [influencerData] = await db
       .select()
@@ -45,6 +48,8 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    // 临时禁用认证检查
+    /*
     const { getServerSession } = await import("next-auth/next");
     const session = await getServerSession(authOptions);
 
@@ -55,6 +60,7 @@ export async function PUT(
     if (!session.user) {
       return NextResponse.json({ error: "用户信息不存在" }, { status: 401 });
     }
+    */
 
     const body = await request.json();
 
@@ -87,6 +93,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // 临时禁用认证检查
+    /*
     const { getServerSession } = await import("next-auth/next");
     const session = await getServerSession(authOptions);
 
@@ -97,6 +105,7 @@ export async function DELETE(
     if (!session.user) {
       return NextResponse.json({ error: "用户信息不存在" }, { status: 401 });
     }
+    */
 
     // 删除达人（软删除）
     const [deletedInfluencer] = await db

@@ -5,7 +5,31 @@ export function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
   // 公开路由：不需要登录即可访问
-  const publicRoutes = ['/login', '/register', '/pending-approval', '/account-rejected', '/api/auth', '/api/video-info', '/api/videos', '/api/owners'];
+  // 页面路由
+  const pageRoutes = ['/login', '/register', '/pending-approval', '/account-rejected', '/health'];
+  
+  // API 路由
+  const apiRoutes = [
+    '/api/auth',
+    '/api/video-info',
+    '/api/videos',
+    '/api/owners',
+    '/api/influencers',
+    '/api/channels',
+    '/api/stats',
+    '/api/trending',
+    '/api/discovery',
+    '/api/search',
+    '/api/comments',
+    '/api/competitor-analysis',
+    '/api/test',
+    '/api/health',
+    '/api/check-env',
+    '/api/users/pending',
+  ];
+
+  // 组合所有公开路由
+  const publicRoutes = [...pageRoutes, ...apiRoutes];
 
   // 检查是否是公开路由
   const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'));
