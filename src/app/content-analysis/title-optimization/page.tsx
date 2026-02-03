@@ -11,22 +11,26 @@ import { useAnalysis } from '@/contexts/analysis-context';
 import { toast } from 'sonner';
 import { Target, TrendingUp, Lightbulb, Copy, Check, Wand2 } from 'lucide-react';
 
-interface SuggestedTitle {
-  title: string;
-  reason: string;
-  estimatedCTR: number;
+interface TitleAnalysisResult {
+  score: number;
+  keywordCoverage: string;
+  lengthAnalysis: string;
+  suggestions: string[];
+  optimizationReasons: string[];
 }
 
 export default function TitleOptimizationPage() {
   const { selectedVideo, setSelectedVideo } = useAnalysis();
   const [currentTitle, setCurrentTitle] = useState('');
-  const [suggestedTitles, setSuggestedTitles] = useState<SuggestedTitle[]>([]);
+  const [analysis, setAnalysis] = useState<TitleAnalysisResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [copiedTitle, setCopiedTitle] = useState<string | null>(null);
+  const [copiedText, setCopiedText] = useState<string | null>(null);
 
-  const handleGenerate = async () => {
-    if (!selectedVideo) {
-      toast.error('请先选择视频');
+  const handleAnalyze = async () => {
+    const titleToAnalyze = currentTitle || selectedVideo?.title || '';
+
+    if (!titleToAnalyze) {
+      toast.error('请输入或选择视频标题');
       return;
     }
 
@@ -37,60 +41,51 @@ export default function TitleOptimizationPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: currentTitle || selectedVideo.title,
+          title: titleToAnalyze,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('生成失败');
+        throw new Error('分析失败');
       }
 
       const data = await response.json();
+      setAnalysis(data);
 
-      // 模拟建议数据（如果没有返回真实数据）
-      const suggestions = data.suggestions || [
-        {
-          title: `10个技巧：${selectedVideo.title}`,
-          reason: '添加数字和"技巧"可以提升点击率',
-          estimatedCTR: 8.5,
-        },
-        {
-          title: `🔥 ${selectedVideo.title} - 必看指南`,
-          reason: '使用表情符号和强调词吸引注意力',
-          estimatedCTR: 9.2,
-        },
-        {
-          title: `为什么你应该看${selectedVideo.title}`,
-          reason: '使用疑问句激发好奇心',
-          estimatedCTR: 7.8,
-        },
-      ];
-
-      setSuggestedTitles(suggestions);
-      setCurrentTitle(selectedVideo.title);
-
-      toast.success('生成成功', {
-        description: '已生成多个优化建议',
+      toast.success('分析完成', {
+        description: `标题评分：${data.score}分`,
       });
     } catch (error) {
-      console.error('生成标题失败:', error);
-      toast.error('生成失败', {
-        description: '无法生成优化建议',
+      console.error('分析失败:', error);
+      toast.error('分析失败', {
+        description: '无法完成标题分析',
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleCopy = async (title: string) => {
+  const handleCopy = async (text: string) => {
     try {
-      await navigator.clipboard.writeText(title);
-      setCopiedTitle(title);
-      setTimeout(() => setCopiedTitle(null), 2000);
+      await navigator.clipboard.writeText(text);
+      setCopiedText(text);
+      setTimeout(() => setCopiedText(null), 2000);
       toast.success('已复制到剪贴板');
     } catch (error) {
       toast.error('复制失败');
     }
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 8) return 'text-green-500';
+    if (score >= 6) return 'text-yellow-500';
+    return 'text-red-500';
+  };
+
+  const getScoreBg = (score: number) => {
+    if (score >= 8) return 'bg-green-50 border-green-200';
+    if (score >= 6) return 'bg-yellow-50 border-yellow-200';
+    return 'bg-red-50 border-red-200';
   };
 
   return (
@@ -108,12 +103,12 @@ export default function TitleOptimizationPage() {
       />
 
       {/* 当前标题和生成按钮 */}
-      {!selectedVideo ? (
+      {!selectedVideo && !currentTitle ? (
         <Card className="p-12 bg-white border-[rgba(0,0,0,0.08)]">
           <div className="text-center text-[#86868B]">
             <Wand2 className="w-16 h-16 mx-auto mb-4 opacity-50" />
-            <p className="text-lg mb-2">请选择要优化的视频</p>
-            <p className="text-sm">选择视频后将可以进行标题优化</p>
+            <p className="text-lg mb-2">请选择视频或输入标题</p>
+            <p className="text-sm">选择视频或输入标题后可以进行标题优化</p>
           </div>
         </Card>
       ) : (
@@ -124,86 +119,138 @@ export default function TitleOptimizationPage() {
               当前标题
             </Label>
             <Input
-              value={currentTitle || selectedVideo.title}
+              value={currentTitle || selectedVideo?.title || ''}
               onChange={(e) => setCurrentTitle(e.target.value)}
               placeholder="输入或修改当前标题"
               className="text-lg"
             />
             <div className="flex justify-between mt-3">
               <span className="text-xs text-[#86868B]">
-                当前标题长度：{(currentTitle || selectedVideo.title).length} 字符
+                当前标题长度：{(currentTitle || selectedVideo?.title || '').length} 字符
               </span>
               <Button
-                onClick={handleGenerate}
+                onClick={handleAnalyze}
                 disabled={isLoading}
                 className="bg-[#007AFF] hover:bg-[#0066CC]"
               >
-                {isLoading ? '生成中...' : '生成优化建议'}
+                {isLoading ? '分析中...' : '开始分析'}
               </Button>
             </div>
           </Card>
 
-          {/* 优化建议 */}
-          {suggestedTitles.length > 0 && (
-            <Card className="p-6 bg-white border-[rgba(0,0,0,0.08)]">
-              <div className="flex items-center gap-2 mb-4">
-                <Lightbulb className="w-5 h-5 text-yellow-500" />
-                <h3 className="text-lg font-semibold text-[#1D1D1F]">优化建议</h3>
-              </div>
-
-              <div className="space-y-4">
-                {suggestedTitles.map((suggestion, index) => (
-                  <div
-                    key={index}
-                    className="p-4 border border-[rgba(0,0,0,0.08)] rounded-lg hover:border-[#007AFF]/30 transition-all"
+          {/* 分析结果 */}
+          {analysis && (
+            <div className="space-y-6">
+              {/* 评分 */}
+              <Card className={`p-6 border ${getScoreBg(analysis.score)}`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-[#1D1D1F]">标题评分</h3>
+                  <Badge
+                    variant="outline"
+                    className={`${getScoreColor(analysis.score)} border-current`}
                   >
-                    <div className="flex items-start justify-between gap-4 mb-2">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-[#1D1D1F] mb-1">
-                          {suggestion.title}
-                        </h4>
-                        <p className="text-sm text-[#86868B] mb-2">
-                          {suggestion.reason}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                          <TrendingUp className="w-3 h-3 mr-1" />
-                          预计 CTR: {suggestion.estimatedCTR}%
-                        </Badge>
-                      </div>
+                    {analysis.score}/10 分
+                  </Badge>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-4">
+                  <div
+                    className={`h-4 rounded-full transition-all ${
+                      analysis.score >= 8
+                        ? 'bg-green-500'
+                        : analysis.score >= 6
+                        ? 'bg-yellow-500'
+                        : 'bg-red-500'
+                    }`}
+                    style={{ width: `${analysis.score * 10}%` }}
+                  />
+                </div>
+              </Card>
+
+              {/* 详细分析 */}
+              <Card className="p-6 bg-white border-[rgba(0,0,0,0.08)]">
+                <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4">详细分析</h3>
+
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Target className="w-5 h-5 text-blue-500" />
+                      <h4 className="font-medium text-[#1D1D1F]">关键词覆盖度</h4>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCopy(suggestion.title)}
-                        className="flex-1"
-                      >
-                        {copiedTitle === suggestion.title ? (
-                          <>
-                            <Check className="w-4 h-4 mr-2" />
-                            已复制
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-4 h-4 mr-2" />
-                            复制标题
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentTitle(suggestion.title)}
-                      >
-                        应用此标题
-                      </Button>
-                    </div>
+                    <p className="text-sm text-[#86868B]">{analysis.keywordCoverage}</p>
                   </div>
-                ))}
-              </div>
-            </Card>
+
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="w-5 h-5 text-purple-500" />
+                      <h4 className="font-medium text-[#1D1D1F]">长度分析</h4>
+                    </div>
+                    <p className="text-sm text-[#86868B]">{analysis.lengthAnalysis}</p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* 优化建议 */}
+              {analysis.suggestions.length > 0 && (
+                <Card className="p-6 bg-white border-[rgba(0,0,0,0.08)]">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Lightbulb className="w-5 h-5 text-yellow-500" />
+                    <h3 className="text-lg font-semibold text-[#1D1D1F]">优化建议</h3>
+                  </div>
+
+                  <div className="space-y-3">
+                    {analysis.suggestions.map((suggestion, index) => (
+                      <div
+                        key={index}
+                        className="flex items-start gap-3 p-4 border border-[rgba(0,0,0,0.08)] rounded-lg hover:border-[#007AFF]/30 transition-all"
+                      >
+                        <div className="flex-1">
+                          <p className="text-sm text-[#1D1D1F] mb-2">{suggestion}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCopy(suggestion)}
+                        >
+                          {copiedText === suggestion ? (
+                            <>
+                              <Check className="w-4 h-4 mr-2" />
+                              已复制
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-4 h-4 mr-2" />
+                              复制
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* 优化原因 */}
+              {analysis.optimizationReasons.length > 0 && (
+                <Card className="p-6 bg-white border-[rgba(0,0,0,0.08)]">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Target className="w-5 h-5 text-green-500" />
+                    <h3 className="text-lg font-semibold text-[#1D1D1F]">优化原因</h3>
+                  </div>
+
+                  <div className="space-y-2">
+                    {analysis.optimizationReasons.map((reason, index) => (
+                      <div
+                        key={index}
+                        className="flex items-start gap-2 text-sm"
+                      >
+                        <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-[#1D1D1F]">{reason}</span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+            </div>
           )}
 
           {/* 标题优化技巧 */}

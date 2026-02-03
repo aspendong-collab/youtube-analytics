@@ -10,25 +10,29 @@ import { toast } from 'sonner';
 import { Clock, TrendingUp, Calendar, Sun, Moon } from 'lucide-react';
 
 interface TimeSlot {
-  key: string;
-  day: number;
-  hour: number;
   dayName: string;
-  timeLabel: string;
+  hour: number;
   avgViews: number;
   videoCount: number;
-  totalViews: number;
+  aboveAvg: string;
+}
+
+interface HeatmapSlot {
+  day: number;
+  hour: number;
+  value: number;
 }
 
 interface PublishTimeResult {
   topTimes: TimeSlot[];
-  avgViews: number;
+  heatmap: HeatmapSlot[];
+  averageViews: number;
   recommendations: string[];
-  analysis: {
-    bestDay: string;
-    bestHour: number;
-    peakHours: number[];
-    peakDays: number[];
+  summary: {
+    totalAnalyzed: number;
+    uniqueTimeSlots: number;
+    bestTimeSlot: string;
+    worstTimeSlot: string;
   };
 }
 
@@ -66,21 +70,29 @@ export default function PublishTimePage() {
   };
 
   const isTopTime = (day: number, hour: number) => {
-    return result?.topTimes.some(t => t.day === day && t.hour === hour);
+    return result?.topTimes.some(t => {
+      const dayIndex = WEEKDAYS.indexOf(t.dayName);
+      return dayIndex === day && t.hour === hour;
+    });
   };
 
-  const getTimeSlotViews = (day: number, hour: number) => {
-    return result?.topTimes.find(t => t.day === day && t.hour === hour)?.avgViews || 0;
+  const getTimeSlotValue = (day: number, hour: number) => {
+    return result?.heatmap.find(h => h.day === day && h.hour === hour)?.value || 0;
   };
 
-  const getHeatmapColor = (views: number, maxViews: number) => {
-    const intensity = views / maxViews;
+  const getHeatmapColor = (value: number, maxValue: number) => {
+    const intensity = maxValue > 0 ? value / maxValue : 0;
     if (intensity > 0.8) return 'bg-red-500';
     if (intensity > 0.6) return 'bg-orange-500';
     if (intensity > 0.4) return 'bg-yellow-400';
     if (intensity > 0.2) return 'bg-yellow-200';
     return 'bg-gray-100';
   };
+
+  const bestTimeSlot = result?.summary.bestTimeSlot || '';
+  const bestDay = bestTimeSlot.split(' ')[0] || '';
+  const bestHourStr = bestTimeSlot.split(' ')[1] || '';
+  const bestHour = parseInt(bestHourStr) || 0;
 
   return (
     <div className="p-8 space-y-6">
@@ -160,6 +172,12 @@ export default function PublishTimePage() {
                       <span>平均播放: {time.avgViews.toLocaleString()}</span>
                       <span>•</span>
                       <span>视频数量: {time.videoCount}</span>
+                      {time.aboveAvg !== 'NaN%' && (
+                        <>
+                          <span>•</span>
+                          <span>高于均值: {time.aboveAvg}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -178,28 +196,28 @@ export default function PublishTimePage() {
               <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-xs text-[#86868B] mb-1">最佳发布日</p>
                 <p className="text-lg font-semibold text-[#1D1D1F]">
-                  {result.analysis.bestDay}
+                  {bestDay}
                 </p>
               </div>
 
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-xs text-[#86868B] mb-1">最佳发布时间</p>
                 <p className="text-lg font-semibold text-[#1D1D1F]">
-                  {result.analysis.bestHour}:00
+                  {bestHourStr}
                 </p>
               </div>
 
               <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-xs text-[#86868B] mb-1">高峰时段</p>
+                <p className="text-xs text-[#86868B] mb-1">平均播放量</p>
                 <p className="text-lg font-semibold text-[#1D1D1F]">
-                  {result.analysis.peakHours.join(', ')}:00
+                  {result.averageViews.toLocaleString()}
                 </p>
               </div>
 
               <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                <p className="text-xs text-[#86868B] mb-1">高峰日期</p>
+                <p className="text-xs text-[#86868B] mb-1">分析视频数</p>
                 <p className="text-lg font-semibold text-[#1D1D1F]">
-                  {result.analysis.peakDays.map(d => WEEKDAYS[d]).join(', ')}
+                  {result.summary.totalAnalyzed}
                 </p>
               </div>
             </div>
@@ -232,22 +250,22 @@ export default function PublishTimePage() {
                     <div className="text-xs text-[#86868B] text-center p-2 flex items-center justify-center">
                       {hour}:00
                     </div>
-                    {WEEKDAYS.map((day, dayIndex) => {
-                      const views = getTimeSlotViews(dayIndex, hour);
-                      const maxViews = result.topTimes[0]?.avgViews || 1;
+                    {WEEKDAYS.map((_, dayIndex) => {
+                      const value = getTimeSlotValue(dayIndex, hour);
+                      const maxValue = Math.max(...result.heatmap.map(h => h.value), 1);
                       const isTop = isTopTime(dayIndex, hour);
                       return (
                         <div
                           key={dayIndex}
                           className={`
                             text-xs text-center p-2 rounded cursor-pointer
-                            ${getHeatmapColor(views, maxViews)}
+                            ${getHeatmapColor(value, maxValue)}
                             ${isTop ? 'ring-2 ring-[#007AFF] ring-offset-2' : ''}
                             hover:opacity-80 transition-opacity
                           `}
-                          title={`${day} ${hour}:00: 平均 ${views.toLocaleString()} 次播放`}
+                          title={`${WEEKDAYS[dayIndex]} ${hour}:00: 播放量 ${value.toLocaleString()}`}
                         >
-                          {views > 0 ? (views / 1000).toFixed(0) + 'k' : '-'}
+                          {value > 0 ? (value / 1000).toFixed(0) + 'k' : '-'}
                         </div>
                       );
                     })}

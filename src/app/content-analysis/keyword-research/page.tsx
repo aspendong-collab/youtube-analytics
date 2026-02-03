@@ -7,25 +7,34 @@ import { Badge } from '@/components/ui/badge';
 import { VideoSelector } from '@/components/video-selector';
 import { useAnalysis } from '@/contexts/analysis-context';
 import { toast } from 'sonner';
-import { Search, TrendingUp, ArrowUp, ArrowDown, Minus, Tag, Hash } from 'lucide-react';
-
-interface TrendKeyword {
-  keyword: string;
-  count: number;
-  growth: number;
-  avgViews: number;
-  category: string;
-}
+import { Search, TrendingUp, Tag, Hash, Clock, Lightbulb } from 'lucide-react';
 
 interface TrendResult {
-  highGrowthKeywords: TrendKeyword[];
-  trendingTags: string[];
-  hotCategories: {
-    category: string;
-    count: number;
-    avgViews: number;
+  hotTopics: string[];
+  highGrowthVideos: {
+    videoId: string;
+    title: string;
+    growthRate: string;
+    views: number;
   }[];
-  recommendations: string[];
+  highGrowthFeatures: {
+    commonTags: string[];
+    dominantCategories: string[];
+    avgGrowthRate: string;
+  };
+  publishTimePattern: {
+    bestDay: string;
+    bestHour: string;
+    bestDayCount: number;
+    bestHourCount: number;
+  };
+  suggestions: string[];
+  summary: {
+    totalVideosAnalyzed: number;
+    highGrowthVideosCount: number;
+    avgGrowthRate: string;
+    topTrend: string;
+  };
 }
 
 export default function KeywordResearchPage() {
@@ -57,18 +66,6 @@ export default function KeywordResearchPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const getGrowthIcon = (growth: number) => {
-    if (growth > 10) return <ArrowUp className="w-4 h-4 text-green-500" />;
-    if (growth < -10) return <ArrowDown className="w-4 h-4 text-red-500" />;
-    return <Minus className="w-4 h-4 text-yellow-500" />;
-  };
-
-  const getGrowthColor = (growth: number) => {
-    if (growth > 10) return 'text-green-500';
-    if (growth < -10) return 'text-red-500';
-    return 'text-yellow-500';
   };
 
   return (
@@ -115,116 +112,161 @@ export default function KeywordResearchPage() {
         </Card>
       ) : trendResult ? (
         <div className="space-y-6">
-          {/* 高增长关键词 */}
+          {/* 分析摘要 */}
           <Card className="p-6 bg-white border-[rgba(0,0,0,0.08)]">
             <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="w-5 h-5 text-green-500" />
-              <h3 className="text-lg font-semibold text-[#1D1D1F]">高增长关键词</h3>
-              <Badge variant="secondary">TOP 10</Badge>
+              <TrendingUp className="w-5 h-5 text-[#007AFF]" />
+              <h3 className="text-lg font-semibold text-[#1D1D1F]">分析摘要</h3>
             </div>
 
-            <div className="space-y-3">
-              {trendResult.highGrowthKeywords.map((keyword, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-4 p-4 border border-[rgba(0,0,0,0.08)] rounded-lg hover:border-[#007AFF]/30 transition-all"
-                >
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs text-[#86868B] mb-1">分析视频数</p>
+                <p className="text-2xl font-semibold text-[#1D1D1F]">
+                  {trendResult.summary.totalVideosAnalyzed}
+                </p>
+              </div>
+
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-xs text-[#86868B] mb-1">高增长视频</p>
+                <p className="text-2xl font-semibold text-[#1D1D1F]">
+                  {trendResult.summary.highGrowthVideosCount}
+                </p>
+              </div>
+
+              <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                <p className="text-xs text-[#86868B] mb-1">平均增长率</p>
+                <p className="text-2xl font-semibold text-[#1D1D1F]">
+                  {trendResult.summary.avgGrowthRate}
+                </p>
+              </div>
+
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-xs text-[#86868B] mb-1">热门趋势</p>
+                <p className="text-lg font-semibold text-[#1D1D1F]">
+                  {trendResult.summary.topTrend}
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          {/* 热门话题 */}
+          {trendResult.hotTopics.length > 0 && (
+            <Card className="p-6 bg-white border-[rgba(0,0,0,0.08)]">
+              <div className="flex items-center gap-2 mb-4">
+                <Hash className="w-5 h-5 text-purple-500" />
+                <h3 className="text-lg font-semibold text-[#1D1D1F]">热门话题</h3>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {trendResult.hotTopics.map((topic, index) => (
                   <Badge
-                    variant="outline"
-                    className="w-8 h-8 flex items-center justify-center p-0"
+                    key={index}
+                    variant="secondary"
+                    className="px-4 py-2 cursor-pointer hover:bg-[#007AFF] hover:text-white transition-colors"
                   >
-                    {index + 1}
+                    #{topic}
                   </Badge>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-[#1D1D1F]">
-                        {keyword.keyword}
-                      </span>
-                      {getGrowthIcon(keyword.growth)}
-                      <span className={`text-sm ${getGrowthColor(keyword.growth)}`}>
-                        {keyword.growth > 0 ? '+' : ''}
-                        {keyword.growth.toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-[#86868B]">
-                      <span>使用次数: {keyword.count}</span>
-                      <span>•</span>
-                      <span>平均播放: {(keyword.avgViews / 1000).toFixed(1)}k</span>
-                      <span>•</span>
-                      <span>{keyword.category}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
+                ))}
+              </div>
+            </Card>
+          )}
 
-          {/* 热门标签 */}
-          <Card className="p-6 bg-white border-[rgba(0,0,0,0.08)]">
-            <div className="flex items-center gap-2 mb-4">
-              <Tag className="w-5 h-5 text-[#007AFF]" />
-              <h3 className="text-lg font-semibold text-[#1D1D1F]">热门标签</h3>
-            </div>
+          {/* 常用标签 */}
+          {trendResult.highGrowthFeatures.commonTags.length > 0 && (
+            <Card className="p-6 bg-white border-[rgba(0,0,0,0.08)]">
+              <div className="flex items-center gap-2 mb-4">
+                <Tag className="w-5 h-5 text-[#007AFF]" />
+                <h3 className="text-lg font-semibold text-[#1D1D1F]">常用标签</h3>
+              </div>
 
-            <div className="flex flex-wrap gap-2">
-              {trendResult.trendingTags.map((tag, index) => (
-                <Badge
-                  key={index}
-                  variant="secondary"
-                  className="px-4 py-2 cursor-pointer hover:bg-[#007AFF] hover:text-white transition-colors"
-                >
-                  #{tag}
-                </Badge>
-              ))}
-            </div>
-          </Card>
+              <div className="flex flex-wrap gap-2">
+                {trendResult.highGrowthFeatures.commonTags.map((tag, index) => (
+                  <Badge
+                    key={index}
+                    variant="outline"
+                    className="px-4 py-2 cursor-pointer hover:bg-[#007AFF]/10 hover:border-[#007AFF] transition-colors"
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {/* 热门分类 */}
+          {trendResult.highGrowthFeatures.dominantCategories.length > 0 && (
+            <Card className="p-6 bg-white border-[rgba(0,0,0,0.08)]">
+              <div className="flex items-center gap-2 mb-4">
+                <Hash className="w-5 h-5 text-purple-500" />
+                <h3 className="text-lg font-semibold text-[#1D1D1F]">热门分类</h3>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {trendResult.highGrowthFeatures.dominantCategories.map((category, index) => (
+                  <Badge
+                    key={index}
+                    variant="outline"
+                    className="px-4 py-2 bg-purple-50 text-purple-700 border-purple-200"
+                  >
+                    {category}
+                  </Badge>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* 发布时间模式 */}
           <Card className="p-6 bg-white border-[rgba(0,0,0,0.08)]">
             <div className="flex items-center gap-2 mb-4">
-              <Hash className="w-5 h-5 text-purple-500" />
-              <h3 className="text-lg font-semibold text-[#1D1D1F]">热门分类</h3>
+              <Clock className="w-5 h-5 text-blue-500" />
+              <h3 className="text-lg font-semibold text-[#1D1D1F]">最佳发布时间</h3>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {trendResult.hotCategories.map((category, index) => (
-                <div
-                  key={index}
-                  className="p-4 bg-purple-50 border border-purple-200 rounded-lg"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-[#1D1D1F]">
-                      {category.category}
-                    </span>
-                    <Badge variant="secondary">{category.count} 个视频</Badge>
-                  </div>
-                  <p className="text-xs text-[#86868B]">
-                    平均播放: {(category.avgViews / 1000).toFixed(1)}k
-                  </p>
-                </div>
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs text-[#86868B] mb-1">最佳发布日</p>
+                <p className="text-2xl font-semibold text-[#1D1D1F]">
+                  {trendResult.publishTimePattern.bestDay}
+                </p>
+                <p className="text-xs text-[#86868B] mt-1">
+                  {trendResult.publishTimePattern.bestDayCount} 个视频在此日发布
+                </p>
+              </div>
+
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-xs text-[#86868B] mb-1">最佳发布时间</p>
+                <p className="text-2xl font-semibold text-[#1D1D1F]">
+                  {trendResult.publishTimePattern.bestHour}
+                </p>
+                <p className="text-xs text-[#86868B] mt-1">
+                  {trendResult.publishTimePattern.bestHourCount} 个视频在此时间发布
+                </p>
+              </div>
             </div>
           </Card>
 
           {/* 优化建议 */}
-          <Card className="p-6 bg-white border-[rgba(0,0,0,0.08)]">
-            <div className="flex items-center gap-2 mb-4">
-              <Search className="w-5 h-5 text-yellow-500" />
-              <h3 className="text-lg font-semibold text-[#1D1D1F]">关键词优化建议</h3>
-            </div>
+          {trendResult.suggestions.length > 0 && (
+            <Card className="p-6 bg-white border-[rgba(0,0,0,0.08)]">
+              <div className="flex items-center gap-2 mb-4">
+                <Lightbulb className="w-5 h-5 text-yellow-500" />
+                <h3 className="text-lg font-semibold text-[#1D1D1F]">优化建议</h3>
+              </div>
 
-            <div className="space-y-3">
-              {trendResult.recommendations.map((recommendation, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg"
-                >
-                  <div className="text-blue-600 mt-0.5">💡</div>
-                  <p className="text-sm text-[#1D1D1F]">{recommendation}</p>
-                </div>
-              ))}
-            </div>
-          </Card>
+              <div className="space-y-3">
+                {trendResult.suggestions.map((suggestion, index) => (
+                  <div
+                    key={index}
+                    className="flex items-start gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg"
+                  >
+                    <div className="text-yellow-600 mt-0.5">💡</div>
+                    <p className="text-sm text-[#1D1D1F]">{suggestion}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
         </div>
       ) : null}
     </div>
