@@ -1,0 +1,11 @@
+#!/bin/bash
+echo "请按以下步骤手动部署："
+echo "1. 访问 Vercel Dashboard: https://vercel.com/dashboard"
+echo "2. 找到 youtube-analytics 项目"
+echo "3. 点击 'Deployments' 标签页"
+echo "4. 点击右上角的 'New Deployment' 或 'Redeploy' 按钮"
+echo "5. 选择 'main' 分支并点击 'Deploy'"
+echo ""
+echo "或者使用以下命令在本地触发部署（需要先登录 Vercel）："
+echo "  vercel login"
+echo "  vercel --prod"
