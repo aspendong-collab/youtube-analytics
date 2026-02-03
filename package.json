@@ -47,8 +47,9 @@
     "drizzle-zod": "^0.5.1",
     "embla-carousel-autoplay": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
+    "eslint-config-next": "14.2.18",
     "lucide-react": "^0.469.0",
-    "next": "15.2.8",
+    "next": "14.2.18",
     "next-auth": "4.24.6",
     "postgres": "^3.4.5",
     "react": "18.3.1",
@@ -68,7 +69,6 @@
     "@types/react-dom": "18.3.1",
     "drizzle-kit": "^0.30.2",
     "eslint": "^9.18.0",
-    "eslint-config-next": "15.2.4",
     "postcss": "^8.4.49",
     "tailwindcss": "^4.0.0"
   }
