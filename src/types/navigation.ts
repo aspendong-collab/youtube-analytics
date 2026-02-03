@@ -35,10 +35,10 @@ export const navItems: NavItem[] = [
     ],
   },
   {
-    id: 'competitor-analysis',
-    label: '竞品分析',
-    icon: '🎯',
-    path: '/competitor',
+    id: 'influencers',
+    label: '达人管理',
+    icon: '👥',
+    path: '/influencers',
   },
   {
     id: 'content-optimization',

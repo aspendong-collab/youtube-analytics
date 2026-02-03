@@ -238,6 +238,60 @@ export const abTestResults = pgTable(
   })
 );
 
+// Influencers 表 - 存储达人信息
+export const influencers = pgTable(
+  "influencers",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    channelId: varchar("channel_id", { length: 50 }).notNull().unique(), // YouTube 频道ID
+    channelTitle: varchar("channel_title", { length: 200 }).notNull(),
+    thumbnail: text("thumbnail"), // 频道头像
+    subscriberCount: integer("subscriber_count").default(0), // 订阅数
+    totalVideos: integer("total_videos").default(0), // 总视频数
+    totalViews: integer("total_views").default(0), // 总观看数
+    // 达人信息
+    email: varchar("email", { length: 255 }), // 联系邮箱
+    phone: varchar("phone", { length: 20 }), // 联系电话
+    wechat: varchar("wechat", { length: 50 }), // 微信号
+    description: text("description"), // 达人简介
+    // 达人标签
+    tags: jsonb("tags").$type<string[]>(), // 标签：科技、美妆、游戏等
+    category: varchar("category", { length: 50 }), // 分类
+    niche: varchar("niche", { length: 100 }), // 细分领域
+    // 达人等级
+    level: varchar("level", { length: 20 }).default('C'), // 等级：S, A, B, C, D
+    priceRange: varchar("price_range", { length: 50 }), // 价格区间
+    averagePrice: decimal("average_price", { precision: 10, scale: 2 }).default('0'), // 平均报价
+    // 达人评分
+    qualityScore: decimal("quality_score", { precision: 5, scale: 2 }).default('0'), // 内容质量评分（0-100）
+    cooperationScore: decimal("cooperation_score", { precision: 5, scale: 2 }).default('0'), // 合作配合度评分（0-100）
+    engagementRate: decimal("engagement_rate", { precision: 5, scale: 2 }).default('0'), // 互动率
+    // 达人状态
+    status: varchar("status", { length: 20 }).default('available'), // 状态：available(可合作), contacted(沟通中), collaborating(合作中), blacklist(黑名单)
+    isFavorite: boolean("is_favorite").default(false), // 是否收藏
+    cooperationCount: integer("cooperation_count").default(0), // 合作次数
+    // 元数据
+    userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: 'cascade' }), // 创建者
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+    lastCooperationAt: timestamp("last_cooperation_at", { withTimezone: true }), // 最后合作时间
+  },
+  (table) => ({
+    channelIdIdx: index("influencers_channel_id_idx").on(table.channelId),
+    statusIdx: index("influencers_status_idx").on(table.status),
+    levelIdx: index("influencers_level_idx").on(table.level),
+    categoryIdx: index("influencers_category_idx").on(table.category),
+    userIdIdx: index("influencers_user_id_idx").on(table.userId),
+    isFavoriteIdx: index("influencers_is_favorite_idx").on(table.isFavorite),
+    createdAtIdx: index("influencers_created_at_idx").on(table.createdAt),
+  })
+);
+
 // Users schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
@@ -380,6 +434,61 @@ export const insertABTestResultSchema = createInsertSchema(abTestResults).pick({
   watchTime: true,
 });
 
+// Influencers schemas
+export const insertInfluencerSchema = createInsertSchema(influencers).pick({
+  channelId: true,
+  channelTitle: true,
+  thumbnail: true,
+  subscriberCount: true,
+  totalVideos: true,
+  totalViews: true,
+  email: true,
+  phone: true,
+  wechat: true,
+  description: true,
+  tags: true,
+  category: true,
+  niche: true,
+  level: true,
+  priceRange: true,
+  averagePrice: true,
+  qualityScore: true,
+  cooperationScore: true,
+  engagementRate: true,
+  status: true,
+  isFavorite: true,
+  cooperationCount: true,
+  userId: true,
+});
+
+export const updateInfluencerSchema = createInsertSchema(influencers)
+  .pick({
+    channelTitle: true,
+    thumbnail: true,
+    subscriberCount: true,
+    totalVideos: true,
+    totalViews: true,
+    email: true,
+    phone: true,
+    wechat: true,
+    description: true,
+    tags: true,
+    category: true,
+    niche: true,
+    level: true,
+    priceRange: true,
+    averagePrice: true,
+    qualityScore: true,
+    cooperationScore: true,
+    engagementRate: true,
+    status: true,
+    isFavorite: true,
+    cooperationCount: true,
+    isActive: true,
+    lastCooperationAt: true,
+  })
+  .partial();
+
 // TypeScript types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -410,6 +519,10 @@ export type UpdateABTestVariant = z.infer<typeof updateABTestVariantSchema>;
 export type ABTestResult = typeof abTestResults.$inferSelect;
 export type InsertABTestResult = z.infer<typeof insertABTestResultSchema>;
 
+export type Influencer = typeof influencers.$inferSelect;
+export type InsertInfluencer = z.infer<typeof insertInfluencerSchema>;
+export type UpdateInfluencer = z.infer<typeof updateInfluencerSchema>;
+
 // User status types
 export type UserStatus = 'pending' | 'approved' | 'rejected';
 export type UserRole = 'user' | 'admin';
@@ -419,3 +532,7 @@ export type ABTestType = 'title' | 'description' | 'thumbnail';
 export type ABTestStatus = 'draft' | 'running' | 'completed' | 'paused';
 export type ABTestVariantName = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
 export type SentimentType = 'positive' | 'neutral' | 'negative';
+
+// Influencer types
+export type InfluencerStatus = 'available' | 'contacted' | 'collaborating' | 'blacklist';
+export type InfluencerLevel = 'S' | 'A' | 'B' | 'C' | 'D';
