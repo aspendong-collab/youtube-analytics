@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  allowedDevOrigins: ['*.dev.coze.site'],
   typescript: {
     ignoreBuildErrors: true,
   },

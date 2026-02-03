@@ -4,8 +4,8 @@ import postgres from 'postgres';
 // 设置为动态路由
 export const dynamic = 'force-dynamic';
 
-// 数据库连接
-const NEON_DATABASE_URL = 'postgresql://neondb_owner:npg_zw0a2RgOhAXY@ep-winter-cherry-a1cs4q75-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+// 数据库连接（使用环境变量）
+const DATABASE_URL = process.env.PGDATABASE_URL || 'postgresql://neondb_owner:npg_zw0a2RgOhAXY@ep-winter-cherry-a1cs4q75-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
 
 export async function GET(request: NextRequest) {
   console.log('[API /api/suggestions/content-diagnosis] 收到内容诊断请求');
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const videoId = searchParams.get('videoId');
 
-  const client = postgres(NEON_DATABASE_URL, {
+  const client = postgres(DATABASE_URL, {
     max: 10,
     idle_timeout: 20,
     connect_timeout: 10,
