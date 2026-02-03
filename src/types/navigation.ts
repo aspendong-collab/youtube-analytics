@@ -72,13 +72,13 @@ export const navItems: NavItem[] = [
       {
         id: 'keyword-research',
         label: '关键词研究',
-        path: '/content-analysis/keywords',
+        path: '/content-analysis/keyword-research',
         icon: '🔑'
       },
       {
         id: 'publish-timing',
         label: '发布时机优化',
-        path: '/content-analysis/timing',
+        path: '/content-analysis/publish-time',
         icon: '⏰'
       },
     ],

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
@@ -11,7 +11,21 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, status } = useSession();
+  // 自动展开包含当前路径的菜单项
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
+
+  // 根据当前路径自动展开菜单
+  useEffect(() => {
+    const autoExpand: string[] = [];
+    navItems.forEach(item => {
+      if (item.children?.some(child => pathname.startsWith(child.path))) {
+        autoExpand.push(item.id);
+      }
+    });
+    if (autoExpand.length > 0) {
+      setExpandedItems(autoExpand);
+    }
+  }, [pathname]);
 
   const toggleExpand = (id: string) => {
     setExpandedItems(prev =>
@@ -92,44 +106,56 @@ export function Sidebar() {
 
             {/* 功能菜单 */}
             {finalNavItems.map((item) => (
-              <div key={item.id}>
-                <Link
-                  href={item.path}
-                  onClick={() => {
-                    if (item.children) {
-                      toggleExpand(item.id);
-                    }
-                  }}
-                  className={cn(
-                    'flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
-                    isActive(item.path) || isChildActive(item)
-                      ? 'bg-[#007AFF] text-white'
-                      : 'text-[#1D1D1F] hover:bg-[rgba(0,122,255,0.08)]'
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-base">{item.icon}</span>
-                    <span>{item.label}</span>
-                  </div>
-                  {item.children && (
-                    <svg
+                <div key={item.id}>
+                  {item.children ? (
+                    // 有子菜单的情况：使用 button 而不是 Link
+                    <button
+                      onClick={() => toggleExpand(item.id)}
                       className={cn(
-                        'w-4 h-4 transition-transform duration-200',
-                        expandedItems.includes(item.id) ? 'rotate-180' : ''
+                        'w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
+                        isChildActive(item)
+                          ? 'bg-[#007AFF] text-white'
+                          : 'text-[#1D1D1F] hover:bg-[rgba(0,122,255,0.08)]'
                       )}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
+                      <div className="flex items-center gap-3">
+                        <span className="text-base">{item.icon}</span>
+                        <span>{item.label}</span>
+                      </div>
+                      <svg
+                        className={cn(
+                          'w-4 h-4 transition-transform duration-200',
+                          expandedItems.includes(item.id) ? 'rotate-180' : ''
+                        )}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </button>
+                  ) : (
+                    // 没有子菜单的情况：使用 Link
+                    <Link
+                      href={item.path}
+                      className={cn(
+                        'flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
+                        isActive(item.path)
+                          ? 'bg-[#007AFF] text-white'
+                          : 'text-[#1D1D1F] hover:bg-[rgba(0,122,255,0.08)]'
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-base">{item.icon}</span>
+                        <span>{item.label}</span>
+                      </div>
+                    </Link>
                   )}
-                </Link>
 
                 {item.children && expandedItems.includes(item.id) && (
                   <div className="mt-1 ml-4 bg-white rounded-lg overflow-hidden">
