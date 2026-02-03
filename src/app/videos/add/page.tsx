@@ -117,6 +117,8 @@ export default function AddVideoPage() {
         },
         body: JSON.stringify({
           videoUrl: formData.videoUrl,
+          videoTitle: formData.videoTitle,
+          description: formData.description,
           owner: formData.owner,
           tags: formData.tags,
           category: formData.category,
