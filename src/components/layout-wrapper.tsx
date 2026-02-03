@@ -32,12 +32,23 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   }
 
   // 已登录，显示完整布局（侧边栏 + 内容）
-  return (
-    <div className="flex min-h-screen bg-[#F5F5F7]">
-      <Sidebar />
-      <main className="flex-1 ml-64 p-8 bg-white min-h-screen">
-        {children}
-      </main>
-    </div>
-  );
+  try {
+    return (
+      <div className="flex min-h-screen bg-[#F5F5F7]">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-8 bg-white min-h-screen">
+          {children}
+        </main>
+      </div>
+    );
+  } catch (error) {
+    console.error("LayoutWrapper error:", error);
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-[#86868B]">
+          加载出错，请刷新页面重试
+        </div>
+      </div>
+    );
+  }
 }

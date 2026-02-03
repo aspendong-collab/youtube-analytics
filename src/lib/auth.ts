@@ -8,7 +8,11 @@ import { eq } from "drizzle-orm";
 // 确保有有效的 secret
 const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || "youtube-analytics-secret-key-2024-change-in-production";
 
+// 在开发环境启用调试
+const NEXTAUTH_DEBUG = process.env.NODE_ENV === "development";
+
 export const authOptions: NextAuthOptions = {
+  debug: NEXTAUTH_DEBUG,
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -82,18 +86,26 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.role = user.role;
-        token.status = user.status;
+      try {
+        if (user) {
+          token.id = user.id;
+          token.role = user.role;
+          token.status = user.status;
+        }
+      } catch (error) {
+        console.error("JWT callback error:", error);
       }
       return token;
     },
     async session({ session, token }) {
-      if (session?.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
-        session.user.status = token.status as string;
+      try {
+        if (session && session.user) {
+          session.user.id = token.id as string;
+          session.user.role = token.role as string;
+          session.user.status = token.status as string;
+        }
+      } catch (error) {
+        console.error("Session callback error:", error);
       }
       return session;
     },
