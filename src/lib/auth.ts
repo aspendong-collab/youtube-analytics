@@ -11,6 +11,9 @@ const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || "youtube-analytics-secret
 // 在开发环境启用调试
 const NEXTAUTH_DEBUG = process.env.NODE_ENV === "development";
 
+// 检查是否在构建时
+const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
+
 export const authOptions: NextAuthOptions = {
   debug: NEXTAUTH_DEBUG,
   providers: [
@@ -21,8 +24,9 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!db) {
-          throw new Error("数据库连接失败，请稍后重试");
+        // 构建时返回 null，避免数据库连接问题
+        if (isBuildTime || !db) {
+          return null;
         }
 
         if (!credentials?.email || !credentials?.password) {
