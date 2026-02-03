@@ -271,7 +271,6 @@ export async function GET(request: NextRequest) {
         channelId: snippet.channelId,
         channelTitle: snippet.channelTitle,
         subscriberCount: parseInt(channelStats.subscriberCount || '0'),
-        channelVideoCount: parseInt(channelStats.videoCount || '0'),
         viewCount,
         likeCount,
         commentCount,

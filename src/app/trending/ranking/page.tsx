@@ -6,42 +6,43 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { TrendingUp, Play, Eye, Heart, MessageCircle, Flame, Clock, User, Award } from 'lucide-react';
+import { TrendingUp, Play, Eye, Heart, MessageCircle, Flame, Clock, User, Award, RefreshCw, Database } from 'lucide-react';
 import type { TrendingVideo } from '@/types/trending';
+import { useTrendingRanking } from '@/hooks/use-trending-ranking';
 
 export default function TrendingRankingPage() {
   const [period, setPeriod] = useState<'today' | 'week' | 'month'>('today');
   const [keywords, setKeywords] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [videos, setVideos] = useState<TrendingVideo[]>([]);
+  const [autoFetch, setAutoFetch] = useState(false);
 
+  // 使用自定义 hook 获取热门排行榜数据
+  const { data, isLoading, refetch, error, dataUpdatedAt, isFetching } = useTrendingRanking({
+    period,
+    keywords,
+    maxResults: 50,
+    enabled: autoFetch,
+  });
+
+  const videos = data?.videos || [];
+
+  // 手动获取排行榜
   const fetchTrending = async () => {
-    setIsLoading(true);
-    setVideos([]);
+    setAutoFetch(true);
+    await refetch();
+  };
 
-    try {
-      const params = new URLSearchParams({
-        period,
-        keywords,
-        maxResults: '50',
-      });
+  // 格式化时间
+  const formatTime = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
 
-      const response = await fetch(`/api/trending/ranking?${params.toString()}`);
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || '获取热门排行榜失败');
-      }
-
-      const data = await response.json();
-      setVideos(data.videos || []);
-      toast.success(`获取到 ${data.videos?.length || 0} 个热门视频`);
-    } catch (error) {
-      console.error('获取热门排行榜失败:', error);
-      toast.error(error instanceof Error ? error.message : '获取热门排行榜失败');
-    } finally {
-      setIsLoading(false);
-    }
+    if (minutes < 1) return '刚刚';
+    if (minutes < 60) return `${minutes} 分钟前`;
+    if (hours < 24) return `${hours} 小时前`;
+    return date.toLocaleDateString('zh-CN');
   };
 
   // 获取时间段名称
@@ -80,6 +81,24 @@ export default function TrendingRankingPage() {
     return rank.toString();
   };
 
+  // 监听参数变化，自动刷新
+  const handlePeriodChange = (newPeriod: 'today' | 'week' | 'month') => {
+    setPeriod(newPeriod);
+    setAutoFetch(false); // 切换时间段时不自动获取，需要手动点击
+  };
+
+  const handleFetch = async () => {
+    try {
+      await fetchTrending();
+      toast.success(`获取到 ${videos.length} 个热门视频`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '获取热门排行榜失败');
+    }
+  };
+
+  // 初始加载提示
+  const showInitialHint = !autoFetch && videos.length === 0;
+
   return (
     <div className="p-8 space-y-6">
       {/* 页面标题 */}
@@ -105,7 +124,7 @@ export default function TrendingRankingPage() {
                 <Button
                   key={p}
                   variant={period === p ? 'default' : 'outline'}
-                  onClick={() => setPeriod(p)}
+                  onClick={() => handlePeriodChange(p)}
                   className="flex-1"
                 >
                   {p === 'today' && '今日'}
@@ -130,19 +149,65 @@ export default function TrendingRankingPage() {
             />
           </div>
 
-          {/* 搜索按钮 */}
+          {/* 获取按钮 */}
           <div>
             <Button
-              onClick={fetchTrending}
-              disabled={isLoading}
+              onClick={handleFetch}
+              disabled={isFetching}
               size="lg"
               className="min-w-[120px]"
             >
-              {isLoading ? '加载中...' : '获取排行榜'}
+              {isFetching ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  加载中
+                </>
+              ) : (
+                '获取排行榜'
+              )}
             </Button>
           </div>
         </div>
+
+        {/* 缓存状态提示 */}
+        {autoFetch && !isLoading && dataUpdatedAt && (
+          <div className="mt-4 flex items-center gap-2 text-sm text-[#86868B]">
+            <Database className="w-4 h-4" />
+            <span>数据已缓存 • 最后更新: {formatTime(dataUpdatedAt)}</span>
+            {!isFetching && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleFetch}
+                className="h-auto px-2 py-0 text-[#007AFF] hover:text-[#0056CC]"
+              >
+                <RefreshCw className="w-3 h-3 mr-1" />
+                刷新
+              </Button>
+            )}
+          </div>
+        )}
       </Card>
+
+      {/* 初始提示 */}
+      {showInitialHint && (
+        <Card className="p-8 text-center bg-gradient-to-r from-blue-50 to-purple-50">
+          <TrendingUp className="w-16 h-16 mx-auto mb-4 text-[#007AFF]" />
+          <h3 className="text-lg font-medium text-[#1D1D1F] mb-2">
+            获取热门内容排行榜
+          </h3>
+          <p className="text-sm text-[#86868B] mb-4">
+            选择时间范围和关键词，点击"获取排行榜"查看热门内容
+          </p>
+          <div className="flex items-center justify-center gap-2 text-xs text-[#86868B] mb-4">
+            <Database className="w-4 h-4" />
+            <span>数据将缓存 1 小时，避免重复调用 API</span>
+          </div>
+          <Button onClick={handleFetch} variant="default">
+            获取排行榜
+          </Button>
+        </Card>
+      )}
 
       {/* 排行榜结果 */}
       {videos.length > 0 && (
@@ -151,9 +216,16 @@ export default function TrendingRankingPage() {
             <h2 className="text-lg font-semibold text-[#1D1D1F]">
               {getPeriodName(period)} - 排行榜
             </h2>
-            <Badge variant="secondary" className="text-sm">
-              共 {videos.length} 个视频
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-sm">
+                共 {videos.length} 个视频
+              </Badge>
+              {dataUpdatedAt && (
+                <Badge variant="outline" className="text-xs">
+                  更新于 {formatTime(dataUpdatedAt)}
+                </Badge>
+              )}
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -232,22 +304,6 @@ export default function TrendingRankingPage() {
         </div>
       )}
 
-      {/* 空状态 */}
-      {videos.length === 0 && !isLoading && (
-        <Card className="p-12 text-center">
-          <TrendingUp className="w-16 h-16 mx-auto mb-4 text-[#86868B]" />
-          <h3 className="text-lg font-medium text-[#1D1D1F] mb-2">
-            暂无热门数据
-          </h3>
-          <p className="text-sm text-[#86868B] mb-4">
-            选择时间范围和关键词，点击"获取排行榜"查看热门内容
-          </p>
-          <Button onClick={fetchTrending} variant="outline">
-            获取排行榜
-          </Button>
-        </Card>
-      )}
-
       {/* 加载状态 */}
       {isLoading && (
         <Card className="p-12 text-center">
@@ -256,6 +312,24 @@ export default function TrendingRankingPage() {
             <p className="text-sm text-[#86868B]">
               正在获取热门排行榜...
             </p>
+          </div>
+        </Card>
+      )}
+
+      {/* 错误状态 */}
+      {error && !isLoading && (
+        <Card className="p-12 text-center border-red-200">
+          <div className="flex flex-col items-center gap-4">
+            <div className="text-4xl">❌</div>
+            <p className="text-sm text-[#86868B]">
+              获取热门排行榜失败
+            </p>
+            <p className="text-sm text-red-500">
+              {error.message}
+            </p>
+            <Button onClick={handleFetch} variant="outline">
+              重试
+            </Button>
           </div>
         </Card>
       )}
