@@ -122,11 +122,6 @@ export async function POST(request: NextRequest) {
           insertData.tags = tags ? (Array.isArray(tags) ? tags : tags.split(',').map((t: string) => t.trim())) : videoInfo.tags;
           insertData.categoryId = category || videoInfo.categoryId;
 
-          // 新增字段
-          insertData.duration = videoInfo.duration;
-          insertData.region = videoInfo.region;
-          insertData.language = videoInfo.language;
-
           // 从 YouTube API 获取发布时间
           if (videoInfo.publishedAt && !insertData.publishDate) {
             insertData.publishDate = new Date(videoInfo.publishedAt);

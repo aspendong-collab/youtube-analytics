@@ -2,11 +2,12 @@ import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "./shared/schema";
 
-// 硬编码的 Neon 数据库连接
+// 从环境变量获取数据库连接字符串
 const NEON_DATABASE_URL = 'postgresql://neondb_owner:npg_zw0a2RgOhAXY@ep-winter-cherry-a1cs4q75-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+const DATABASE_URL = process.env.PGDATABASE_URL || NEON_DATABASE_URL;
 
 export function getDb() {
-  const client = postgres(NEON_DATABASE_URL, {
+  const client = postgres(DATABASE_URL, {
     max: 10,
     idle_timeout: 20,
     connect_timeout: 10,

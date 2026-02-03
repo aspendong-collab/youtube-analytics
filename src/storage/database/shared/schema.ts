@@ -60,11 +60,6 @@ export const videos = pgTable(
     publishStatus: varchar("publish_status", { length: 20 }).default('draft'),
     cooperationCost: decimal("cooperation_cost", { precision: 10, scale: 2 }).default('0'),
     totalViews: integer("total_views").default(0),
-    // 阶段1新增字段
-    duration: integer("duration"), // 视频时长（秒）
-    region: varchar("region", { length: 10 }), // 视频所属地区/国家代码
-    language: varchar("language", { length: 10 }), // 视频语言代码
-    bestPublishTime: jsonb("best_publish_time").$type<{ hour: number; day: number; reason: string }>(), // 最佳发布时间建议
     userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: 'cascade' }),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -241,15 +236,6 @@ export const insertVideoSchema = createInsertSchema(videos)
     publishDate: true,
     publishStatus: true,
     cooperationCost: true,
-    duration: true,
-    region: true,
-    language: true,
-    userId: true,
-  })
-  .partial({
-    duration: true,
-    region: true,
-    language: true,
   });
 
 export const updateVideoSchema = createInsertSchema(videos)

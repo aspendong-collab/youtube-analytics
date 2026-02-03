@@ -17,8 +17,9 @@ import type {
 } from "./shared/schema";
 import * as schema from "./shared/schema";
 
-// 硬编码的 Neon 数据库连接
+// 从环境变量获取数据库连接字符串
 const NEON_DATABASE_URL = 'postgresql://neondb_owner:npg_zw0a2RgOhAXY@ep-winter-cherry-a1cs4q75-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+const DATABASE_URL = process.env.PGDATABASE_URL || NEON_DATABASE_URL;
 
 // 开发环境内存存储
 const mockVideos = new Map<string, Video>();
@@ -27,11 +28,11 @@ const mockVideoStats = new Map<string, VideoStats[]>();
 export class VideoManager {
   private getDb() {
     // 每次调用时都直接创建连接，避免缓存问题
-    const maskedUrl = NEON_DATABASE_URL.replace(/\/\/[^@]+@/, '//***@');
+    const maskedUrl = DATABASE_URL.replace(/\/\/[^@]+@/, '//***@');
     console.log('[VideoManager] Creating fresh database connection:', maskedUrl);
 
     try {
-      const client = postgres(NEON_DATABASE_URL, {
+      const client = postgres(DATABASE_URL, {
         max: 10,
         idle_timeout: 20,
         connect_timeout: 10,
