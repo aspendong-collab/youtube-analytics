@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbInstance as db } from "@/lib/db";
 import { influencers } from "@/storage/database/shared/schema";
-import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { eq, desc, and, or, ilike } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
+    // 使用 NextAuth 的 getServerSession
+    const { getServerSession } = await import("next-auth/next");
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
+    if (!session) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
+    if (!session.user) {
+      return NextResponse.json({ error: "用户信息不存在" }, { status: 401 });
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -81,10 +86,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const { getServerSession } = await import("next-auth/next");
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
+    if (!session) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
+    if (!session.user) {
+      return NextResponse.json({ error: "用户信息不存在" }, { status: 401 });
     }
 
     const body = await request.json();

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbInstance as db } from "@/lib/db";
 import { influencers } from "@/storage/database/shared/schema";
-import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 
@@ -10,10 +9,15 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { getServerSession } = await import("next-auth/next");
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
+    if (!session) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
+    if (!session.user) {
+      return NextResponse.json({ error: "用户信息不存在" }, { status: 401 });
     }
 
     const [influencerData] = await db
@@ -41,10 +45,15 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { getServerSession } = await import("next-auth/next");
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
+    if (!session) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
+    if (!session.user) {
+      return NextResponse.json({ error: "用户信息不存在" }, { status: 401 });
     }
 
     const body = await request.json();
@@ -78,10 +87,15 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { getServerSession } = await import("next-auth/next");
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
+    if (!session) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
+    if (!session.user) {
+      return NextResponse.json({ error: "用户信息不存在" }, { status: 401 });
     }
 
     // 删除达人（软删除）
