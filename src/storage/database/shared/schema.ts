@@ -227,24 +227,30 @@ export const updateUserSchema = createInsertSchema(users)
   .partial();
 
 // Videos schemas
-export const insertVideoSchema = createInsertSchema(videos).pick({
-  videoId: true,
-  title: true,
-  description: true,
-  thumbnail: true,
-  channelId: true,
-  channelTitle: true,
-  tags: true,
-  categoryId: true,
-  owner: true,
-  publishDate: true,
-  publishStatus: true,
-  cooperationCost: true,
-  duration: true,
-  region: true,
-  language: true,
-  userId: true,
-});
+export const insertVideoSchema = createInsertSchema(videos)
+  .pick({
+    videoId: true,
+    title: true,
+    description: true,
+    thumbnail: true,
+    channelId: true,
+    channelTitle: true,
+    tags: true,
+    categoryId: true,
+    owner: true,
+    publishDate: true,
+    publishStatus: true,
+    cooperationCost: true,
+    duration: true,
+    region: true,
+    language: true,
+    userId: true,
+  })
+  .partial({
+    duration: true,
+    region: true,
+    language: true,
+  });
 
 export const updateVideoSchema = createInsertSchema(videos)
   .pick({
