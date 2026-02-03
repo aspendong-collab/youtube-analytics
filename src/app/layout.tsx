@@ -23,7 +23,8 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body className={`antialiased`}>
-        <ErrorBoundary>
+        {/* ErrorBoundary 临时禁用以获取详细错误信息 */}
+        {/* <ErrorBoundary> */}
           <AuthProvider>
             <QueryProvider>
               <LayoutWrapper>
@@ -32,7 +33,7 @@ export default function RootLayout({
               <Toaster position="top-right" />
             </QueryProvider>
           </AuthProvider>
-        </ErrorBoundary>
+        {/* </ErrorBoundary> */}
       </body>
     </html>
   );
