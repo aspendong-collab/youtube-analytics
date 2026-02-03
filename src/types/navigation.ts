@@ -19,6 +19,7 @@ export const navItems: NavItem[] = [
     icon: '🔎',
     path: '/discovery',
     children: [
+      { id: 'trending', label: '热门排行榜', path: '/trending/ranking' },
       { id: 'enhanced-search', label: '全平台达人发现', path: '/discovery/enhanced' },
       { id: 'keyword-search', label: '关键词检测', path: '/discovery/competitor' },
     ],
