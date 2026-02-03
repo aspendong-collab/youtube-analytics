@@ -52,7 +52,10 @@ export async function GET(request: NextRequest) {
 
   const apiKey = process.env.YOUTUBE_API_KEY;
 
+  console.log('[搜索API] 请求参数:', { mode, q, maxResults, order, hasApiKey: !!apiKey });
+
   if (!apiKey) {
+    console.error('[搜索API] 未配置 YouTube API Key');
     return NextResponse.json(
       { error: '未配置 YouTube API Key' },
       { status: 500 }
@@ -61,7 +64,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // 步骤1：搜索视频
-    const searchParams = new URLSearchParams({
+    const searchParamsObj = new URLSearchParams({
       part: 'snippet',
       type: 'video',
       maxResults: Math.min(maxResults, 50).toString(),
@@ -70,14 +73,14 @@ export async function GET(request: NextRequest) {
     });
 
     if (mode === 'keyword' && q) {
-      searchParams.append('q', q);
+      searchParamsObj.append('q', q);
     } else if (mode === 'trending') {
-      searchParams.append('chart', 'mostPopular');
-      searchParams.append('regionCode', regionCode);
-      if (categoryId) searchParams.append('videoCategoryId', categoryId);
+      searchParamsObj.append('chart', 'mostPopular');
+      searchParamsObj.append('regionCode', regionCode);
+      if (categoryId) searchParamsObj.append('videoCategoryId', categoryId);
     } else if (mode === 'competitor' && channelId) {
-      searchParams.append('channelId', channelId);
-      searchParams.append('order', 'date');
+      searchParamsObj.append('channelId', channelId);
+      searchParamsObj.append('order', 'date');
     } else {
       return NextResponse.json(
         { error: '无效的搜索参数' },
@@ -85,11 +88,46 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?${searchParams.toString()}`;
-    console.log(`[搜索API] 搜索视频: ${searchUrl.replace(/key=[^&]+/, 'key=***')}`);
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?${searchParamsObj.toString()}`;
+    console.log(`[搜索API] 搜索URL: ${searchUrl.replace(/key=[^&]+/, 'key=***')}`);
 
-    const searchResponse = await fetch(searchUrl);
+    const searchResponse = await fetch(searchUrl, {
+      signal: AbortSignal.timeout(15000), // 15秒超时
+    });
+
+    console.log(`[搜索API] 搜索响应状态: ${searchResponse.status}`);
+
+    if (!searchResponse.ok) {
+      const errorText = await searchResponse.text();
+      console.error(`[搜索API] 搜索失败 ${searchResponse.status}:`, errorText);
+
+      // 解析错误信息
+      let errorMessage = '搜索失败';
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData.error?.message) {
+          errorMessage = errorData.error.message;
+          // YouTube API 错误码处理
+          if (errorData.error?.code === 403) {
+            errorMessage = 'API 权限不足或配额已用完 (403)';
+          } else if (errorData.error?.code === 429) {
+            errorMessage = 'API 请求过于频繁 (429)';
+          } else if (errorData.error?.code === 400) {
+            errorMessage = 'API 请求参数错误 (400)';
+          }
+        }
+      } catch (e) {
+        errorMessage = `搜索失败 (${searchResponse.status})`;
+      }
+
+      return NextResponse.json(
+        { error: errorMessage, status: searchResponse.status, details: errorText },
+        { status: searchResponse.status }
+      );
+    }
+
     const searchData = await searchResponse.json();
+    console.log(`[搜索API] 搜索结果数量: ${searchData.items?.length || 0}`);
 
     if (!searchData.items || searchData.items.length === 0) {
       return NextResponse.json({
@@ -109,6 +147,8 @@ export async function GET(request: NextRequest) {
       channelIds.add(item.snippet.channelId);
     });
 
+    console.log(`[搜索API] 提取 ${videoIds.length} 个视频, ${channelIds.size} 个频道`);
+
     // 步骤3：批量获取视频详情（统计数据 + 时长）
     const videosParams = new URLSearchParams({
       part: 'statistics,contentDetails,snippet',
@@ -117,8 +157,20 @@ export async function GET(request: NextRequest) {
     });
 
     const videosUrl = `https://www.googleapis.com/youtube/v3/videos?${videosParams.toString()}`;
-    const videosResponse = await fetch(videosUrl);
+    console.log(`[搜索API] 获取视频详情: ${videosUrl.replace(/key=[^&]+/, 'key=***')}`);
+
+    const videosResponse = await fetch(videosUrl, {
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!videosResponse.ok) {
+      const errorText = await videosResponse.text();
+      console.error(`[搜索API] 获取视频详情失败 ${videosResponse.status}:`, errorText);
+      throw new Error(`获取视频详情失败 (${videosResponse.status})`);
+    }
+
     const videosData = await videosResponse.json();
+    console.log(`[搜索API] 视频详情返回数量: ${videosData.items?.length || 0}`);
 
     // 步骤4：批量获取频道详情
     const channelsParams = new URLSearchParams({
@@ -128,8 +180,20 @@ export async function GET(request: NextRequest) {
     });
 
     const channelsUrl = `https://www.googleapis.com/youtube/v3/channels?${channelsParams.toString()}`;
-    const channelsResponse = await fetch(channelsUrl);
+    console.log(`[搜索API] 获取频道详情: ${channelsUrl.replace(/key=[^&]+/, 'key=***')}`);
+
+    const channelsResponse = await fetch(channelsUrl, {
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!channelsResponse.ok) {
+      const errorText = await channelsResponse.text();
+      console.error(`[搜索API] 获取频道详情失败 ${channelsResponse.status}:`, errorText);
+      throw new Error(`获取频道详情失败 (${channelsResponse.status})`);
+    }
+
     const channelsData = await channelsResponse.json();
+    console.log(`[搜索API] 频道详情返回数量: ${channelsData.items?.length || 0}`);
 
     // 步骤5：构建数据映射
     const videosMap = new Map<string, any>();
@@ -214,8 +278,27 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('[搜索API] 错误:', error);
+
+    // 详细错误信息
+    let errorMessage = '搜索失败';
+    let errorDetails = '';
+
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      errorDetails = error.stack || '';
+    }
+
+    // 检查是否是超时错误
+    if (error instanceof DOMException && error.name === 'TimeoutError') {
+      errorMessage = '请求超时，请稍后重试';
+    }
+
     return NextResponse.json(
-      { error: '搜索失败', message: (error as Error).message },
+      {
+        error: errorMessage,
+        message: error instanceof Error ? error.message : '未知错误',
+        details: errorDetails
+      },
       { status: 500 }
     );
   }

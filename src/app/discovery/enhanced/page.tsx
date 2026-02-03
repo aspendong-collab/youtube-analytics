@@ -98,6 +98,22 @@ export default function EnhancedDiscoveryPage() {
     } catch (error) {
       console.error('搜索失败:', error);
       toast.error(error instanceof Error ? error.message : '搜索失败');
+    } catch (error) {
+      console.error('搜索失败:', error);
+
+      // 检查是否是网络连接问题
+      let errorMessage = '搜索失败';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        // 检测超时或网络错误
+        if (errorMessage.includes('fetch failed') ||
+            errorMessage.includes('timeout') ||
+            errorMessage.includes('Network')) {
+          errorMessage = '网络连接失败，请稍后重试';
+        }
+      }
+
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -128,7 +144,20 @@ export default function EnhancedDiscoveryPage() {
       toast.success(`获取 ${data.videos?.length || 0} 个热门视频`);
     } catch (error) {
       console.error('获取热门视频失败:', error);
-      toast.error(error instanceof Error ? error.message : '获取热门视频失败');
+
+      // 检查是否是网络连接问题
+      let errorMessage = '获取热门视频失败';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        // 检测超时或网络错误
+        if (errorMessage.includes('fetch failed') ||
+            errorMessage.includes('timeout') ||
+            errorMessage.includes('Network')) {
+          errorMessage = '网络连接失败，请稍后重试';
+        }
+      }
+
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
