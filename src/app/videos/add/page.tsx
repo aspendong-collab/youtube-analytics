@@ -308,7 +308,7 @@ export default function AddVideoPage() {
             <Input
               id="publishDate"
               value={formData.publishDate ? format(formData.publishDate, 'yyyy-MM-dd HH:mm:ss') : ''}
-              placeholder="点击"获取视频信息"后自动填充"
+              placeholder='点击"获取视频信息"后自动填充'
               readOnly
               className="bg-gray-50 cursor-not-allowed"
             />
