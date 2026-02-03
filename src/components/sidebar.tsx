@@ -50,7 +50,7 @@ export function Sidebar() {
     path: '/admin/approvals',
   };
 
-  const finalNavItems = session?.user.role === 'admin' 
+  const finalNavItems = session?.user?.role === 'admin'
     ? [...filteredNavItems, adminNavItem]
     : filteredNavItems;
 
@@ -74,15 +74,15 @@ export function Sidebar() {
             {/* 用户信息 */}
             <div className="mb-4 px-4 py-3 bg-[#F5F5F7] rounded-lg">
               <div className="text-sm font-medium text-[#1D1D1F] mb-1">
-                {session.user.name}
+                {session.user?.name}
               </div>
               <div className="text-xs text-[#86868B] truncate">
-                {session.user.email}
+                {session.user?.email}
               </div>
               <div className="mt-2">
-                {session.user.status === 'approved' ? (
+                {session.user?.status === 'approved' ? (
                   <span className="text-xs text-[#34C759]">✓ 已审核通过</span>
-                ) : session.user.status === 'pending' ? (
+                ) : session.user?.status === 'pending' ? (
                   <span className="text-xs text-[#FF9500]">⏳ 待审核</span>
                 ) : (
                   <span className="text-xs text-[#FF3B30]">✗ 审核未通过</span>
