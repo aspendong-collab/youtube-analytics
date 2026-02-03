@@ -8,12 +8,6 @@ export function AuthProvider({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <SessionProvider
-      refetchInterval={5 * 60}
-      refetchOnWindowFocus={false}
-    >
-      {children}
-    </SessionProvider>
-  );
+  // 简化 SessionProvider 配置，避免 React 19 兼容性问题
+  return <SessionProvider>{children}</SessionProvider>;
 }
