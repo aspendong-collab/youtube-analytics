@@ -97,9 +97,6 @@ export default function EnhancedDiscoveryPage() {
       toast.success(`找到 ${data.videos?.length || 0} 个相关视频`);
     } catch (error) {
       console.error('搜索失败:', error);
-      toast.error(error instanceof Error ? error.message : '搜索失败');
-    } catch (error) {
-      console.error('搜索失败:', error);
 
       // 检查是否是网络连接问题
       let errorMessage = '搜索失败';
