@@ -172,8 +172,27 @@ export async function GET(request: NextRequest) {
       license: status.license,
       embeddable: status.embeddable,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('[API /api/video-info] 服务器错误:', error);
+    console.error('[API /api/video-info] 错误详情:', JSON.stringify(error, null, 2));
+
+    // 检查是否是网络超时错误
+    const errorCode = error?.cause?.code || error?.code || '';
+    const errorMessage = error?.cause?.message || error?.message || '';
+
+    console.log('[API /api/video-info] 检查错误代码:', { errorCode, errorMessage });
+
+    if (errorCode === 'UND_ERR_CONNECT_TIMEOUT' || errorCode === 'ETIMEDOUT' || errorMessage?.toLowerCase().includes('timeout')) {
+      return NextResponse.json(
+        {
+          error: '无法连接到 YouTube API',
+          hint: '可能是网络连接问题。请在生产环境（Vercel）中测试此功能，沙箱环境可能无法访问 Google API',
+          canManualInput: true,
+        },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
       {
         error: '服务器内部错误',
