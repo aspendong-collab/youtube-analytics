@@ -18,6 +18,9 @@ export const navItems: NavItem[] = [
     label: '发现',
     icon: '🔎',
     path: '/discovery',
+    children: [
+      { id: 'keyword-search', label: '关键词检测', path: '/discovery/competitor' },
+    ],
   },
   {
     id: 'monitoring',
@@ -28,6 +31,7 @@ export const navItems: NavItem[] = [
       { id: 'video-list', label: '视频列表', path: '/monitoring' },
       { id: 'channel-analysis', label: '博主分析', path: '/monitoring/channels' },
       { id: 'owner-performance', label: '排行榜', path: '/monitoring/owners' },
+      { id: 'competitor-tracking', label: '竞品追踪', path: '/monitoring/competitors' },
     ],
   },
   {
@@ -35,10 +39,6 @@ export const navItems: NavItem[] = [
     label: '竞品分析',
     icon: '🎯',
     path: '/competitor',
-    children: [
-      { id: 'keyword-search', label: '关键词检测', path: '/discovery/competitor' },
-      { id: 'competitor-tracking', label: '竞品追踪', path: '/monitoring/competitors' },
-    ],
   },
   {
     id: 'content-optimization',
