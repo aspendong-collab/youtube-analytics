@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { dbInstance as db } from "@/lib/db";
 import { users } from "@/storage/database/shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { insertUserSchema } from "@/storage/database/shared/schema";
 import { z } from "zod";
 
@@ -30,18 +30,36 @@ export async function POST(request: Request) {
     // 加密密码
     const hashedPassword = await bcrypt.hash(validatedData.password, 10);
 
-    // 创建用户
-    const newUser = await db
-      .insert(users)
-      .values({
-        email: validatedData.email,
-        password: hashedPassword,
-        name: validatedData.name,
-        role: "user",
-        status: "pending", // 默认为待审核状态
-        isActive: true,
-      })
-      .returning();
+    // 创建用户或重新激活已删除的用户
+    let newUser;
+    if (existingUser && existingUser.length > 0 && !existingUser[0].isActive) {
+      // 重新激活已删除的用户
+      newUser = await db
+        .update(users)
+        .set({
+          password: hashedPassword,
+          name: validatedData.name,
+          role: "user",
+          status: "pending",
+          isActive: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.email, validatedData.email))
+        .returning();
+    } else {
+      // 创建新用户
+      newUser = await db
+        .insert(users)
+        .values({
+          email: validatedData.email,
+          password: hashedPassword,
+          name: validatedData.name,
+          role: "user",
+          status: "pending", // 默认为待审核状态
+          isActive: true,
+        })
+        .returning();
+    }
 
     // 返回用户信息（不包含密码）
     const { password, ...userWithoutPassword } = newUser[0];
