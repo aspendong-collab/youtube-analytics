@@ -193,7 +193,7 @@ export default function RetentionAnalysisPage() {
                   />
                   <Tooltip
                     labelFormatter={(value) => formatTime(value)}
-                    formatter={(value: number, name: string) => `${value.toFixed(0)}%`}
+                    formatter={(value: any, name: any) => typeof value === 'number' ? `${value.toFixed(0)}%` : 'N/A'}
                   />
                   <Area
                     type="monotone"
