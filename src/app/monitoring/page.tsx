@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { getCategoryName } from '@/lib/youtube-categories';
 import {
   AlertDialog,
@@ -36,6 +37,9 @@ interface Video {
   thumbnail?: string;
   createdAt: string | Date;
   latestStats?: VideoStats | null;
+  duration?: number; // 新增：视频时长（秒）
+  region?: string; // 新增：地区
+  language?: string; // 新增：语言
 }
 
 export default function MonitoringPage() {
@@ -109,6 +113,34 @@ export default function MonitoringPage() {
     if (diffDays === 1) return '昨天';
     if (diffDays < 7) return `${diffDays}天前`;
     return d.toLocaleDateString('zh-CN');
+  };
+
+  // 格式化时长
+  const formatDuration = (duration: number): string => {
+    if (!duration) return '未知';
+    const hours = Math.floor(duration / 3600);
+    const minutes = Math.floor((duration % 3600) / 60);
+    const seconds = duration % 60;
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // 获取地区名称
+  const getRegionName = (region: string): string => {
+    const regions: Record<string, string> = {
+      'US': '美国',
+      'CN': '中国',
+      'JP': '日本',
+      'KR': '韩国',
+      'GB': '英国',
+      'DE': '德国',
+      'FR': '法国',
+      'IN': '印度',
+    };
+    return regions[region] || region;
   };
 
   // 计算互动率
@@ -395,6 +427,25 @@ export default function MonitoringPage() {
                       <span>{video.owner || '未分配'}</span>
                       <span>•</span>
                       <span>{formatDate(video.createdAt)}</span>
+                    </div>
+
+                    {/* 扩展维度信息 */}
+                    <div className="flex items-center gap-3 text-xs text-[#86868B] mb-2">
+                      {video.duration && (
+                        <Badge variant="outline" className="text-xs">
+                          时长: {formatDuration(video.duration)}
+                        </Badge>
+                      )}
+                      {video.region && (
+                        <Badge variant="outline" className="text-xs">
+                          地区: {getRegionName(video.region)}
+                        </Badge>
+                      )}
+                      {video.language && (
+                        <Badge variant="outline" className="text-xs">
+                          语言: {video.language}
+                        </Badge>
+                      )}
                     </div>
 
                     {/* 数据指标 */}
