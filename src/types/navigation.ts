@@ -37,15 +37,47 @@ export const navItems: NavItem[] = [
     icon: '✨',
     path: '/analysis',
     children: [
-      { id: 'title-optimization', label: '标题优化', path: '/analysis' },
-      { id: 'tags-optimization', label: '标签优化', path: '/analysis/tags' },
-      { id: 'description-optimization', label: '描述优化', path: '/analysis/description' },
-      { id: 'thumbnail-optimization', label: '封面优化', path: '/analysis/thumbnail' },
-      { id: 'competition-analysis', label: '竞品分析', path: '/analysis/competition' },
-      { id: 'content-diagnosis', label: '内容诊断', path: '/analysis/content-diagnosis' },
-      { id: 'publishing-time', label: '发布时间', path: '/analysis/publishing' },
-      { id: 'audience-analysis', label: '受众分析', path: '/analysis/audience' },
-      { id: 'trends-tracking', label: '趋势追踪', path: '/analysis/tracking' },
+      {
+        id: 'basic-optimization',
+        label: '基础优化',
+        icon: '📝',
+        children: [
+          { id: 'title-optimization', label: '标题优化', path: '/analysis/basic/title' },
+          { id: 'tags-optimization', label: '标签优化', path: '/analysis/basic/tags' },
+          { id: 'description-optimization', label: '描述优化', path: '/analysis/basic/description' },
+          { id: 'thumbnail-optimization', label: '封面优化', path: '/analysis/thumbnail' },
+        ],
+      },
+      {
+        id: 'keyword-research',
+        label: '关键词研究',
+        icon: '🔑',
+        children: [
+          { id: 'search-trends', label: '搜索趋势', path: '/analysis/keywords/trends' },
+          { id: 'long-tail-keywords', label: '长尾关键词', path: '/analysis/keywords/long-tail' },
+          { id: 'competition-analysis', label: '竞争度评估', path: '/analysis/keywords/competition' },
+        ],
+      },
+      {
+        id: 'content-diagnosis',
+        label: '内容诊断',
+        icon: '🩺',
+        children: [
+          { id: 'ab-test', label: 'A/B 测试', path: '/analysis/diagnostics/ab-test' },
+          { id: 'ctr-prediction', label: '点击率预测', path: '/analysis/diagnostics/ctr-prediction' },
+          { id: 'retention-analysis', label: '完播率分析', path: '/analysis/diagnostics/retention' },
+        ],
+      },
+      {
+        id: 'data-analysis',
+        label: '数据分析',
+        icon: '📊',
+        children: [
+          { id: 'channel-analysis', label: '频道分析', path: '/monitoring/channels/analysis' },
+          { id: 'content-benchmark', label: '内容策略对标', path: '/analysis/data/benchmark' },
+          { id: 'growth-analysis', label: '粉丝增长分析', path: '/analysis/data/growth' },
+        ],
+      },
     ],
   },
   {
