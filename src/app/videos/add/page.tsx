@@ -7,9 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -35,7 +32,6 @@ export default function AddVideoPage() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [owners, setOwners] = useState<Owner[]>([]);
   const [isLoadingOwners, setIsLoadingOwners] = useState(false);
 
@@ -90,6 +86,8 @@ export default function AddVideoPage() {
         description: data.description || '',
         tags: data.tags ? data.tags.join(', ') : '',
         category: data.categoryId || '',
+        // 自动获取发布时间
+        publishDate: data.publishedAt ? new Date(data.publishedAt) : null,
       });
 
       setError('');
@@ -307,35 +305,15 @@ export default function AddVideoPage() {
 
           <div className="space-y-2">
             <Label htmlFor="publishDate">发布时间</Label>
-            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-left font-normal"
-                  type="button"
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formData.publishDate ? (
-                    format(formData.publishDate, 'yyyy-MM-dd HH:mm:ss')
-                  ) : (
-                    <span>请选择发布时间</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={formData.publishDate}
-                  onSelect={(date) => {
-                    setFormData({ ...formData, publishDate: date });
-                    setIsCalendarOpen(false);
-                  }}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <Input
+              id="publishDate"
+              value={formData.publishDate ? format(formData.publishDate, 'yyyy-MM-dd HH:mm:ss') : ''}
+              placeholder="点击"获取视频信息"后自动填充"
+              readOnly
+              className="bg-gray-50 cursor-not-allowed"
+            />
             <p className="text-xs text-[#86868B]">
-              请选择视频在 YouTube 上的实际发布时间，此时间将用于统计发布量和成本分析
+              此字段将从 YouTube 自动获取，无需手动输入
             </p>
           </div>
 
