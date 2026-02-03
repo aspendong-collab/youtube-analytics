@@ -5,7 +5,7 @@ import { LLMClient, Config } from 'coze-coding-dev-sdk';
 const config = new Config();
 const client = new LLMClient(config);
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
