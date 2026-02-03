@@ -18,7 +18,7 @@ interface SuggestedTitle {
 }
 
 export default function TitleOptimizationPage() {
-  const { selectedVideo } = useAnalysis();
+  const { selectedVideo, setSelectedVideo } = useAnalysis();
   const [currentTitle, setCurrentTitle] = useState('');
   const [suggestedTitles, setSuggestedTitles] = useState<SuggestedTitle[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -104,7 +104,7 @@ export default function TitleOptimizationPage() {
       {/* 视频选择器 */}
       <VideoSelector
         selectedVideoId={selectedVideo?.id || null}
-        onVideoSelect={() => {}}
+        onVideoSelect={setSelectedVideo}
       />
 
       {/* 当前标题和生成按钮 */}

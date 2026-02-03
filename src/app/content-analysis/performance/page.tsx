@@ -25,7 +25,7 @@ interface VideoPerformance {
 }
 
 export default function ContentPerformancePage() {
-  const { selectedVideo, isAnalyzing, setIsAnalyzing } = useAnalysis();
+  const { selectedVideo, setSelectedVideo, isAnalyzing, setIsAnalyzing } = useAnalysis();
   const [performance, setPerformance] = useState<VideoPerformance | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -106,11 +106,7 @@ export default function ContentPerformancePage() {
       {/* 视频选择器 */}
       <VideoSelector
         selectedVideoId={selectedVideo?.id || null}
-        onVideoSelect={(video) => {
-          // 在 Context 中设置视频
-          // 注意：这里需要更新 Context，但由于 layout 已提供 Provider，
-          // 我们直接使用 selectedVideo，无需手动设置
-        }}
+        onVideoSelect={setSelectedVideo}
       />
 
       {/* 性能数据展示 */}

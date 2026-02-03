@@ -6,7 +6,7 @@ import { useAnalysis } from '@/contexts/analysis-context';
 import { Activity } from 'lucide-react';
 
 export default function ContentDiagnosisPage() {
-  const { selectedVideo } = useAnalysis();
+  const { selectedVideo, setSelectedVideo } = useAnalysis();
 
   return (
     <div className="p-8 space-y-6">
@@ -17,7 +17,7 @@ export default function ContentDiagnosisPage() {
 
       <VideoSelector
         selectedVideoId={selectedVideo?.id || null}
-        onVideoSelect={() => {}}
+        onVideoSelect={setSelectedVideo}
       />
 
       {!selectedVideo ? (

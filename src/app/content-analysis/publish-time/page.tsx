@@ -6,7 +6,7 @@ import { useAnalysis } from '@/contexts/analysis-context';
 import { Clock } from 'lucide-react';
 
 export default function PublishTimePage() {
-  const { selectedVideo } = useAnalysis();
+  const { selectedVideo, setSelectedVideo } = useAnalysis();
 
   return (
     <div className="p-8 space-y-6">
@@ -17,7 +17,7 @@ export default function PublishTimePage() {
 
       <VideoSelector
         selectedVideoId={selectedVideo?.id || null}
-        onVideoSelect={() => {}}
+        onVideoSelect={setSelectedVideo}
       />
 
       {!selectedVideo ? (
