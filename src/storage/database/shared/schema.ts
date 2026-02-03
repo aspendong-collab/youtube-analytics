@@ -296,62 +296,6 @@ export const insertCommentSchema = createInsertSchema(comments).pick({
   qualityScore: true,
 });
 
-// A/B Tests schemas
-export const insertABTestSchema = createInsertSchema(abTests).pick({
-  name: true,
-  type: true,
-  videoId: true,
-  userId: true,
-  status: true,
-  startDate: true,
-  endDate: true,
-  winnerVariantId: true,
-  confidence: true,
-});
-
-export const updateABTestSchema = createInsertSchema(abTests)
-  .pick({
-    name: true,
-    type: true,
-    videoId: true,
-    status: true,
-    startDate: true,
-    endDate: true,
-    winnerVariantId: true,
-    confidence: true,
-  })
-  .partial();
-
-// A/B Test Variants schemas
-export const insertABTestVariantSchema = createInsertSchema(abTestVariants).pick({
-  testId: true,
-  variantName: true,
-  title: true,
-  description: true,
-  thumbnail: true,
-  isActive: true,
-});
-
-export const updateABTestVariantSchema = createInsertSchema(abTestVariants)
-  .pick({
-    variantName: true,
-    title: true,
-    description: true,
-    thumbnail: true,
-    isActive: true,
-  })
-  .partial();
-
-// A/B Test Results schemas
-export const insertABTestResultSchema = createInsertSchema(abTestResults).pick({
-  variantId: true,
-  statDate: true,
-  impressions: true,
-  clicks: true,
-  views: true,
-  watchTime: true,
-});
-
 // Influencers schemas
 export const insertInfluencerSchema = createInsertSchema(influencers).pick({
   channelId: true,
@@ -426,17 +370,6 @@ export type InsertVideoStats = z.infer<typeof insertVideoStatsSchema>;
 export type Comment = typeof comments.$inferSelect;
 export type InsertComment = z.infer<typeof insertCommentSchema>;
 
-export type ABTest = typeof abTests.$inferSelect;
-export type InsertABTest = z.infer<typeof insertABTestSchema>;
-export type UpdateABTest = z.infer<typeof updateABTestSchema>;
-
-export type ABTestVariant = typeof abTestVariants.$inferSelect;
-export type InsertABTestVariant = z.infer<typeof insertABTestVariantSchema>;
-export type UpdateABTestVariant = z.infer<typeof updateABTestVariantSchema>;
-
-export type ABTestResult = typeof abTestResults.$inferSelect;
-export type InsertABTestResult = z.infer<typeof insertABTestResultSchema>;
-
 export type Influencer = typeof influencers.$inferSelect;
 export type InsertInfluencer = z.infer<typeof insertInfluencerSchema>;
 export type UpdateInfluencer = z.infer<typeof updateInfluencerSchema>;
@@ -445,10 +378,6 @@ export type UpdateInfluencer = z.infer<typeof updateInfluencerSchema>;
 export type UserStatus = 'pending' | 'approved' | 'rejected';
 export type UserRole = 'user' | 'admin';
 
-// A/B Test types
-export type ABTestType = 'title' | 'description' | 'thumbnail';
-export type ABTestStatus = 'draft' | 'running' | 'completed' | 'paused';
-export type ABTestVariantName = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
 export type SentimentType = 'positive' | 'neutral' | 'negative';
 
 // Influencer types
