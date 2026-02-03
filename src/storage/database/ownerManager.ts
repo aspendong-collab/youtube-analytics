@@ -14,8 +14,8 @@ import type {
 } from "./shared/schema";
 import * as schema from "./shared/schema";
 
-// 硬编码的 Neon 数据库连接
-const NEON_DATABASE_URL = 'postgresql://neondb_owner:npg_zw0a2RgOhAXY@ep-winter-cherry-a1cs4q75-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+// 使用环境变量
+const DATABASE_URL = process.env.PGDATABASE_URL || 'postgresql://neondb_owner:npg_zw0a2RgOhAXY@ep-winter-cherry-a1cs4q75-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
 
 let dbClient: ReturnType<typeof postgres> | null = null;
 let dbInstance: ReturnType<typeof drizzle> | null = null;
@@ -24,10 +24,10 @@ export class OwnerManager {
   private getDb() {
     if (!dbInstance) {
       try {
-        const maskedUrl = NEON_DATABASE_URL.replace(/\/\/[^@]+@/, '/***@');
+        const maskedUrl = DATABASE_URL.replace(/\/\/[^@]+@/, '/***@');
         console.log('[OwnerManager] Connecting to database:', maskedUrl);
 
-        dbClient = postgres(NEON_DATABASE_URL, {
+        dbClient = postgres(DATABASE_URL, {
           max: 10,
           idle_timeout: 20,
           connect_timeout: 10,
@@ -109,7 +109,7 @@ export class OwnerManager {
   }
 
   /**
-   * 根据邮箱获取负责人
+   * 根据邮箱获取负责人（仅活跃状态）
    */
   async getOwnerByEmail(email: string): Promise<Owner | null> {
     const db = this.getDb();
@@ -117,7 +117,11 @@ export class OwnerManager {
       throw new Error('Database connection failed');
     }
 
-    const [owner] = await db.select().from(owners).where(eq(owners.email, email));
+    // 只返回 isActive = true 的负责人
+    const [owner] = await db
+      .select()
+      .from(owners)
+      .where(and(eq(owners.email, email), eq(owners.isActive, true)));
     return owner || null;
   }
 
@@ -148,14 +152,14 @@ export class OwnerManager {
       throw new Error('Database connection failed');
     }
 
-    const result = await db
+    const [result] = await db
       .update(owners)
       .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(owners.id, id));
+      .where(eq(owners.id, id))
+      .returning();
 
-    // postgres.js 返回的对象没有 rowCount，我们通过查询来验证
-    const updatedOwner = await this.getOwnerById(id);
-    return updatedOwner ? updatedOwner.isActive === false : false;
+    // 通过检查更新后的记录来验证是否成功
+    return result ? result.isActive === false : false;
   }
 
   /**
