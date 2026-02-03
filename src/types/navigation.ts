@@ -41,6 +41,46 @@ export const navItems: NavItem[] = [
     path: '/influencers',
   },
   {
+    id: 'content-analysis',
+    label: '内容分析',
+    icon: '📊',
+    path: '/content-analysis',
+    children: [
+      // Phase 1: 快速见效
+      {
+        id: 'performance-analysis',
+        label: '内容表现分析',
+        path: '/content-analysis/performance',
+        icon: '📈'
+      },
+      {
+        id: 'title-optimization',
+        label: '标题与封面优化',
+        path: '/content-analysis/title-optimization',
+        icon: '🎯'
+      },
+      {
+        id: 'content-diagnosis',
+        label: '内容诊断',
+        path: '/content-analysis/diagnosis',
+        icon: '🩺'
+      },
+      // Phase 2: 深度优化
+      {
+        id: 'keyword-research',
+        label: '关键词研究',
+        path: '/content-analysis/keywords',
+        icon: '🔑'
+      },
+      {
+        id: 'publish-timing',
+        label: '发布时机优化',
+        path: '/content-analysis/timing',
+        icon: '⏰'
+      },
+    ],
+  },
+  {
     id: 'comments-analysis',
     label: '评论分析',
     icon: '💬',
