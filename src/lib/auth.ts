@@ -5,6 +5,9 @@ import { dbInstance as db } from "@/lib/db";
 import { users } from "@/storage/database/shared/schema";
 import { eq } from "drizzle-orm";
 
+// 确保有有效的 secret
+const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || "youtube-analytics-secret-key-2024-change-in-production";
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -95,7 +98,5 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET && process.env.NEXTAUTH_SECRET.trim() !== ''
-    ? process.env.NEXTAUTH_SECRET
-    : "youtube-analytics-secret-key-change-in-production-123",
+  secret: NEXTAUTH_SECRET,
 };
