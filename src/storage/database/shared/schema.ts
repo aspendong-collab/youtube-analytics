@@ -60,6 +60,11 @@ export const videos = pgTable(
     publishStatus: varchar("publish_status", { length: 20 }).default('draft'),
     cooperationCost: decimal("cooperation_cost", { precision: 10, scale: 2 }).default('0'),
     totalViews: integer("total_views").default(0),
+    // 阶段1新增字段
+    duration: integer("duration"), // 视频时长（秒）
+    region: varchar("region", { length: 10 }), // 视频所属地区/国家代码
+    language: varchar("language", { length: 10 }), // 视频语言代码
+    bestPublishTime: jsonb("best_publish_time").$type<{ hour: number; day: number; reason: string }>(), // 最佳发布时间建议
     userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: 'cascade' }),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -118,6 +123,36 @@ export const videoStats = pgTable(
       table.videoId,
       table.statDate
     ),
+  })
+);
+
+// Comments 表 - 存储视频评论
+export const comments = pgTable(
+  "comments",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    commentId: varchar("comment_id", { length: 50 }).notNull().unique(),
+    videoId: varchar("video_id", { length: 20 }).notNull(),
+    authorName: varchar("author_name", { length: 255 }),
+    authorChannelId: varchar("author_channel_id", { length: 50 }),
+    textDisplay: text("text_display").notNull(),
+    likeCount: integer("like_count").default(0),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+    sentiment: varchar("sentiment", { length: 20 }), // 情感: positive, neutral, negative
+    isHighQuality: boolean("is_high_quality").default(false), // 是否为高质量评论
+    qualityScore: decimal("quality_score", { precision: 5, scale: 2 }).default('0'), // 质量评分
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    videoIdIdx: index("comments_video_id_idx").on(table.videoId),
+    sentimentIdx: index("comments_sentiment_idx").on(table.sentiment),
+    highQualityIdx: index("comments_high_quality_idx").on(table.isHighQuality),
+    publishedAtIdx: index("comments_published_at_idx").on(table.publishedAt),
   })
 );
 
@@ -192,12 +227,39 @@ export const insertVideoStatsSchema = createInsertSchema(videoStats).pick({
   commentCount: true,
 });
 
+// Comments schemas
+export const insertCommentSchema = createInsertSchema(comments).pick({
+  commentId: true,
+  videoId: true,
+  authorName: true,
+  authorChannelId: true,
+  textDisplay: true,
+  likeCount: true,
+  publishedAt: true,
+  updatedAt: true,
+  sentiment: true,
+  isHighQuality: true,
+  qualityScore: true,
+});
+
 // TypeScript types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
 
 export type Video = typeof videos.$inferSelect;
+export type InsertVideo = z.infer<typeof insertVideoSchema>;
+export type UpdateVideo = z.infer<typeof updateVideoSchema>;
+
+export type Owner = typeof owners.$inferSelect;
+export type InsertOwner = z.infer<typeof insertOwnerSchema>;
+export type UpdateOwner = z.infer<typeof updateOwnerSchema>;
+
+export type VideoStats = typeof videoStats.$inferSelect;
+export type InsertVideoStats = z.infer<typeof insertVideoStatsSchema>;
+
+export type Comment = typeof comments.$inferSelect;
+export type InsertComment = z.infer<typeof insertCommentSchema>;
 export type InsertVideo = z.infer<typeof insertVideoSchema>;
 export type UpdateVideo = z.infer<typeof updateVideoSchema>;
 

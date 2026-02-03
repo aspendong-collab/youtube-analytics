@@ -91,31 +91,45 @@ export async function POST(request: NextRequest) {
     };
 
     if (apiKey) {
-      // 如果有 API Key，尝试获取视频信息
+      // 如果有 API Key，尝试获取视频信息（使用新的video-info API）
       try {
-        const videoResponse = await fetch(
-          `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`
+        console.log('[API /api/videos] 调用 video-info API 获取详细信息...');
+        const videoInfoResponse = await fetch(
+          `http://localhost:5000/api/video-info?url=${encodeURIComponent(videoUrl)}`,
+          {
+            method: 'GET',
+          }
         );
 
-        if (videoResponse.ok) {
-          const videoData = await videoResponse.json();
-          if (videoData.items && videoData.items.length > 0) {
-            const snippet = videoData.items[0].snippet;
-            insertData.title = snippet.title;
-            insertData.description = snippet.description;
-            insertData.channelId = snippet.channelId;
-            insertData.channelTitle = snippet.channelTitle;
-            insertData.thumbnail = snippet.thumbnails?.maxres?.url ||
-                                   snippet.thumbnails?.high?.url ||
-                                   snippet.thumbnails?.medium?.url ||
-                                   snippet.thumbnails?.default?.url ||
-                                   `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-            insertData.tags = tags ? (Array.isArray(tags) ? tags : tags.split(',').map((t: string) => t.trim())) : snippet.tags;
-            insertData.categoryId = category || snippet.categoryId;
-            // 从 YouTube API 获取发布时间
-            if (snippet.publishedAt && !insertData.publishDate) {
-              insertData.publishDate = new Date(snippet.publishedAt);
-            }
+        if (videoInfoResponse.ok) {
+          const videoInfo = await videoInfoResponse.json();
+          console.log('[API /api/videos] video-info API 响应:', {
+            title: videoInfo.title,
+            duration: videoInfo.duration,
+            region: videoInfo.region,
+            language: videoInfo.language,
+          });
+
+          insertData.title = videoInfo.title;
+          insertData.description = videoInfo.description;
+          insertData.channelId = videoInfo.channelId;
+          insertData.channelTitle = videoInfo.channelTitle;
+          insertData.thumbnail = videoInfo.thumbnails?.maxres?.url ||
+                                 videoInfo.thumbnails?.high?.url ||
+                                 videoInfo.thumbnails?.medium?.url ||
+                                 videoInfo.thumbnails?.default?.url ||
+                                 `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+          insertData.tags = tags ? (Array.isArray(tags) ? tags : tags.split(',').map((t: string) => t.trim())) : videoInfo.tags;
+          insertData.categoryId = category || videoInfo.categoryId;
+
+          // 新增字段
+          insertData.duration = videoInfo.duration;
+          insertData.region = videoInfo.region;
+          insertData.language = videoInfo.language;
+
+          // 从 YouTube API 获取发布时间
+          if (videoInfo.publishedAt && !insertData.publishDate) {
+            insertData.publishDate = new Date(videoInfo.publishedAt);
           }
         }
       } catch (apiError) {

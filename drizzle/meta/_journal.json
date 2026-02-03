@@ -15,6 +15,13 @@
       "when": 1770036557812,
       "tag": "0001_flippant_black_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770088579532,
+      "tag": "0002_motionless_firelord",
+      "breakpoints": true
     }
   ]
 }

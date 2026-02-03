@@ -14,6 +14,12 @@ export const navItems: NavItem[] = [
     path: '/overview',
   },
   {
+    id: 'discovery',
+    label: '发现',
+    icon: '🔎',
+    path: '/discovery',
+  },
+  {
     id: 'monitoring',
     label: '视频监控',
     icon: '📹',

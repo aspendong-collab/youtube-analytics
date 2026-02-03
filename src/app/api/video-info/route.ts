@@ -63,8 +63,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // 调用 YouTube Data API v3
-    const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`;
+    // 调用 YouTube Data API v3 - 获取多个part
+    const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails,status&id=${videoId}&key=${apiKey}`;
     console.log('[API /api/video-info] 调用 YouTube API:', {
       videoId,
       apiUrl: apiUrl.replace(/key=[^&]+/, 'key=***'),
@@ -126,11 +126,32 @@ export async function GET(request: NextRequest) {
 
     const video = data.items[0];
     const snippet = video.snippet;
+    const contentDetails = video.contentDetails || {};
+    const status = video.status || {};
+
+    // 解析时长 (ISO 8601 format: PT1M30S -> 90 seconds)
+    let duration = 0;
+    if (contentDetails.duration) {
+      const match = contentDetails.duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+      if (match) {
+        const hours = (parseInt(match[1]) || 0) * 3600;
+        const minutes = (parseInt(match[2]) || 0) * 60;
+        const seconds = parseInt(match[3]) || 0;
+        duration = hours + minutes + seconds;
+      }
+    }
+
+    // 解析地区和语言（从defaultLanguage或defaultAudioLanguage）
+    const region = status.regionRestriction?.allowed?.[0] || status.regionRestriction?.blocked?.[0] || null;
+    const language = contentDetails.defaultLanguage || contentDetails.defaultAudioLanguage || null;
 
     console.log('[API /api/video-info] 成功获取视频信息:', {
       videoId: video.id,
       title: snippet.title,
       channelTitle: snippet.channelTitle,
+      duration,
+      region,
+      language,
     });
 
     return NextResponse.json({
@@ -143,6 +164,13 @@ export async function GET(request: NextRequest) {
       thumbnails: snippet.thumbnails,
       tags: snippet.tags || [],
       categoryId: snippet.categoryId,
+      // 新增字段
+      duration,
+      region,
+      language,
+      privacyStatus: status.privacyStatus,
+      license: status.license,
+      embeddable: status.embeddable,
     });
   } catch (error) {
     console.error('[API /api/video-info] 服务器错误:', error);
