@@ -95,6 +95,7 @@ export const navItems: NavItem[] = [
     icon: '⚙️',
     path: '/settings',
     children: [
+      { id: 'users', label: '用户管理', path: '/admin/users' },
       { id: 'data-collection', label: '数据采集', path: '/settings/data' },
       { id: 'system-settings', label: '系统设置', path: '/settings/system' },
     ],

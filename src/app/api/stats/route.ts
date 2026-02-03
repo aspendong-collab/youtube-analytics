@@ -8,8 +8,9 @@ import * as schema from '@/storage/database';
 // 设置为动态路由，避免构建时预加载
 export const dynamic = 'force-dynamic';
 
-// 硬编码的 Neon 数据库连接
+// 从环境变量获取数据库连接字符串
 const NEON_DATABASE_URL = 'postgresql://neondb_owner:npg_zw0a2RgOhAXY@ep-winter-cherry-a1cs4q75-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+const DATABASE_URL = process.env.PGDATABASE_URL || NEON_DATABASE_URL;
 
 let dbClient: ReturnType<typeof postgres> | null = null;
 let dbInstance: ReturnType<typeof drizzle> | null = null;
@@ -17,10 +18,10 @@ let dbInstance: ReturnType<typeof drizzle> | null = null;
 function getDb() {
   if (!dbInstance) {
     try {
-      const maskedUrl = NEON_DATABASE_URL.replace(/\/\/[^@]+@/, '/***@');
+      const maskedUrl = DATABASE_URL.replace(/\/\/[^@]+@/, '/***@');
       console.log('[Stats API] Connecting to database:', maskedUrl);
 
-      dbClient = postgres(NEON_DATABASE_URL, {
+      dbClient = postgres(DATABASE_URL, {
         max: 10,
         idle_timeout: 20,
         connect_timeout: 10,
@@ -39,7 +40,7 @@ function getDb() {
 export async function GET(request: NextRequest) {
   console.log('[API /api/stats] 收到统计请求');
 
-  const client = postgres(NEON_DATABASE_URL, {
+  const client = postgres(DATABASE_URL, {
     max: 10,
     idle_timeout: 20,
     connect_timeout: 10,

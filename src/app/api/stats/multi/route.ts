@@ -4,13 +4,14 @@ import postgres from 'postgres';
 // 设置为动态路由，避免构建时预加载
 export const dynamic = 'force-dynamic';
 
-// 硬编码的 Neon 数据库连接
+// 从环境变量获取数据库连接字符串
 const NEON_DATABASE_URL = 'postgresql://neondb_owner:npg_zw0a2RgOhAXY@ep-winter-cherry-a1cs4q75-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+const DATABASE_URL = process.env.PGDATABASE_URL || NEON_DATABASE_URL;
 
 export async function GET(request: NextRequest) {
   console.log('[API /api/stats/multi] 收到统计请求');
 
-  const client = postgres(NEON_DATABASE_URL, {
+  const client = postgres(DATABASE_URL, {
     max: 10,
     idle_timeout: 20,
     connect_timeout: 10,

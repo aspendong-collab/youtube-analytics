@@ -13,14 +13,14 @@ export async function POST(request: Request) {
     // 验证输入
     const validatedData = insertUserSchema.parse(body);
 
-    // 检查邮箱是否已存在
+    // 检查邮箱是否已存在（只检查活跃用户）
     const existingUser = await db
       .select()
       .from(users)
       .where(eq(users.email, validatedData.email))
       .limit(1);
 
-    if (existingUser && existingUser.length > 0) {
+    if (existingUser && existingUser.length > 0 && existingUser[0].isActive) {
       return NextResponse.json(
         { error: "该邮箱已被注册" },
         { status: 400 }
