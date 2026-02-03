@@ -95,5 +95,7 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET || "youtube-analytics-secret-key-change-in-production-123",
+  secret: process.env.NEXTAUTH_SECRET && process.env.NEXTAUTH_SECRET.trim() !== ''
+    ? process.env.NEXTAUTH_SECRET
+    : "youtube-analytics-secret-key-change-in-production-123",
 };
