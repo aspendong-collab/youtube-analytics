@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Filter, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
+import type { YouTubeSearchVideo } from '@/types/discovery';
 
 interface DiscoveryFiltersProps {
   onFiltersChange: (filters: FilterValues) => void;

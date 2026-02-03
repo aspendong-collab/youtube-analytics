@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Search, TrendingUp, Play, Eye, Heart, MessageCircle, Flame, Clock, User } from 'lucide-react';
-import DiscoveryFilters, { FilterValues, YouTubeSearchVideo } from '@/components/discovery/DiscoveryFilters';
+import DiscoveryFilters, { FilterValues } from '@/components/discovery/DiscoveryFilters';
+import type { YouTubeSearchVideo } from '@/types/discovery';
 
 export default function EnhancedDiscoveryPage() {
   const [keyword, setKeyword] = useState('');
