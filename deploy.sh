@@ -67,3 +67,108 @@ echo "   - TRENDING_RANKING_TEST_GUIDE.md - 测试指南"
 echo "   - TRENDING_CACHE_OPTIMIZATION.md - 缓存优化说明"
 echo ""
 echo "🎉 部署成功！"
+#!/bin/bash
+
+# 自动化部署脚本
+# 使用方法：./deploy.sh <VERCEL_TOKEN>
+
+set -e
+
+echo "=========================================="
+echo "YouTube Analytics - 自动化部署脚本"
+echo "=========================================="
+echo ""
+
+# 检查 Vercel Token
+if [ -z "$1" ]; then
+    echo "❌ 错误：缺少 Vercel Token"
+    echo ""
+    echo "使用方法："
+    echo "  ./deploy.sh <VERCEL_TOKEN>"
+    echo ""
+    echo "获取 Vercel Token："
+    echo "  1. 访问 https://vercel.com/account/tokens"
+    echo "  2. 点击 'Create Token'"
+    echo "  3. 设置 Token 名称并复制 Token"
+    echo ""
+    exit 1
+fi
+
+VERCEL_TOKEN=$1
+
+echo "✓ Vercel Token 已提供"
+echo ""
+
+# 检查是否已登录 Vercel
+echo "检查 Vercel 登录状态..."
+if vercel whoami > /dev/null 2>&1; then
+    echo "✓ 已登录 Vercel"
+else
+    echo "正在登录 Vercel..."
+    echo "${VERCEL_TOKEN}" | vercel login --token="${VERCEL_TOKEN}" || {
+        echo "❌ 登录失败"
+        exit 1
+    }
+    echo "✓ 登录成功"
+fi
+echo ""
+
+# 检查项目是否存在
+echo "检查 Vercel 项目..."
+PROJECT_INFO=$(vercel ls 2>&1 || echo "")
+
+if echo "$PROJECT_INFO" | grep -q "youtube-analytics"; then
+    echo "✓ 项目已存在"
+    echo ""
+else
+    echo "项目不存在，正在创建..."
+    vercel link --yes || {
+        echo "❌ 创建项目失败"
+        exit 1
+    }
+    echo "✓ 项目创建成功"
+    echo ""
+fi
+
+# 安装依赖
+echo "安装依赖..."
+pnpm install || {
+    echo "❌ 安装依赖失败"
+    exit 1
+}
+echo "✓ 依赖安装完成"
+echo ""
+
+# 构建项目
+echo "构建项目..."
+pnpm run build || {
+    echo "❌ 构建失败"
+    exit 1
+}
+echo "✓ 构建完成"
+echo ""
+
+# 部署到生产环境
+echo "部署到生产环境..."
+vercel --prod --token="${VERCEL_TOKEN}" || {
+    echo "❌ 部署失败"
+    exit 1
+}
+echo ""
+
+echo "=========================================="
+echo "✅ 部署成功！"
+echo "=========================================="
+echo ""
+echo "下一步："
+echo "  1. 访问 Vercel 控制台配置环境变量"
+echo "  2. 访问 https://vercel.com/[your-username]/youtube-analytics"
+echo "  3. 在 'Settings' -> 'Environment Variables' 中添加："
+echo ""
+echo "     PGDATABASE_URL=你的数据库连接字符串"
+echo "     YOUTUBE_API_KEY=你的YouTube API Key"
+echo "     NEXTAUTH_SECRET=随机生成的密钥"
+echo ""
+echo "  4. 重新部署项目："
+echo "     vercel --prod --token=<VERCEL_TOKEN>"
+echo ""
