@@ -159,7 +159,7 @@ export default function GrowthAnalysisPage() {
                     />
                     <Tooltip
                       labelFormatter={(value) => value}
-                      formatter={(value: any, name: any) => typeof value === 'number' ? formatNumber(value) : 'N/A'}
+                      formatter={(value: number, name: string) => formatNumber(value)}
                     />
                     <Line
                       type="monotone"
@@ -192,11 +192,11 @@ export default function GrowthAnalysisPage() {
                   <YAxis tickFormatter={(value) => `${value >= 0 ? '+' : ''}${value}`} />
                   <Tooltip
                     labelFormatter={(value) => value}
-                    formatter={(value: any, name: any) => typeof value === 'number' ? `${value >= 0 ? '+' : ''}${value}` : 'N/A'}
+                    formatter={(value: number, name: string) => `${value >= 0 ? '+' : ''}${value}`}
                   />
                   <Bar
                     dataKey="dailyChange"
-                    fill="#22c55e"
+                    fill={(entry: any) => entry.dailyChange >= 0 ? '#22c55e' : '#ef4444'}
                     radius={[4, 4, 0, 0]}
                   />
                 </BarChart>
@@ -270,7 +270,7 @@ export default function GrowthAnalysisPage() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis tickFormatter={(value: number) => formatNumber(value)} />
-                  <Tooltip formatter={(value: any, name: any) => typeof value === 'number' ? formatNumber(value) : 'N/A'} />
+                  <Tooltip formatter={(value: number, name: string) => formatNumber(value)} />
                   <Bar dataKey="predictedSubscribers" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
