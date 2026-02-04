@@ -41,7 +41,7 @@
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "coze-coding-dev-sdk": "^0.7.10",
+    "coze-coding-dev-sdk": "^0.7.15",
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.36.4",
     "drizzle-zod": "^0.5.1",
