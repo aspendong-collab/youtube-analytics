@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { influencerCollector } from '@/lib/influencer-collector';
 import { youtubeClient } from '@/lib/youtube-client';
 import { influencerCacheService } from '@/lib/influencer-cache';
+import { influencerScorer } from '@/lib/influencer-scorer';
+import type { ScoreConfig } from '@/lib/influencer-scorer';
 
 /**
  * POST /api/influencers/collect
@@ -12,7 +14,7 @@ export async function POST(request: NextRequest) {
     console.log('[API /api/influencers/collect] 收到请求');
 
     const body = await request.json();
-    const { keyword, keywords, language, maxResults, regionCode, pageToken, publishedAfter, publishedBefore, sortBy } = body;
+    const { keyword, keywords, language, maxResults, regionCode, pageToken, publishedAfter, publishedBefore, sortBy, enableScoring, scoringConfig } = body;
 
     // 支持旧的 keyword 参数和新的 keywords 数组
     const searchKeywords = Array.isArray(keywords) ? keywords : (keyword ? [keyword] : []);
@@ -103,6 +105,51 @@ export async function POST(request: NextRequest) {
       }
       // relevance 使用默认顺序
 
+      // 如果启用评分，对达人进行评分和分类
+      if (enableScoring) {
+        console.log('[API] 开始对达人进行评分和分类...');
+        
+        const searchKeywords = Array.isArray(keywords) ? keywords : (keyword ? [keyword] : []);
+        
+        const config: Partial<ScoreConfig> = {
+          keywords: searchKeywords,
+          targetAudience: scoringConfig?.targetAudience || {
+            languages: language !== 'all' ? [language || 'zh'] : ['zh'],
+            minSubscribers: scoringConfig?.targetAudience?.minSubscribers,
+            maxSubscribers: scoringConfig?.targetAudience?.maxSubscribers,
+          },
+          activityThresholds: scoringConfig?.activityThresholds,
+        };
+
+        // 批量评分
+        const scoreResults = await influencerScorer.scoreBatch(
+          sortedInfluencers,
+          config,
+          false // 不使用 AI 生成理由，提高速度
+        );
+
+        // 将评分结果附加到达人数据
+        sortedInfluencers = sortedInfluencers.map(influencer => {
+          const scoreResult = scoreResults.get(influencer.channelId);
+          if (scoreResult) {
+            return {
+              ...influencer,
+              score: scoreResult,
+            };
+          }
+          return influencer;
+        });
+
+        // 按总分排序（如果 sortBy 没有指定）
+        if (!sortBy || sortBy === 'relevance') {
+          sortedInfluencers.sort((a, b) => 
+            (b.score?.total || 0) - (a.score?.total || 0)
+          );
+        }
+
+        console.log('[API] 评分和分类完成');
+      }
+
       // 返回结果
       return NextResponse.json({
         success: true,
@@ -113,6 +160,7 @@ export async function POST(request: NextRequest) {
           totalResults: result.totalResults, // 总结果数
           hasMore: !!result.nextPageToken, // 是否有更多
           quotaUsage: youtubeClient.getQuotaUsage(),
+          scoringEnabled: enableScoring || false, // 是否启用评分
         },
       });
     } catch (error) {

@@ -149,10 +149,10 @@ export interface InfluencerProfile {
     conversions: number;
   };
 
-  // 评分和分层
+  // 评分和分层（支持多种评分系统）
   score: {
     total: number;
-    breakdown: {
+    breakdown?: {
       audienceSize: number;
       audienceQuality: number;
       contentQuality: number;
@@ -164,8 +164,18 @@ export interface InfluencerProfile {
       costEfficiency: number;
       partnershipHistory: number;
     };
-    tier: 'tier1' | 'tier2' | 'tier3' | 'tier4';
-    recommendations: string[];
+    details?: {
+      contentRelevance: number;
+      audienceMatch: number;
+      activity: number;
+      fanQuality: number;
+      collaborationValue: number;
+    };
+    tier?: 'tier1' | 'tier2' | 'tier3' | 'tier4';
+    category?: '精准博主' | '次优博主' | '潜在博主' | '不推荐';
+    reason?: string;
+    recommendation?: string;
+    recommendations?: string[];
   };
 
   // 状态管理

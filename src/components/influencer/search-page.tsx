@@ -17,6 +17,7 @@ interface SearchPageProps {
   sortBy: string;
   onSortChange: (sortBy: string) => void;
   totalCount: number;
+  onCategoryFilter?: (category: string) => void; // 新增：分类筛选回调
 }
 
 // 语种选项
@@ -96,6 +97,39 @@ function InfluencerCard({ influencer, onViewDetails }: { influencer: InfluencerP
            '-';
   };
 
+  // 获取分类标签的颜色和样式
+  const getCategoryStyle = (category: string) => {
+    switch (category) {
+      case '精准博主':
+        return {
+          bg: 'bg-green-100',
+          text: 'text-green-700',
+          border: 'border-green-200',
+        };
+      case '次优博主':
+        return {
+          bg: 'bg-blue-100',
+          text: 'text-blue-700',
+          border: 'border-blue-200',
+        };
+      case '潜在博主':
+        return {
+          bg: 'bg-orange-100',
+          text: 'text-orange-700',
+          border: 'border-orange-200',
+        };
+      default:
+        return {
+          bg: 'bg-gray-100',
+          text: 'text-gray-700',
+          border: 'border-gray-200',
+        };
+    }
+  };
+
+  const category = influencer.score?.category || '待评估';
+  const categoryStyle = getCategoryStyle(category);
+
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
          onClick={() => onViewDetails?.(influencer)}>
@@ -105,6 +139,12 @@ function InfluencerCard({ influencer, onViewDetails }: { influencer: InfluencerP
           alt={influencer.name || influencer.channelTitle}
           className="w-full h-full object-cover"
         />
+        {/* 分类标签 */}
+        <div className="absolute top-2 right-2">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${categoryStyle.bg} ${categoryStyle.text} ${categoryStyle.border} border`}>
+            {category}
+          </span>
+        </div>
       </div>
       <div className="p-4">
         <h3 className="font-semibold text-[#1D1D1F] mb-1 truncate">{influencer.name || influencer.channelTitle}</h3>
@@ -161,13 +201,15 @@ export default function SearchPage({
   onLoadMore,
   sortBy,
   onSortChange,
-  totalCount
+  totalCount,
+  onCategoryFilter,
 }: SearchPageProps) {
   const [keywordInput, setKeywordInput] = useState('');
   const [keywords, setKeywords] = useState<string[]>([]);
   const [language, setLanguage] = useState('all');
   const [searchHistory, setSearchHistory] = useState<string[]>(['生产力工具', '科技测评', '教程分享', '生活方式']);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all'); // 新增：选中的分类
 
   console.log('[SearchPage] 渲染状态:', { 
     loading, 
@@ -227,6 +269,36 @@ export default function SearchPage({
     console.log('[SearchPage] 加载更多...');
     await onLoadMore();
   };
+
+  // 新增：处理分类筛选
+  const handleCategoryFilter = (category: string) => {
+    setSelectedCategory(category);
+    if (onCategoryFilter) {
+      onCategoryFilter(category);
+    }
+  };
+
+  // 新增：计算各分类的数量
+  const getCategoryCounts = () => {
+    const counts = {
+      all: influencers.length,
+      '精准博主': 0,
+      '次优博主': 0,
+      '潜在博主': 0,
+      '不推荐': 0,
+    };
+
+    influencers.forEach(inf => {
+      const category = inf.score?.category || '待评估';
+      if (counts[category] !== undefined) {
+        counts[category]++;
+      }
+    });
+
+    return counts;
+  };
+
+  const categoryCounts = getCategoryCounts();
 
   return (
     <div className="min-h-screen bg-[#F5F5F7]">
@@ -329,6 +401,59 @@ export default function SearchPage({
             ))}
           </div>
         </div>
+
+        {/* 分类筛选栏 */}
+        {influencers.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm p-4 mt-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-[#86868B] mr-2">分类：</span>
+              <button
+                onClick={() => handleCategoryFilter('all')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  selectedCategory === 'all'
+                    ? 'bg-[#007AFF] text-white'
+                    : 'text-[#1D1D1F] hover:bg-[#F5F5F7]'
+                }`}
+                disabled={loading}
+              >
+                <span className="text-sm font-medium">全部 ({categoryCounts.all})</span>
+              </button>
+              <button
+                onClick={() => handleCategoryFilter('精准博主')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  selectedCategory === '精准博主'
+                    ? 'bg-green-500 text-white'
+                    : 'text-[#1D1D1F] hover:bg-green-100'
+                }`}
+                disabled={loading}
+              >
+                <span className="text-sm font-medium">精准 ({categoryCounts['精准博主']})</span>
+              </button>
+              <button
+                onClick={() => handleCategoryFilter('次优博主')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  selectedCategory === '次优博主'
+                    ? 'bg-blue-500 text-white'
+                    : 'text-[#1D1D1F] hover:bg-blue-100'
+                }`}
+                disabled={loading}
+              >
+                <span className="text-sm font-medium">次优 ({categoryCounts['次优博主']})</span>
+              </button>
+              <button
+                onClick={() => handleCategoryFilter('潜在博主')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  selectedCategory === '潜在博主'
+                    ? 'bg-orange-500 text-white'
+                    : 'text-[#1D1D1F] hover:bg-orange-100'
+                }`}
+                disabled={loading}
+              >
+                <span className="text-sm font-medium">潜在 ({categoryCounts['潜在博主']})</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 错误提示 */}

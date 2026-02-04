@@ -59,7 +59,8 @@ export default function AIDiscoveryPage() {
           keywords,
           language,
           sortBy,
-          maxResults: 50 
+          maxResults: 50,
+          enableScoring: true, // 启用评分和分类
         }),
       });
 
@@ -117,7 +118,8 @@ export default function AIDiscoveryPage() {
           keywords: currentKeywords,
           language: currentLanguage,
           sortBy,
-          maxResults: 50 
+          maxResults: 50,
+          enableScoring: true, // 启用评分和分类
         }),
       });
 
@@ -298,6 +300,19 @@ export default function AIDiscoveryPage() {
     setDetailOpen(true);
   };
 
+  const handleCategoryFilter = (category: string) => {
+    console.log('[handleCategoryFilter] 分类筛选:', category);
+    
+    if (category === 'all') {
+      setInfluencers(allInfluencers);
+    } else {
+      const filtered = allInfluencers.filter(
+        inf => inf.score?.category === category
+      );
+      setInfluencers(filtered);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F5F5F7]">
       <SearchPage
@@ -313,6 +328,7 @@ export default function AIDiscoveryPage() {
         sortBy={currentSortBy}
         onSortChange={handleSortChange}
         totalCount={totalCount}
+        onCategoryFilter={handleCategoryFilter}
       />
 
       <DetailDialog
