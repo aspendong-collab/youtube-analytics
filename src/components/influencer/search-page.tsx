@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Globe, Eye, TrendingUp, MessageCircle, Mail } from 'lucide-react';
+import { Search, X, Globe, Eye, TrendingUp, MessageCircle, Mail, Star, Flame, Calendar, ThumbsUp } from 'lucide-react';
 import type { InfluencerProfile } from '@/types/influencer';
 
 interface SearchPageProps {
-  onSearch: (keyword: string) => Promise<void>;
+  onSearch: (keywords: string[], language: string, sortBy: string) => Promise<void>;
   onFilterChange: (filters: any) => void;
   onViewDetails?: (influencer: InfluencerProfile) => void;
   loading: boolean;
@@ -14,7 +14,34 @@ interface SearchPageProps {
   error?: string | null;
   hasMore: boolean;
   onLoadMore: () => Promise<void>;
+  sortBy: string;
+  onSortChange: (sortBy: string) => void;
+  totalCount: number;
 }
+
+// 语种选项
+const LANGUAGE_OPTIONS = [
+  { value: 'all', label: '全部语言', flag: '🌍' },
+  { value: 'en', label: 'English', flag: '🇺🇸' },
+  { value: 'fr', label: 'Français', flag: '🇫🇷' },
+  { value: 'de', label: 'Deutsch', flag: '🇩🇪' },
+  { value: 'ja', label: '日本語', flag: '🇯🇵' },
+  { value: 'ko', label: '한국어', flag: '🇰🇷' },
+  { value: 'es', label: 'Español', flag: '🇪🇸' },
+  { value: 'pt', label: 'Português', flag: '🇧🇷' },
+  { value: 'it', label: 'Italiano', flag: '🇮🇹' },
+  { value: 'th', label: 'ไทย', flag: '🇹🇭' },
+  { value: 'ar', label: 'العربية', flag: '🇸🇦' },
+];
+
+// 排序选项
+const SORT_OPTIONS = [
+  { value: 'relevance', label: '综合推荐', icon: '⭐', Icon: Star },
+  { value: 'viewCount', label: '热度', icon: '🔥', Icon: Flame },
+  { value: 'date', label: '时间', icon: '📅', Icon: Calendar },
+  { value: 'rating', label: '评分', icon: '👍', Icon: ThumbsUp },
+  { value: 'views', label: '观看', icon: '👁', Icon: Eye },
+];
 
 function QuickEntryCard({ icon, title, description, onClick }: { icon: string; title: string; description: string; onClick: () => void }) {
   return (
@@ -122,35 +149,77 @@ function InfluencerCard({ influencer, onViewDetails }: { influencer: InfluencerP
   );
 }
 
-export default function SearchPage({ onSearch, onFilterChange, onViewDetails, loading, loadingMore, influencers, error, hasMore, onLoadMore }: SearchPageProps) {
-  const [keyword, setKeyword] = useState('');
+export default function SearchPage({ 
+  onSearch, 
+  onFilterChange, 
+  onViewDetails, 
+  loading, 
+  loadingMore, 
+  influencers, 
+  error, 
+  hasMore, 
+  onLoadMore,
+  sortBy,
+  onSortChange,
+  totalCount
+}: SearchPageProps) {
+  const [keywordInput, setKeywordInput] = useState('');
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [language, setLanguage] = useState('all');
   const [searchHistory, setSearchHistory] = useState<string[]>(['生产力工具', '科技测评', '教程分享', '生活方式']);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
-  console.log('[SearchPage] 渲染状态:', { loading, influencersCount: influencers.length, keyword, hasMore, loadingMore });
+  console.log('[SearchPage] 渲染状态:', { 
+    loading, 
+    influencersCount: influencers.length, 
+    keywords, 
+    language, 
+    sortBy, 
+    hasMore, 
+    loadingMore,
+    totalCount
+  });
 
-  const handleSearch = async (searchKeyword?: string) => {
-    const keywordToSearch = searchKeyword || keyword;
-    if (!keywordToSearch.trim()) return;
+  const addKeyword = () => {
+    const trimmed = keywordInput.trim();
+    if (trimmed && !keywords.includes(trimmed) && keywords.length < 5) {
+      setKeywords(prev => [...prev, trimmed]);
+      setKeywordInput('');
+    }
+  };
 
-    console.log('[SearchPage] 开始搜索:', keywordToSearch);
+  const removeKeyword = (index: number) => {
+    setKeywords(prev => prev.filter((_, i) => i !== index));
+  };
 
-    if (!searchHistory.includes(keywordToSearch)) {
-      setSearchHistory(prev => [keywordToSearch, ...prev].slice(0, 10));
+  const handleSearch = async () => {
+    if (keywords.length === 0) return;
+
+    console.log('[SearchPage] 开始搜索:', { keywords, language, sortBy });
+
+    // 添加到搜索历史
+    const searchKey = keywords.join(' + ');
+    if (!searchHistory.includes(searchKey)) {
+      setSearchHistory(prev => [searchKey, ...prev].slice(0, 10));
     }
 
-    if (!recentSearches.includes(keywordToSearch)) {
-      setRecentSearches(prev => [keywordToSearch, ...prev].slice(0, 5));
+    if (!recentSearches.includes(searchKey)) {
+      setRecentSearches(prev => [searchKey, ...prev].slice(0, 5));
     }
 
-    await onSearch(keywordToSearch);
+    await onSearch(keywords, language, sortBy);
     console.log('[SearchPage] 搜索完成');
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleSearch();
+      addKeyword();
     }
+  };
+
+  const handleQuickSearch = (keyword: string) => {
+    setKeywords([keyword]);
+    handleSearch();
   };
 
   const handleLoadMore = async () => {
@@ -168,6 +237,101 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
         </div>
       </div>
 
+      {/* 搜索控制台 */}
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          <div className="flex items-start gap-4">
+            {/* 关键词输入 */}
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#86868B] w-5 h-5" />
+                <input
+                  type="text"
+                  value={keywordInput}
+                  onChange={(e) => setKeywordInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="输入关键词、频道名称或产品类型..."
+                  className="w-full pl-10 pr-4 py-3 bg-[#F5F5F7] rounded-xl text-[#1D1D1F] placeholder-[#86868B] focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
+                  disabled={loading}
+                />
+                {keywordInput && (
+                  <button
+                    onClick={() => setKeywordInput('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#86868B] hover:text-[#1D1D1F]"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* 关键词标签 */}
+              {keywords.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {keywords.map((keyword, index) => (
+                    <div key={index} className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+                      {keyword}
+                      <button
+                        onClick={() => removeKeyword(index)}
+                        className="hover:text-blue-900 transition-colors"
+                        disabled={loading}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 语种选择 */}
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="px-4 py-3 bg-[#F5F5F7] rounded-xl text-[#1D1D1F] focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
+              disabled={loading}
+            >
+              {LANGUAGE_OPTIONS.map((lang) => (
+                <option key={lang.value} value={lang.value}>
+                  {lang.flag} {lang.label}
+                </option>
+              ))}
+            </select>
+
+            {/* 搜索按钮 */}
+            <button
+              onClick={handleSearch}
+              disabled={loading || keywords.length === 0}
+              className="px-8 py-3 bg-[#007AFF] text-white rounded-xl hover:bg-[#0056CC] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium whitespace-nowrap"
+            >
+              {loading ? '搜索中...' : '搜索'}
+            </button>
+          </div>
+        </div>
+
+        {/* 排序控制栏 */}
+        <div className="bg-white rounded-2xl shadow-sm p-4 mt-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-[#86868B] mr-2">排序：</span>
+            {SORT_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => onSortChange(option.value)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  sortBy === option.value
+                    ? 'bg-[#007AFF] text-white'
+                    : 'text-[#1D1D1F] hover:bg-[#F5F5F7]'
+                }`}
+                disabled={loading}
+              >
+                <span>{option.icon}</span>
+                <span className="text-sm font-medium">{option.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 错误提示 */}
       {!loading && error && (
         <div className="max-w-3xl mx-auto px-6 py-16">
           <div className="bg-red-50 border border-red-200 rounded-2xl p-12 text-center">
@@ -184,28 +348,10 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
         </div>
       )}
 
+      {/* 空状态 */}
       {!loading && !error && influencers.length === 0 && (
         <div className="max-w-3xl mx-auto px-6 py-16">
           <div className="bg-white rounded-2xl shadow-sm p-12">
-            <div className="relative mb-8">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#86868B] w-6 h-6" />
-              <input
-                type="text"
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="输入关键词、频道名称或产品类型..."
-                className="w-full pl-14 pr-4 py-4 bg-[#F5F5F7] rounded-xl text-[#1D1D1F] placeholder-[#86868B] text-lg focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
-              />
-              <button
-                onClick={() => handleSearch()}
-                disabled={!keyword.trim()}
-                className="absolute right-2 top-1/2 -translate-y-1/2 px-6 py-2 bg-[#007AFF] text-white rounded-lg hover:bg-[#0056CC] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                搜索
-              </button>
-            </div>
-
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
               <QuickEntryCard icon="🔍" title="关键词搜索" description="搜索关键词" onClick={() => {}} />
               <QuickEntryCard icon="🌍" title="热门内容" description="热门内容" onClick={() => {}} />
@@ -220,10 +366,7 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
                   {searchHistory.map((term, index) => (
                     <button
                       key={index}
-                      onClick={() => {
-                        setKeyword(term);
-                        onSearch(term);
-                      }}
+                      onClick={() => handleQuickSearch(term)}
                       className="px-4 py-2 bg-[#F5F5F7] text-[#1D1D1F] rounded-full hover:bg-[#E5E5EA] transition-colors text-sm"
                     >
                       {term}
@@ -242,10 +385,7 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
                   {recentSearches.map((term, index) => (
                     <button
                       key={index}
-                      onClick={() => {
-                        setKeyword(term);
-                        onSearch(term);
-                      }}
+                      onClick={() => handleQuickSearch(term)}
                       className="px-4 py-2 bg-[#F5F5F7] text-[#1D1D1F] rounded-full hover:bg-[#E5E5EA] transition-colors text-sm"
                     >
                       {term}
@@ -258,6 +398,7 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
         </div>
       )}
 
+      {/* 搜索中状态 */}
       {loading && (
         <div className="max-w-3xl mx-auto px-6 py-16">
           <div className="bg-white rounded-2xl shadow-sm p-12">
@@ -284,26 +425,11 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
         </div>
       )}
 
-      {!loading && influencers.length > 0 && (
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="bg-white rounded-2xl shadow-sm p-4 mb-6">
-            <div className="flex items-center gap-4">
-              <Search className="text-[#86868B] w-6 h-6" />
-              <input
-                type="text"
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="输入关键词搜索..."
-                className="flex-1 bg-transparent text-[#1D1D1F] placeholder-[#86868B] focus:outline-none"
-              />
-              <button
-                onClick={() => handleSearch()}
-                className="px-6 py-2 bg-[#007AFF] text-white rounded-lg hover:bg-[#0056CC] transition-colors font-medium"
-              >
-                搜索
-              </button>
-            </div>
+      {/* 搜索结果 */}
+      {!loading && !error && influencers.length > 0 && (
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="mb-4">
+            <p className="text-sm text-[#86868B]">找到 <span className="font-semibold text-[#1D1D1F]">{totalCount}</span> 个达人</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -313,7 +439,7 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
           </div>
 
           <div className="mt-8 text-center">
-            {hasMore && (
+            {hasMore ? (
               <button
                 onClick={handleLoadMore}
                 disabled={loadingMore}
@@ -321,6 +447,10 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
               >
                 {loadingMore ? '加载中...' : '加载更多...'}
               </button>
+            ) : (
+              <p className="text-sm text-[#86868B]">
+                已加载全部 {influencers.length} 个结果
+              </p>
             )}
           </div>
         </div>

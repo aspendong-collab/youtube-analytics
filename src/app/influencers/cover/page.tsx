@@ -10,31 +10,51 @@ export default function AIDiscoveryPage() {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [influencers, setInfluencers] = useState<InfluencerProfile[]>([]);
-  const [allInfluencers, setAllInfluencers] = useState<InfluencerProfile[]>([]); // 保存原始数据
+  const [allInfluencers, setAllInfluencers] = useState<InfluencerProfile[]>([]);
   const [selectedInfluencer, setSelectedInfluencer] = useState<InfluencerProfile | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentKeyword, setCurrentKeyword] = useState<string>('');
+  const [currentKeywords, setCurrentKeywords] = useState<string[]>([]);
+  const [currentLanguage, setCurrentLanguage] = useState('all');
+  const [currentSortBy, setCurrentSortBy] = useState('relevance');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const handleSearch = async (keyword: string) => {
-    console.log('[handleSearch] 开始搜索:', keyword);
+  console.log('[AIDiscoveryPage] 页面状态:', { 
+    loading, 
+    influencersCount: influencers.length, 
+    currentKeywords,
+    currentLanguage,
+    currentSortBy,
+    totalCount
+  });
+
+  const handleSearch = async (keywords: string[], language: string, sortBy: string) => {
+    console.log('[handleSearch] 开始搜索:', { keywords, language, sortBy });
     setLoading(true);
     setLoadingMore(false);
-    setInfluencers([]); // 清空之前的结果
-    setAllInfluencers([]); // 清空原始数据
-    setError(null); // 清空错误信息
-    setCurrentKeyword(keyword); // 保存当前搜索关键词
-    setPage(1); // 重置页码
-    setHasMore(true); // 重置是否有更多
+    setInfluencers([]);
+    setAllInfluencers([]);
+    setError(null);
+    setCurrentKeywords(keywords);
+    setCurrentLanguage(language);
+    setCurrentSortBy(sortBy);
+    setPage(1);
+    setHasMore(true);
+    setTotalCount(0);
 
     try {
       console.log('[handleSearch] 发送API请求...');
       const response = await fetch('/api/influencers/collect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword, maxResults: 20 }),
+        body: JSON.stringify({ 
+          keywords,
+          language,
+          sortBy,
+          maxResults: 20 
+        }),
       });
 
       console.log('[handleSearch] 收到响应:', response.status);
@@ -46,8 +66,8 @@ export default function AIDiscoveryPage() {
         console.log('[handleSearch] 搜索成功，找到达人:', result.data.influencers?.length || 0);
         const newInfluencers = result.data.influencers || [];
         setInfluencers(newInfluencers);
-        setAllInfluencers(newInfluencers); // 保存原始数据
-        // 每页20个，如果返回少于20个，说明没有更多了
+        setAllInfluencers(newInfluencers);
+        setTotalCount(result.data.count || newInfluencers.length);
         setHasMore(newInfluencers.length >= 20);
       } else {
         console.error('[handleSearch] 搜索失败:', result.error);
@@ -62,10 +82,57 @@ export default function AIDiscoveryPage() {
     }
   };
 
-  const handleLoadMore = async () => {
-    if (loadingMore || !currentKeyword || !hasMore) return;
+  const handleSortChange = async (sortBy: string) => {
+    console.log('[handleSortChange] 排序改变:', { currentKeywords, currentLanguage, sortBy });
+    
+    // 如果没有搜索结果，直接更新排序方式
+    if (influencers.length === 0) {
+      setCurrentSortBy(sortBy);
+      return;
+    }
 
-    console.log('[handleLoadMore] 开始加载更多，当前页:', page, '关键词:', currentKeyword);
+    // 重新搜索，应用新的排序方式
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/influencers/collect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          keywords: currentKeywords,
+          language: currentLanguage,
+          sortBy,
+          maxResults: 20 
+        }),
+      });
+
+      const result = await response.json();
+      console.log('[handleSortChange] 响应数据:', result);
+
+      if (result.success) {
+        const newInfluencers = result.data.influencers || [];
+        setInfluencers(newInfluencers);
+        setAllInfluencers(newInfluencers);
+        setTotalCount(result.data.count || newInfluencers.length);
+        setHasMore(newInfluencers.length >= 20);
+        setCurrentSortBy(sortBy);
+        setPage(1);
+      } else {
+        setError(result.error || result.message || '排序失败');
+      }
+    } catch (error) {
+      console.error('[handleSortChange] 排序错误:', error);
+      setError(error instanceof Error ? error.message : '排序出错');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLoadMore = async () => {
+    if (loadingMore || currentKeywords.length === 0 || !hasMore) return;
+
+    console.log('[handleLoadMore] 开始加载更多，当前页:', page);
     setLoadingMore(true);
     setError(null);
 
@@ -75,7 +142,9 @@ export default function AIDiscoveryPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          keyword: currentKeyword,
+          keywords: currentKeywords,
+          language: currentLanguage,
+          sortBy: currentSortBy,
           maxResults: 20,
           page: nextPage,
         }),
@@ -88,12 +157,9 @@ export default function AIDiscoveryPage() {
         const newInfluencers = result.data.influencers || [];
         console.log('[handleLoadMore] 加载成功，新增达人:', newInfluencers.length);
 
-        // 追加到现有列表
         setInfluencers(prev => [...prev, ...newInfluencers]);
         setAllInfluencers(prev => [...prev, ...newInfluencers]);
         setPage(nextPage);
-
-        // 如果返回少于20个，说明没有更多了
         setHasMore(newInfluencers.length >= 20);
       } else {
         setError(result.error || result.message || '加载更多失败');
@@ -111,12 +177,10 @@ export default function AIDiscoveryPage() {
 
     let filtered = [...allInfluencers];
 
-    // 1. 按等级筛选
     if (filters.tier !== 'all') {
       filtered = filtered.filter((inf) => inf.score?.tier === filters.tier);
     }
 
-    // 2. 按订阅数筛选
     if (filters.subscribers !== 'all') {
       const [min, max] = filters.subscribers.split('-').map(Number);
       filtered = filtered.filter((inf) => {
@@ -125,7 +189,6 @@ export default function AIDiscoveryPage() {
       });
     }
 
-    // 3. 按增长率筛选
     if (filters.growthRate !== 'all') {
       const [min, max] = filters.growthRate.split('-').map(Number);
       filtered = filtered.filter((inf) => {
@@ -134,7 +197,6 @@ export default function AIDiscoveryPage() {
       });
     }
 
-    // 4. 按语种筛选
     if (filters.language !== 'all') {
       filtered = filtered.filter((inf) => {
         const language = inf.inferredLanguage?.language || inf.defaultLanguage || '';
@@ -166,6 +228,9 @@ export default function AIDiscoveryPage() {
         error={error}
         hasMore={hasMore}
         onLoadMore={handleLoadMore}
+        sortBy={currentSortBy}
+        onSortChange={handleSortChange}
+        totalCount={totalCount}
       />
 
       <DetailDialog

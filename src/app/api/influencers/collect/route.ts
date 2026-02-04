@@ -11,14 +11,24 @@ export async function POST(request: NextRequest) {
     console.log('[API /api/influencers/collect] 收到请求');
 
     const body = await request.json();
-    const { keyword, maxResults, regionCode, page } = body;
+    const { keyword, keywords, language, maxResults, regionCode, page, sortBy } = body;
 
-    console.log('[API] 请求参数:', { keyword, maxResults, regionCode, page });
+    // 支持旧的 keyword 参数和新的 keywords 数组
+    const searchKeywords = Array.isArray(keywords) ? keywords : (keyword ? [keyword] : []);
+    
+    console.log('[API] 请求参数:', { 
+      keywords: searchKeywords, 
+      language, 
+      maxResults, 
+      regionCode, 
+      page,
+      sortBy
+    });
 
-    if (!keyword) {
-      console.error('[API] 缺少必需参数: keyword');
+    if (searchKeywords.length === 0) {
+      console.error('[API] 缺少必需参数: keywords');
       return NextResponse.json(
-        { error: 'Missing required field: keyword' },
+        { error: 'Missing required field: keywords' },
         { status: 400 }
       );
     }
@@ -51,10 +61,17 @@ export async function POST(request: NextRequest) {
     const timeout = setTimeout(() => controller.abort(), 60000);
 
     try {
+      // 将多个关键词用 OR 连接
+      const searchQuery = searchKeywords.join(' | ');
+      
+      console.log('[API] 搜索查询:', searchQuery);
+
       // 采集达人
-      const influencers = await influencerCollector.collectByKeyword(keyword, {
-        maxResults: maxResults || 50,
+      const influencers = await influencerCollector.collectByKeyword(searchQuery, {
+        maxResults: maxResults || 20,
         regionCode: regionCode,
+        relevanceLanguage: language !== 'all' ? language : undefined,
+        order: sortBy || 'relevance',
         includeRecentVideos: true,
         recentVideosCount: 10,
       });
@@ -62,12 +79,28 @@ export async function POST(request: NextRequest) {
       clearTimeout(timeout);
       console.log(`[API] 采集完成，找到 ${influencers.length} 个达人`);
 
+      // 根据排序方式对结果进行排序
+      let sortedInfluencers = [...influencers];
+      
+      if (sortBy === 'viewCount') {
+        sortedInfluencers.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+      } else if (sortBy === 'date') {
+        sortedInfluencers.sort((a, b) => 
+          new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
+        );
+      } else if (sortBy === 'rating') {
+        sortedInfluencers.sort((a, b) => (b.score?.total || 0) - (a.score?.total || 0));
+      } else if (sortBy === 'views') {
+        sortedInfluencers.sort((a, b) => (b.avgViews || 0) - (a.avgViews || 0));
+      }
+      // relevance 使用默认顺序
+
       // 返回结果
       return NextResponse.json({
         success: true,
         data: {
-          influencers,
-          count: influencers.length,
+          influencers: sortedInfluencers,
+          count: sortedInfluencers.length,
           quotaUsage: youtubeClient.getQuotaUsage(),
         },
       });
