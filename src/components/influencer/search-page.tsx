@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Globe, Eye, TrendingUp, MessageCircle, Mail } from 'lucide-react';
 import type { InfluencerProfile } from '@/types/influencer';
 
 interface SearchPageProps {
@@ -37,6 +37,35 @@ function InfluencerCard({ influencer, onViewDetails }: { influencer: InfluencerP
     return score.total.toFixed(1);
   };
 
+  const formatViews = (count: number | undefined | null) => {
+    if (typeof count !== 'number' || isNaN(count)) return '-';
+    if (count >= 100000000) return (count / 100000000).toFixed(1) + '亿';
+    if (count >= 10000) return (count / 10000).toFixed(1) + '万';
+    return count.toFixed(0);
+  };
+
+  const formatPercentage = (value: number | undefined | null) => {
+    if (typeof value !== 'number' || isNaN(value)) return '-';
+    return (value * 100).toFixed(1) + '%';
+  };
+
+  const formatGrowthRate = (value: number | undefined | null) => {
+    if (typeof value !== 'number' || isNaN(value)) return '-';
+    const sign = value >= 0 ? '+' : '';
+    return sign + (value * 100).toFixed(1) + '%';
+  };
+
+  const getCountry = (influencer: InfluencerProfile) => {
+    return influencer.inferredCountry?.countryName || influencer.country || '-';
+  };
+
+  const getEmail = (influencer: InfluencerProfile) => {
+    return influencer.inferredEmail?.email ||
+           influencer.contactInfo?.email ||
+           influencer.contactInfo?.businessEmail ||
+           '-';
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
          onClick={() => onViewDetails?.(influencer)}>
@@ -50,14 +79,39 @@ function InfluencerCard({ influencer, onViewDetails }: { influencer: InfluencerP
       <div className="p-4">
         <h3 className="font-semibold text-[#1D1D1F] mb-1 truncate">{influencer.name || influencer.channelTitle}</h3>
         <p className="text-sm text-[#86868B] mb-3 line-clamp-2">{influencer.description}</p>
-        <div className="flex items-center justify-between">
+
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-[#1D1D1F]">
               {formatSubscribers(influencer.subscriberCount)}
             </span>
+            <span className="text-xs text-[#86868B]">订阅</span>
           </div>
           <div className="text-sm font-semibold text-[#34C759]">
             {formatScore(influencer.score)}
+          </div>
+        </div>
+
+        <div className="space-y-2 text-xs border-t border-[#E5E5EA] pt-3">
+          <div className="flex items-center gap-2 text-[#1D1D1F]">
+            <Globe className="w-3.5 h-3.5 text-[#86868B]" />
+            <span className="flex-1 truncate">{getCountry(influencer)}</span>
+          </div>
+          <div className="flex items-center gap-2 text-[#1D1D1F]">
+            <Eye className="w-3.5 h-3.5 text-[#86868B]" />
+            <span className="flex-1">均播: {formatViews(influencer.avgViews)}</span>
+          </div>
+          <div className="flex items-center gap-2 text-[#1D1D1F]">
+            <TrendingUp className="w-3.5 h-3.5 text-[#86868B]" />
+            <span className="flex-1">增长: {formatGrowthRate(influencer.viewsTrend)}</span>
+          </div>
+          <div className="flex items-center gap-2 text-[#1D1D1F]">
+            <MessageCircle className="w-3.5 h-3.5 text-[#86868B]" />
+            <span className="flex-1">互动: {formatPercentage(influencer.engagementRate)}</span>
+          </div>
+          <div className="flex items-center gap-2 text-[#1D1D1F]">
+            <Mail className="w-3.5 h-3.5 text-[#86868B]" />
+            <span className="flex-1 truncate text-[#007AFF]">{getEmail(influencer)}</span>
           </div>
         </div>
       </div>
