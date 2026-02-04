@@ -27,27 +27,37 @@ function QuickEntryCard({ icon, title, description, onClick }: { icon: string; t
 }
 
 function InfluencerCard({ influencer, onViewDetails }: { influencer: InfluencerProfile; onViewDetails?: (influencer: InfluencerProfile) => void }) {
+  const formatSubscribers = (count: number | undefined | null) => {
+    if (typeof count !== 'number' || isNaN(count)) return '-';
+    return (count / 10000).toFixed(1) + '万';
+  };
+
+  const formatScore = (score: InfluencerProfile['score']) => {
+    if (!score || typeof score.total !== 'number' || isNaN(score.total)) return '-';
+    return score.total.toFixed(1);
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
          onClick={() => onViewDetails?.(influencer)}>
       <div className="aspect-video bg-gradient-to-br from-[#007AFF] to-[#5856D6] relative">
         <img
-          src={influencer.avatar}
-          alt={influencer.name}
+          src={influencer.avatar || influencer.channelThumbnail}
+          alt={influencer.name || influencer.channelTitle}
           className="w-full h-full object-cover"
         />
       </div>
       <div className="p-4">
-        <h3 className="font-semibold text-[#1D1D1F] mb-1 truncate">{influencer.name}</h3>
+        <h3 className="font-semibold text-[#1D1D1F] mb-1 truncate">{influencer.name || influencer.channelTitle}</h3>
         <p className="text-sm text-[#86868B] mb-3 line-clamp-2">{influencer.description}</p>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-[#1D1D1F]">
-              {(influencer.subscriberCount / 10000).toFixed(1)}万
+              {formatSubscribers(influencer.subscriberCount)}
             </span>
           </div>
           <div className="text-sm font-semibold text-[#34C759]">
-            {influencer.score?.toFixed(1) || '-'}
+            {formatScore(influencer.score)}
           </div>
         </div>
       </div>

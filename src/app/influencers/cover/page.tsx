@@ -65,13 +65,19 @@ export default function AIDiscoveryPage() {
     // 2. 按订阅数筛选
     if (filters.subscribers !== 'all') {
       const [min, max] = filters.subscribers.split('-').map(Number);
-      filtered = filtered.filter((inf) => inf.subscriberCount >= min && inf.subscriberCount < max);
+      filtered = filtered.filter((inf) => {
+        const count = typeof inf.subscriberCount === 'number' ? inf.subscriberCount : 0;
+        return count >= min && count < max;
+      });
     }
 
     // 3. 按增长率筛选
     if (filters.growthRate !== 'all') {
       const [min, max] = filters.growthRate.split('-').map(Number);
-      filtered = filtered.filter((inf) => inf.viewsTrend >= min && inf.viewsTrend < max);
+      filtered = filtered.filter((inf) => {
+        const trend = typeof inf.viewsTrend === 'number' ? inf.viewsTrend : 0;
+        return trend >= min && trend < max;
+      });
     }
 
     // 4. 按语种筛选
