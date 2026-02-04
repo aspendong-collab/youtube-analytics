@@ -72,12 +72,11 @@ class InfluencerCollector {
         const channel = profileData.channel;
         const recentVideos = profileData.recentVideos;
 
-        try {
-          // 计算统计数据
-          const stats = this.calculateStatistics(recentVideos);
+        // 计算统计数据
+        const stats = this.calculateStatistics(recentVideos);
 
-          // 推断数据
-          const inference = this.runInference(channel, recentVideos);
+        // 推断数据
+        const inference = this.runInference(channel, recentVideos);
 
       const profile: InfluencerProfile = {
         // 基础信息

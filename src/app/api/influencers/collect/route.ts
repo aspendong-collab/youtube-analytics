@@ -46,25 +46,35 @@ export async function POST(request: NextRequest) {
 
     console.log('[API] 开始采集达人...');
 
-    // 采集达人
-    const influencers = await influencerCollector.collectByKeyword(keyword, {
-      maxResults: maxResults || 50,
-      regionCode: regionCode,
-      includeRecentVideos: true,
-      recentVideosCount: 10,
-    });
+    // 设置请求超时（60秒）
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
 
-    console.log(`[API] 采集完成，找到 ${influencers.length} 个达人`);
+    try {
+      // 采集达人
+      const influencers = await influencerCollector.collectByKeyword(keyword, {
+        maxResults: maxResults || 50,
+        regionCode: regionCode,
+        includeRecentVideos: true,
+        recentVideosCount: 10,
+      });
 
-    // 返回结果
-    return NextResponse.json({
-      success: true,
-      data: {
-        influencers,
-        count: influencers.length,
-        quotaUsage: youtubeClient.getQuotaUsage(),
-      },
-    });
+      clearTimeout(timeout);
+      console.log(`[API] 采集完成，找到 ${influencers.length} 个达人`);
+
+      // 返回结果
+      return NextResponse.json({
+        success: true,
+        data: {
+          influencers,
+          count: influencers.length,
+          quotaUsage: youtubeClient.getQuotaUsage(),
+        },
+      });
+    } catch (error) {
+      clearTimeout(timeout);
+      throw error;
+    }
   } catch (error) {
     console.error('[API] 采集达人错误:', error);
 
@@ -77,7 +87,10 @@ export async function POST(request: NextRequest) {
       console.error('[API] 错误堆栈:', error.stack);
 
       // 检查特定错误类型
-      if (error.message.includes('Quota exceeded')) {
+      if (error.name === 'AbortError') {
+        statusCode = 504;
+        errorMessage = '采集超时，请稍后重试';
+      } else if (errorMessage.includes('Quota exceeded')) {
         statusCode = 429;
         errorMessage = 'API配额已用完，请明天再试';
       } else if (error.message.includes('API key')) {
@@ -89,7 +102,7 @@ export async function POST(request: NextRequest) {
       } else if (error.message.includes('400')) {
         statusCode = 400;
         errorMessage = '请求参数错误';
-      } else if (error.message.includes('network') || error.message.includes('fetch')) {
+      } else if (error.message.includes('network') || error.message.includes('fetch') || error.message.includes('ETIMEDOUT')) {
         statusCode = 503;
         errorMessage = '网络连接失败，请稍后重试';
       }
