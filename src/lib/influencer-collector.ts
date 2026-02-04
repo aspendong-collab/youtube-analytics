@@ -2,6 +2,39 @@ import { youtubeClient } from './youtube-client';
 import type { InfluencerProfile, InfluencerVideo, InferenceResult } from '@/types/influencer';
 
 /**
+ * 解析ISO 8601时长（独立函数）
+ * @param duration ISO 8601 格式的时长字符串（如 PT10M30S）
+ * @returns 秒数
+ */
+function parseDuration(duration: string): number {
+  if (!duration) return 0;
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return 0;
+
+  const hours = parseInt(match[1] || '0');
+  const minutes = parseInt(match[2] || '0');
+  const seconds = parseInt(match[3] || '0');
+
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+/**
+ * 格式化时长（独立函数）
+ * @param seconds 秒数
+ * @returns 格式化的时长字符串（如 "10h 30m" 或 "30m"）
+ */
+function formatDuration(seconds: number): string {
+  if (!seconds || seconds <= 0) return '0m';
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes}m`;
+}
+
+/**
  * 数据采集器 - 负责从YouTube采集达人数据
  */
 class InfluencerCollector {
@@ -360,9 +393,6 @@ class InfluencerCollector {
       };
     }
 
-    // 保存 this 引用以避免上下文丢失
-    const self = this;
-
     const views = videos.map((v: any) => parseInt(v.statistics?.viewCount || '0'));
     const likes = videos.map((v: any) => parseInt(v.statistics?.likeCount || '0'));
     const comments = videos.map((v: any) => parseInt(v.statistics?.commentCount || '0'));
@@ -374,14 +404,14 @@ class InfluencerCollector {
     const engagementRate = avgViews > 0 ? ((avgLikes + avgComments) / avgViews) * 100 : 0;
 
     // 计算趋势
-    const viewsTrend = self.calculateTrend(views);
-    const likesTrend = self.calculateTrend(likes);
-    const commentsTrend = self.calculateTrend(comments);
+    const viewsTrend = this.calculateTrend(views);
+    const likesTrend = this.calculateTrend(likes);
+    const commentsTrend = this.calculateTrend(comments);
 
     // 计算时长
-    const durations = videos.map((v: any) => self.parseDuration(v.contentDetails?.duration || 'PT0S'));
+    const durations = videos.map((v: any) => parseDuration(v.contentDetails?.duration || 'PT0S'));
     const avgDurationSeconds = durations.reduce((a, b) => a + b, 0) / durations.length;
-    const avgDuration = self.formatDuration(avgDurationSeconds);
+    const avgDuration = formatDuration(avgDurationSeconds);
 
     // 估算成本
     const subscriberCount = videos[0]?.subscriberCount || 10000;
@@ -644,33 +674,6 @@ class InfluencerCollector {
   }
 
   /**
-   * 解析ISO 8601时长
-   */
-  private parseDuration(duration: string): number {
-    const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-    if (!match) return 0;
-
-    const hours = parseInt(match[1] || '0');
-    const minutes = parseInt(match[2] || '0');
-    const seconds = parseInt(match[3] || '0');
-
-    return hours * 3600 + minutes * 60 + seconds;
-  }
-
-  /**
-   * 格式化时长
-   */
-  private formatDuration(seconds: number): string {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-    return `${minutes}m`;
-  }
-
-  /**
    * 映射视频数据
    */
   private mapVideoData(video: any): InfluencerVideo {
@@ -689,8 +692,8 @@ class InfluencerCollector {
       commentCount: parseInt(video.statistics?.commentCount || '0'),
       favoriteCount: parseInt(video.statistics?.favoriteCount || '0'),
       duration: video.contentDetails?.duration || '',
-      durationSeconds: this.parseDuration(video.contentDetails?.duration || 'PT0S'),
-      durationFormatted: this.formatDuration(this.parseDuration(video.contentDetails?.duration || 'PT0S')),
+      durationSeconds: parseDuration(video.contentDetails?.duration || 'PT0S'),
+      durationFormatted: formatDuration(parseDuration(video.contentDetails?.duration || 'PT0S')),
       tags: video.snippet?.tags || [],
       topicIds: video.topicDetails?.topicIds || [],
       topicCategories: video.topicDetails?.topicCategories || [],
