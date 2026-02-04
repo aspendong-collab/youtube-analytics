@@ -7,17 +7,24 @@ import type { InfluencerProfile } from '@/types/influencer';
 interface SearchPageProps {
   onSearch: (keyword: string) => Promise<void>;
   onFilterChange: (filters: any) => void;
+  onViewDetails?: (influencer: InfluencerProfile) => void;
   loading: boolean;
   influencers: InfluencerProfile[];
+  error?: string | null;
 }
 
-export default function SearchPage({ onSearch, onFilterChange, loading, influencers }: SearchPageProps) {
+export default function SearchPage({ onSearch, onFilterChange, onViewDetails, loading, influencers, error }: SearchPageProps) {
   const [keyword, setKeyword] = useState('');
   const [searchHistory, setSearchHistory] = useState<string[]>(['生产力工具', '科技测评', '教程分享', '生活方式']);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
+  // 调试日志
+  console.log('[SearchPage] 渲染状态:', { loading, influencersCount: influencers.length, keyword });
+
   const handleSearch = async () => {
     if (!keyword.trim()) return;
+
+    console.log('[SearchPage] 开始搜索:', keyword);
 
     // 添加到搜索历史
     if (!searchHistory.includes(keyword)) {
@@ -30,6 +37,7 @@ export default function SearchPage({ onSearch, onFilterChange, loading, influenc
     }
 
     await onSearch(keyword);
+    console.log('[SearchPage] 搜索完成');
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -48,8 +56,24 @@ export default function SearchPage({ onSearch, onFilterChange, loading, influenc
         </div>
       </div>
 
-      {/* 搜索区域 */}
-      {!loading && influencers.length === 0 && (
+      {/* 搜索结果 */}
+      {!loading && error && (
+        <div className="max-w-3xl mx-auto px-6 py-16">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-12 text-center">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h2 className="text-xl font-semibold text-red-900 mb-2">搜索失败</h2>
+            <p className="text-red-700 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              重新加载
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!loading && !error && influencers.length === 0 && (
         <div className="max-w-3xl mx-auto px-6 py-16">
           <div className="bg-white rounded-2xl shadow-sm p-12">
             {/* 搜索框 */}
@@ -193,7 +217,7 @@ export default function SearchPage({ onSearch, onFilterChange, loading, influenc
           {/* 达人卡片列表 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {influencers.map((influencer) => (
-              <InfluencerCard key={influencer.channelId} influencer={influencer} />
+              <InfluencerCard key={influencer.channelId} influencer={influencer} onViewDetails={onViewDetails} />
             ))}
           </div>
 
@@ -249,7 +273,7 @@ function FilterButton({ label, active, onClick }: { label: string; active?: bool
 }
 
 // 达人卡片组件（简化版）
-function InfluencerCard({ influencer }: { influencer: InfluencerProfile }) {
+function InfluencerCard({ influencer, onViewDetails }: { influencer: InfluencerProfile; onViewDetails?: (influencer: InfluencerProfile) => void }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
       {/* 缩略图 */}
@@ -289,10 +313,19 @@ function InfluencerCard({ influencer }: { influencer: InfluencerProfile }) {
           <span className="px-2 py-1 bg-[#007AFF]/10 text-[#007AFF] rounded-md">🌟 {influencer.score?.tier || 'Tier 4'}</span>
         </div>
         <div className="flex gap-2">
-          <button className="flex-1 px-4 py-2 bg-[#007AFF] text-white rounded-lg text-sm font-medium hover:bg-[#0056CC] transition-colors">
+          <button
+            onClick={() => onViewDetails?.(influencer)}
+            className="flex-1 px-4 py-2 bg-[#007AFF] text-white rounded-lg text-sm font-medium hover:bg-[#0056CC] transition-colors"
+          >
             查看详情
           </button>
-          <button className="px-4 py-2 border border-[#E5E5EA] text-[#1D1D1F] rounded-lg text-sm font-medium hover:bg-[#F5F5F7] transition-colors">
+          <button
+            onClick={() => {
+              // TODO: 实现收藏功能
+              console.log('收藏:', influencer.channelId);
+            }}
+            className="px-4 py-2 border border-[#E5E5EA] text-[#1D1D1F] rounded-lg text-sm font-medium hover:bg-[#F5F5F7] transition-colors"
+          >
             收藏
           </button>
         </div>
