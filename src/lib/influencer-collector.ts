@@ -19,53 +19,65 @@ class InfluencerCollector {
       recentVideosCount?: number;
     } = {}
   ): Promise<InfluencerProfile[]> {
-    console.log(`开始搜索达人: ${keyword}`);
+    console.log(`[InfluencerCollector] 开始搜索达人: ${keyword}`);
+    console.log(`[InfluencerCollector] 搜索参数:`, options);
 
-    // 步骤1：搜索视频（获取频道）
-    const searchResults = await youtubeClient.searchInfluencers({
-      query: keyword,
-      maxResults: options.maxResults || 50,
-      type: 'video',
-      order: 'relevance',
-    });
+    try {
+      // 步骤1：搜索视频（获取频道）
+      console.log(`[InfluencerCollector] 步骤1: 搜索视频...`);
+      const searchResults = await youtubeClient.searchInfluencers({
+        query: keyword,
+        maxResults: options.maxResults || 50,
+        type: 'video',
+        order: 'relevance',
+      });
 
-    console.log(`搜索到 ${searchResults.length} 个视频`);
+      console.log(`[InfluencerCollector] 搜索到 ${searchResults.length} 个视频`);
 
-    if (searchResults.length === 0) return [];
-
-    // 步骤2：提取唯一的频道ID
-    const channelMap = new Map<string, any[]>();
-    searchResults.forEach(item => {
-      const channelId = item.snippet?.channelId;
-      if (channelId) {
-        if (!channelMap.has(channelId)) {
-          channelMap.set(channelId, []);
-        }
-        channelMap.get(channelId)!.push(item);
+      if (searchResults.length === 0) {
+        console.warn(`[InfluencerCollector] 未找到任何视频结果`);
+        return [];
       }
-    });
 
-    const channelIds = Array.from(channelMap.keys());
-    console.log(`提取到 ${channelIds.length} 个独立频道`);
+      // 步骤2：提取唯一的频道ID
+      console.log(`[InfluencerCollector] 步骤2: 提取频道ID...`);
+      const channelMap = new Map<string, any[]>();
+      searchResults.forEach(item => {
+        const channelId = item.snippet?.channelId;
+        if (channelId) {
+          if (!channelMap.has(channelId)) {
+            channelMap.set(channelId, []);
+          }
+          channelMap.get(channelId)!.push(item);
+        }
+      });
 
-    // 步骤3：批量获取频道详情和近期视频
-    const profilesData = await youtubeClient.getInfluencerProfiles(channelIds, {
-      includeRecentVideos: options.includeRecentVideos !== false,
-      recentVideosCount: options.recentVideosCount || 10,
-    });
+      const channelIds = Array.from(channelMap.keys());
+      console.log(`[InfluencerCollector] 提取到 ${channelIds.length} 个独立频道`);
 
-    // 步骤4：构建达人档案
-    const profiles: InfluencerProfile[] = [];
+      // 步骤3：批量获取频道详情和近期视频
+      console.log(`[InfluencerCollector] 步骤3: 获取频道详情和视频...`);
+      const profilesData = await youtubeClient.getInfluencerProfiles(channelIds, {
+        includeRecentVideos: options.includeRecentVideos !== false,
+        recentVideosCount: options.recentVideosCount || 10,
+      });
 
-    for (const profileData of profilesData) {
-      const channel = profileData.channel;
-      const recentVideos = profileData.recentVideos;
+      console.log(`[InfluencerCollector] 获取到 ${profilesData.length} 个频道详情`);
 
-      // 计算统计数据
-      const stats = this.calculateStatistics(recentVideos);
+      // 步骤4：构建达人档案
+      console.log(`[InfluencerCollector] 步骤4: 构建达人档案...`);
+      const profiles: InfluencerProfile[] = [];
 
-      // 推断数据
-      const inference = this.runInference(channel, recentVideos);
+      for (const profileData of profilesData) {
+        const channel = profileData.channel;
+        const recentVideos = profileData.recentVideos;
+
+        try {
+          // 计算统计数据
+          const stats = this.calculateStatistics(recentVideos);
+
+          // 推断数据
+          const inference = this.runInference(channel, recentVideos);
 
       const profile: InfluencerProfile = {
         // 基础信息
@@ -221,8 +233,16 @@ class InfluencerCollector {
       profiles.push(profile);
     }
 
-    console.log(`成功采集 ${profiles.length} 个达人档案`);
+    console.log(`[InfluencerCollector] 成功采集 ${profiles.length} 个达人档案`);
     return profiles;
+    } catch (error) {
+      console.error('[InfluencerCollector] 采集达人失败:', error);
+      if (error instanceof Error) {
+        console.error('[InfluencerCollector] 错误堆栈:', error.stack);
+        throw new Error(`Failed to collect influencers: ${error.message}`);
+      }
+      throw error;
+    }
   }
 
   /**
