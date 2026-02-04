@@ -1,4 +1,5 @@
 import { youtubeClient } from './youtube-client';
+import { emailExtractor, type RankedEmailResult } from './email-extractor';
 import type { InfluencerProfile, InfluencerVideo, InferenceResult } from '@/types/influencer';
 
 /**
@@ -113,7 +114,12 @@ class InfluencerCollector {
         const stats = this.calculateStatistics(recentVideos);
 
         // 推断数据
-        const inference = this.runInference(channel, recentVideos);
+        const inference = {
+          country: this.inferCountry(channel),
+          language: this.inferLanguage(channel, recentVideos),
+          email: await this.inferEmail(channel, recentVideos),
+          socialMedia: this.inferSocialMedia(channel),
+        };
 
       const profile: InfluencerProfile = {
         // 基础信息
@@ -281,87 +287,6 @@ class InfluencerCollector {
     }
   }
 
-  /**
-   * 从热门视频采集达人
-   * @param options 选项
-   */
-  async collectFromPopular(options: {
-    regionCode?: string;
-    categoryId?: string;
-    maxResults?: number;
-  } = {}): Promise<InfluencerProfile[]> {
-    console.log(`从热门视频采集达人`);
-
-    const popularVideos = await youtubeClient.getPopularVideos({
-      regionCode: options.regionCode || 'US',
-      categoryId: options.categoryId,
-      maxResults: options.maxResults || 50,
-    });
-
-    console.log(`获取到 ${popularVideos.length} 个热门视频`);
-
-    // 提取频道ID
-    const channelIds = [...new Set(
-      popularVideos.map((v: any) => v.snippet?.channelId).filter(Boolean)
-    )];
-
-    console.log(`提取到 ${channelIds.length} 个独立频道`);
-
-    // 获取频道详情
-    const profilesData = await youtubeClient.getInfluencerProfiles(channelIds, {
-      includeRecentVideos: true,
-      recentVideosCount: 10,
-    });
-
-    // 构建达人档案（同上）
-    const profiles = profilesData.map(profileData => {
-      const channel = profileData.channel;
-      const recentVideos = profileData.recentVideos;
-      const stats = this.calculateStatistics(recentVideos);
-      const inference = this.runInference(channel, recentVideos);
-
-      return {
-        // ... 同上
-        channelId: channel.id,
-        channelTitle: channel.snippet?.title || '',
-        channelThumbnail: channel.snippet?.thumbnails?.medium?.url || '',
-        subscriberCount: parseInt(channel.statistics?.subscriberCount || '0'),
-        viewCount: parseInt(channel.statistics?.viewCount || '0'),
-        videoCount: parseInt(channel.statistics?.videoCount || '0'),
-        description: channel.snippet?.description || '',
-        keywords: channel.brandingSettings?.channel?.keywords || [],
-        createdAt: channel.snippet?.publishedAt || '',
-        discoveredAt: new Date().toISOString(),
-        lastUpdated: new Date().toISOString(),
-        defaultLanguage: channel.snippet?.defaultLanguage || '',
-        uploadsPlaylistId: channel.contentDetails?.relatedPlaylists?.uploads || '',
-        recentVideos: recentVideos.map(this.mapVideoData),
-        avgViews: stats.avgViews,
-        avgLikes: stats.avgLikes,
-        avgComments: stats.avgComments,
-        engagementRate: stats.engagementRate,
-        viewsTrend: stats.viewsTrend,
-        // ... 其他字段
-        score: { total: 0, breakdown: {}, tier: 'tier4', recommendations: [] },
-        status: 'new',
-        priority: 'medium',
-        tags: [],
-        categories: [],
-        contactInfo: { email: null, verifiedEmail: false, businessEmail: null, socialMedia: { twitter: null, instagram: null, facebook: null, tiktok: null, website: null } },
-        metadata: {
-          dataSource: 'popular',
-          discoveryKeyword: '',
-          region: options.regionCode || 'US',
-          lastCrawledAt: new Date().toISOString(),
-          crawlCount: 1,
-          dataQuality: this.calculateDataQuality(channel, recentVideos),
-          flags: [],
-        },
-      } as unknown as InfluencerProfile;
-    });
-
-    return profiles;
-  }
 
   /**
    * 计算统计数据
@@ -459,18 +384,6 @@ class InfluencerCollector {
       avgCaptionLanguages: 0,
       estimatedCost,
       estimatedReach,
-    };
-  }
-
-  /**
-   * 运行推断逻辑
-   */
-  private runInference(channel: any, videos: any[]): InferenceResult {
-    return {
-      country: this.inferCountry(channel),
-      language: this.inferLanguage(channel, videos),
-      email: this.inferEmail(channel),
-      socialMedia: this.inferSocialMedia(channel),
     };
   }
 
@@ -573,9 +486,34 @@ class InfluencerCollector {
   }
 
   /**
-   * 推断邮箱
+   * 推断邮箱（使用新的邮箱提取工具）
    */
-  private inferEmail(channel: any) {
+  private async inferEmail(channel: any, videos: any[] = []): Promise<any> {
+    try {
+      // 使用新的邮箱提取器
+      const result = await emailExtractor.extractAndRankEmails({
+        channel,
+        videos,
+      });
+
+      return {
+        email: result.primaryEmail,
+        confidence: result.primaryConfidence,
+        possibleEmails: result.possibleEmails,
+        suggestions: result.suggestions,
+        sources: result.sources,
+      };
+    } catch (error) {
+      console.error('[inferEmail] 邮箱提取失败:', error);
+      // 降级到旧逻辑
+      return this.inferEmailLegacy(channel);
+    }
+  }
+
+  /**
+   * 邮箱推断的旧逻辑（降级方案）
+   */
+  private inferEmailLegacy(channel: any) {
     const description = channel.snippet?.description || '';
     const branding = channel.brandingSettings?.channel;
 
