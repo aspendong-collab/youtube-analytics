@@ -81,7 +81,7 @@ export default function MetricsInfoDialog({ open, onClose }: MetricsInfoDialogPr
               name="评分"
               description="综合评分（0-100分）"
               valueRange="0-100分"
-              detail="基于受众规模、质量、内容质量、增长趋势等9个维度的综合评估分数。评分越高，合作价值越大。详细评分规则请查看"评分系统"标签页。"
+              detail="基于受众规模、质量、内容质量、增长趋势等9个维度的综合评估分数。评分越高，合作价值越大。详细评分规则请查看评分系统标签页。"
             />
 
             <MetricCard

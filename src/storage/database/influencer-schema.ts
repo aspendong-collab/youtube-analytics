@@ -200,6 +200,67 @@ export const aiQuotaUsage = pgTable(
   }
 );
 
+// 用户收藏达人表
+export const userFavorites = pgTable(
+  "user_favorites",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id", { length: 36 }).notNull(),
+    influencerId: varchar("influencer_id", { length: 36 }).notNull(),
+    channelId: varchar("channel_id", { length: 50 }).notNull(),
+    note: text("note"), // 用户备注
+    tags: jsonb("tags").$type<string[]>(), // 用户自定义标签
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("user_favorites_user_id_idx").on(table.userId),
+    influencerIdIdx: index("user_favorites_influencer_id_idx").on(table.influencerId),
+    userIdInfluencerIdIdx: index("user_favorites_user_influencer_idx").on(table.userId, table.influencerId),
+    channelIdIdx: index("user_favorites_channel_id_idx").on(table.channelId),
+  })
+);
+
+// 用户关注/添加达人表（用户达人列表）
+export const userInfluencers = pgTable(
+  "user_influencers",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id", { length: 36 }).notNull(),
+    influencerId: varchar("influencer_id", { length: 36 }).notNull(),
+    channelId: varchar("channel_id", { length: 50 }).notNull(),
+    listName: varchar("list_name", { length: 100 }).default("default"), // 列表名称，支持多个列表
+    status: varchar("status", { length: 20 }).default("added"), // added(已添加), contacted(已联系), collaborating(合作中)
+    priority: varchar("priority", { length: 10 }).default("medium"), // high, medium, low
+    note: text("note"), // 用户备注
+    tags: jsonb("tags").$type<string[]>(), // 用户自定义标签
+    lastContactedAt: timestamp("last_contacted_at", { withTimezone: true }),
+    cooperationCount: integer("cooperation_count").default(0), // 合作次数
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("user_influencers_user_id_idx").on(table.userId),
+    influencerIdIdx: index("user_influencers_influencer_id_idx").on(table.influencerId),
+    userIdListNameIdx: index("user_influencers_user_list_idx").on(table.userId, table.listName),
+    userIdInfluencerIdIdx: index("user_influencers_user_influencer_idx").on(table.userId, table.influencerId),
+    channelIdIdx: index("user_influencers_channel_id_idx").on(table.channelId),
+    statusIdx: index("user_influencers_status_idx").on(table.status),
+  })
+);
+
 // 达人评分枚举
 export const influencerTierEnum = pgEnum("influencer_tier", ["tier1", "tier2", "tier3", "tier4"]);
 export const influencerStatusEnum = pgEnum("influencer_status", [

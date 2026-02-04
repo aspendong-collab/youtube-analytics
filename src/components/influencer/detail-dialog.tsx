@@ -1,6 +1,8 @@
 'use client';
 
-import { X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Star, Heart, UserPlus, Mail } from 'lucide-react';
+import { toast } from 'sonner';
 import type { InfluencerProfile } from '@/types/influencer';
 
 interface InfluencerDetailDialogProps {
@@ -10,6 +12,148 @@ interface InfluencerDetailDialogProps {
 }
 
 export default function InfluencerDetailDialog({ open, onClose, influencer }: InfluencerDetailDialogProps) {
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [isAdded, setIsAdded] = useState(false);
+  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
+  const [isAddLoading, setIsAddLoading] = useState(false);
+
+  // 检查收藏状态和添加状态
+  useEffect(() => {
+    if (open && influencer) {
+      checkFavoriteStatus();
+      checkAddedStatus();
+    }
+  }, [open, influencer]);
+
+  const checkFavoriteStatus = async () => {
+    if (!influencer) return;
+    try {
+      const response = await fetch(`/api/user/favorites/${influencer.channelId}`);
+      if (response.ok) {
+        const result = await response.json();
+        setIsFavorited(result.isFavorited);
+      }
+    } catch (error) {
+      console.error('Failed to check favorite status:', error);
+    }
+  };
+
+  const checkAddedStatus = async () => {
+    if (!influencer) return;
+    try {
+      const response = await fetch(`/api/user/influencers`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          const found = result.data.influencers.find((ui: any) => ui.channelId === influencer.channelId);
+          setIsAdded(!!found);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check added status:', error);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!influencer) return;
+
+    setIsFavoriteLoading(true);
+    try {
+      if (isFavorited) {
+        // 取消收藏
+        const response = await fetch(`/api/user/favorites/${influencer.channelId}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          throw new Error('取消收藏失败');
+        }
+
+        setIsFavorited(false);
+        toast.success('已取消收藏');
+      } else {
+        // 添加收藏
+        const response = await fetch('/api/user/favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            channelId: influencer.channelId,
+            influencerId: influencer.id || influencer.channelId,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('收藏失败');
+        }
+
+        setIsFavorited(true);
+        toast.success('收藏成功');
+      }
+    } catch (error) {
+      console.error('Toggle favorite error:', error);
+      toast.error(isFavorited ? '取消收藏失败' : '收藏失败');
+    } finally {
+      setIsFavoriteLoading(false);
+    }
+  };
+
+  const handleAddToList = async () => {
+    if (!influencer) return;
+
+    setIsAddLoading(true);
+    try {
+      if (isAdded) {
+        // 从列表移除
+        const response = await fetch(`/api/user/influencers/${influencer.channelId}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          throw new Error('从列表移除失败');
+        }
+
+        setIsAdded(false);
+        toast.success('已从列表移除');
+      } else {
+        // 添加到列表
+        const response = await fetch('/api/user/influencers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            channelId: influencer.channelId,
+            influencerId: influencer.id || influencer.channelId,
+            listName: 'default',
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('添加到列表失败');
+        }
+
+        setIsAdded(true);
+        toast.success('已添加到列表');
+      }
+    } catch (error) {
+      console.error('Toggle list error:', error);
+      toast.error(isAdded ? '从列表移除失败' : '添加到列表失败');
+    } finally {
+      setIsAddLoading(false);
+    }
+  };
+
+  const handleContactInfluencer = () => {
+    if (!influencer) return;
+
+    // 如果有邮箱，复制邮箱
+    if (influencer.inferredEmail?.email) {
+      navigator.clipboard.writeText(influencer.inferredEmail.email);
+      toast.success('邮箱已复制到剪贴板');
+      return;
+    }
+
+    // 如果有其他联系信息，显示提示
+    toast.info('请在达人详情中查看联系信息');
+  };
   if (!open || !influencer) return null;
 
   return (
@@ -153,14 +297,48 @@ export default function InfluencerDetailDialog({ open, onClose, influencer }: In
 
         {/* 底部操作 */}
         <div className="sticky bottom-0 bg-white border-t border-[#E5E5EA] px-6 py-4 flex gap-3">
-          <button className="flex-1 px-6 py-3 bg-white border border-[#E5E5EA] text-[#1D1D1F] rounded-xl font-medium hover:bg-[#F5F5F7] transition-colors">
-            收藏
+          <button
+            onClick={handleToggleFavorite}
+            disabled={isFavoriteLoading}
+            className={`flex-1 px-6 py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${
+              isFavorited
+                ? 'bg-[#FF3B30] text-white hover:bg-[#D32F2F]'
+                : 'bg-white border border-[#E5E5EA] text-[#1D1D1F] hover:bg-[#F5F5F7]'
+            }`}
+          >
+            {isFavoriteLoading ? (
+              <span className="animate-spin">⟳</span>
+            ) : (
+              <>
+                <Heart className={`w-5 h-5 ${isFavorited ? 'fill-current' : ''}`} />
+                {isFavorited ? '已收藏' : '收藏'}
+              </>
+            )}
           </button>
-          <button className="flex-1 px-6 py-3 bg-[#007AFF] text-white rounded-xl font-medium hover:bg-[#0056CC] transition-colors">
+          <button
+            onClick={handleContactInfluencer}
+            className="flex-1 px-6 py-3 bg-[#007AFF] text-white rounded-xl font-medium hover:bg-[#0056CC] transition-colors flex items-center justify-center gap-2"
+          >
+            <Mail className="w-5 h-5" />
             联系达人
           </button>
-          <button className="px-6 py-3 bg-white border border-[#E5E5EA] text-[#1D1D1F] rounded-xl font-medium hover:bg-[#F5F5F7] transition-colors">
-            添加到列表
+          <button
+            onClick={handleAddToList}
+            disabled={isAddLoading}
+            className={`px-6 py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${
+              isAdded
+                ? 'bg-[#34C759] text-white hover:bg-[#2DB456]'
+                : 'bg-white border border-[#E5E5EA] text-[#1D1D1F] hover:bg-[#F5F5F7]'
+            }`}
+          >
+            {isAddLoading ? (
+              <span className="animate-spin">⟳</span>
+            ) : (
+              <>
+                <UserPlus className={`w-5 h-5 ${isAdded ? 'fill-current' : ''}`} />
+                {isAdded ? '已添加' : '添加到列表'}
+              </>
+            )}
           </button>
         </div>
       </div>
