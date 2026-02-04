@@ -4,6 +4,8 @@ import { influencers } from "@/storage/database/shared/schema";
 import { authOptions } from "@/lib/auth";
 import { eq, desc, and, or, ilike } from "drizzle-orm";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // 临时禁用认证检查，确保功能可用

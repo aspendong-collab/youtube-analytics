@@ -4,6 +4,8 @@ import { influencers } from "@/storage/database/shared/schema";
 import { authOptions } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

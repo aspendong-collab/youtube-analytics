@@ -5,6 +5,8 @@ import { dbInstance as db } from "@/lib/db";
 import { users } from "@/storage/database/shared/schema";
 import { eq } from "drizzle-orm";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
