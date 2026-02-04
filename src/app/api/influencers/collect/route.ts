@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { influencerCollector } from '@/lib/influencer-collector';
 import { youtubeClient } from '@/lib/youtube-client';
+import { influencerCacheService } from '@/lib/influencer-cache';
 
 /**
  * POST /api/influencers/collect
@@ -174,18 +175,24 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/influencers/collect
- * 获取配额使用情况
+ * 获取配额使用情况和缓存统计
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const quotaUsage = youtubeClient.getQuotaUsage();
     const cacheStats = youtubeClient.getCacheStats();
+    
+    // 获取数据库缓存统计
+    const dbCacheStats = await influencerCacheService.getStats();
 
     return NextResponse.json({
       success: true,
       data: {
         quotaUsage,
-        cacheStats,
+        cacheStats: {
+          memory: cacheStats,
+          database: dbCacheStats,
+        },
       },
     });
   } catch (error) {

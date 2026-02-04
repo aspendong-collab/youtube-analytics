@@ -1,5 +1,6 @@
 import { youtubeClient } from './youtube-client';
 import { emailExtractor, type RankedEmailResult } from './email-extractor';
+import { influencerCacheService } from './influencer-cache';
 import type { InfluencerProfile, InfluencerVideo, InferenceResult } from '@/types/influencer';
 
 /**
@@ -93,14 +94,42 @@ class InfluencerCollector {
       const channelIds = Array.from(channelMap.keys());
       console.log(`[InfluencerCollector] 提取到 ${channelIds.length} 个独立频道`);
 
-      // 步骤3：批量获取频道详情和近期视频
-      console.log(`[InfluencerCollector] 步骤3: 获取频道详情和视频...`);
-      const profilesData = await youtubeClient.getInfluencerProfiles(channelIds, {
-        includeRecentVideos: options.includeRecentVideos !== false,
-        recentVideosCount: options.recentVideosCount || 10,
+      // 步骤2.5：检查缓存（优化：避免重复采集）
+      console.log(`[InfluencerCollector] 步骤2.5: 检查缓存...`);
+      const cacheResults = await influencerCacheService.getBatch(channelIds);
+      
+      // 分离已缓存的频道ID和未缓存的频道ID
+      const cachedChannelIds: string[] = [];
+      const uncachedChannelIds: string[] = [];
+      const cachedProfiles: InfluencerProfile[] = [];
+
+      cacheResults.forEach((result, channelId) => {
+        if (result.hit && result.data) {
+          cachedChannelIds.push(channelId);
+          cachedProfiles.push(result.data);
+        } else {
+          uncachedChannelIds.push(channelId);
+        }
       });
 
-      console.log(`[InfluencerCollector] 获取到 ${profilesData.length} 个频道详情`);
+      console.log(`[InfluencerCollector] 缓存检查完成: ${cachedChannelIds.length} 个缓存命中, ${uncachedChannelIds.length} 个需要采集`);
+
+      // 步骤3：批量获取频道详情和近期视频（仅采集未缓存的频道）
+      console.log(`[InfluencerCollector] 步骤3: 获取频道详情和视频...`);
+      let profilesData: any[] = [];
+
+      if (uncachedChannelIds.length > 0) {
+        profilesData = await youtubeClient.getInfluencerProfiles(uncachedChannelIds, {
+          includeRecentVideos: options.includeRecentVideos !== false,
+          recentVideosCount: options.recentVideosCount || 10,
+        });
+        console.log(`[InfluencerCollector] 从 API 获取到 ${profilesData.length} 个频道详情`);
+      } else {
+        console.log(`[InfluencerCollector] 所有频道都已缓存，无需调用 API`);
+      }
+
+      // 合并缓存数据和新采集的数据
+      console.log(`[InfluencerCollector] 获取到 ${profilesData.length + cachedProfiles.length} 个频道详情（包含缓存）`);
 
       // 步骤4：构建达人档案
       console.log(`[InfluencerCollector] 步骤4: 构建达人档案...`);
@@ -275,8 +304,23 @@ class InfluencerCollector {
       profiles.push(profile);
     }
 
-    console.log(`[InfluencerCollector] 成功采集 ${profiles.length} 个达人档案`);
-    return profiles;
+    // 步骤5：存储新采集的数据到缓存（优化：避免重复采集）
+    console.log(`[InfluencerCollector] 步骤5: 存储新采集的数据到缓存...`);
+    if (profiles.length > 0) {
+      const cacheSuccess = await influencerCacheService.setBatch(profiles, {
+        source: 'search',
+        searchKeyword: keyword,
+        searchRegion: options.regionCode,
+        searchLanguage: options.relevanceLanguage,
+      });
+      console.log(`[InfluencerCollector] 缓存存储完成: ${cacheSuccess}/${profiles.length} 成功`);
+    }
+
+    // 合并缓存数据和新采集的数据
+    const allProfiles = [...cachedProfiles, ...profiles];
+    console.log(`[InfluencerCollector] 成功采集 ${allProfiles.length} 个达人档案（包含 ${cachedProfiles.length} 个缓存）`);
+
+    return allProfiles;
     } catch (error) {
       console.error('[InfluencerCollector] 采集达人失败:', error);
       if (error instanceof Error) {

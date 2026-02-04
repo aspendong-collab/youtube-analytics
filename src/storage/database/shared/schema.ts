@@ -284,20 +284,38 @@ export const insertVideoStatsSchema = createInsertSchema(videoStats).pick({
   commentCount: true,
 });
 
-// Comments schemas
-export const insertCommentSchema = createInsertSchema(comments).pick({
-  commentId: true,
-  videoId: true,
-  authorName: true,
-  authorChannelId: true,
-  textDisplay: true,
-  likeCount: true,
-  publishedAt: true,
-  updatedAt: true,
-  sentiment: true,
-  isHighQuality: true,
-  qualityScore: true,
-});
+// Influencer Cache 表 - 存储采集结果缓存
+export const influencerCache = pgTable(
+  "influencer_cache",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    channelId: varchar("channel_id", { length: 50 }).notNull().unique(), // YouTube 频道ID
+    cachedData: jsonb("cached_data").notNull(), // 完整的达人数据（JSON）
+    // 缓存元数据
+    source: varchar("source", { length: 50 }).notNull(), // 数据来源：search, popular, manual
+    searchKeyword: varchar("search_keyword", { length: 200 }), // 搜索关键词
+    searchRegion: varchar("search_region", { length: 10 }), // 搜索地区
+    searchLanguage: varchar("search_language", { length: 20 }), // 搜索语言
+    // 缓存状态
+    hitCount: integer("hit_count").default(0), // 命中次数
+    isValid: boolean("is_valid").default(true).notNull(), // 是否有效
+    dataQuality: integer("data_quality").default(0), // 数据质量评分（0-100）
+    // 时间信息
+    cachedAt: timestamp("cached_at", { withTimezone: true }).notNull().defaultNow(), // 缓存时间
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(), // 过期时间
+    lastValidatedAt: timestamp("last_validated_at", { withTimezone: true }), // 最后验证时间
+    lastRefreshedAt: timestamp("last_refreshed_at", { withTimezone: true }), // 最后刷新时间
+  },
+  (table) => ({
+    channelIdIdx: index("influencer_cache_channel_id_idx").on(table.channelId),
+    expiresAtIdx: index("influencer_cache_expires_at_idx").on(table.expiresAt),
+    isValidIdx: index("influencer_cache_is_valid_idx").on(table.isValid),
+    sourceIdx: index("influencer_cache_source_idx").on(table.source),
+    cachedAtIdx: index("influencer_cache_cached_at_idx").on(table.cachedAt),
+  })
+);
 
 // Influencers schemas
 export const insertInfluencerSchema = createInsertSchema(influencers).pick({
@@ -323,7 +341,6 @@ export const insertInfluencerSchema = createInsertSchema(influencers).pick({
   status: true,
   isFavorite: true,
   cooperationCount: true,
-  userId: true,
 });
 
 export const updateInfluencerSchema = createInsertSchema(influencers)
@@ -350,11 +367,51 @@ export const updateInfluencerSchema = createInsertSchema(influencers)
     isFavorite: true,
     cooperationCount: true,
     isActive: true,
-    lastCooperationAt: true,
   })
   .partial();
 
-// TypeScript types
+// Influencer Cache schemas
+export const insertInfluencerCacheSchema = createInsertSchema(influencerCache).pick({
+  channelId: true,
+  cachedData: true,
+  source: true,
+  searchKeyword: true,
+  searchRegion: true,
+  searchLanguage: true,
+  isValid: true,
+  dataQuality: true,
+  expiresAt: true,
+  lastValidatedAt: true,
+  lastRefreshedAt: true,
+});
+
+export const updateInfluencerCacheSchema = createInsertSchema(influencerCache)
+  .pick({
+    cachedData: true,
+    isValid: true,
+    dataQuality: true,
+    expiresAt: true,
+    lastValidatedAt: true,
+    lastRefreshedAt: true,
+  })
+  .partial();
+
+// Comments schemas
+export const insertCommentSchema = createInsertSchema(comments).pick({
+  commentId: true,
+  videoId: true,
+  authorName: true,
+  authorChannelId: true,
+  textDisplay: true,
+  likeCount: true,
+  publishedAt: true,
+  updatedAt: true,
+  sentiment: true,
+  isHighQuality: true,
+  qualityScore: true,
+});
+
+// Influencer Cache schemas
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
