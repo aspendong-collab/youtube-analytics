@@ -17,9 +17,11 @@ export default function AIDiscoveryPage() {
   const [currentKeywords, setCurrentKeywords] = useState<string[]>([]);
   const [currentLanguage, setCurrentLanguage] = useState('all');
   const [currentSortBy, setCurrentSortBy] = useState('relevance');
-  const [page, setPage] = useState(1);
+  const [pageToken, setPageToken] = useState<string | null>(null);
+  const [currentYear, setCurrentYear] = useState(2024);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [loadingMessage, setLoadingMessage] = useState('');
 
   console.log('[AIDiscoveryPage] 页面状态:', { 
     loading, 
@@ -27,6 +29,8 @@ export default function AIDiscoveryPage() {
     currentKeywords,
     currentLanguage,
     currentSortBy,
+    pageToken,
+    currentYear,
     totalCount
   });
 
@@ -40,9 +44,11 @@ export default function AIDiscoveryPage() {
     setCurrentKeywords(keywords);
     setCurrentLanguage(language);
     setCurrentSortBy(sortBy);
-    setPage(1);
+    setPageToken(null);
+    setCurrentYear(2024);
     setHasMore(true);
     setTotalCount(0);
+    setLoadingMessage('');
 
     try {
       console.log('[handleSearch] 发送API请求...');
@@ -53,7 +59,7 @@ export default function AIDiscoveryPage() {
           keywords,
           language,
           sortBy,
-          maxResults: 20 
+          maxResults: 50 
         }),
       });
 
@@ -67,12 +73,15 @@ export default function AIDiscoveryPage() {
         const newInfluencers = result.data.influencers || [];
         setInfluencers(newInfluencers);
         setAllInfluencers(newInfluencers);
-        setTotalCount(result.data.total || newInfluencers.length);
+        setTotalCount(result.data.totalResults || newInfluencers.length);
+        
+        // 保存下一页 token
+        setPageToken(result.data.nextPageToken || null);
         
         // 更新 hasMore 状态
         const hasMoreData = result.data.hasMore !== undefined 
           ? result.data.hasMore 
-          : newInfluencers.length >= 20;
+          : !!result.data.nextPageToken;
         setHasMore(hasMoreData);
       } else {
         console.error('[handleSearch] 搜索失败:', result.error);
@@ -108,7 +117,7 @@ export default function AIDiscoveryPage() {
           keywords: currentKeywords,
           language: currentLanguage,
           sortBy,
-          maxResults: 20 
+          maxResults: 50 
         }),
       });
 
@@ -119,10 +128,10 @@ export default function AIDiscoveryPage() {
         const newInfluencers = result.data.influencers || [];
         setInfluencers(newInfluencers);
         setAllInfluencers(newInfluencers);
-        setTotalCount(result.data.count || newInfluencers.length);
-        setHasMore(newInfluencers.length >= 20);
+        setTotalCount(result.data.totalResults || newInfluencers.length);
+        setPageToken(result.data.nextPageToken || null);
+        setHasMore(!!result.data.nextPageToken);
         setCurrentSortBy(sortBy);
-        setPage(1);
       } else {
         setError(result.error || result.message || '排序失败');
       }
@@ -135,24 +144,49 @@ export default function AIDiscoveryPage() {
   };
 
   const handleLoadMore = async () => {
-    if (loadingMore || currentKeywords.length === 0 || !hasMore) return;
+    if (loadingMore || currentKeywords.length === 0) return;
 
-    console.log('[handleLoadMore] 开始加载更多，当前页:', page);
+    console.log('[handleLoadMore] 开始加载更多');
+    console.log('[handleLoadMore] 当前状态:', { pageToken, currentYear, hasMore });
     setLoadingMore(true);
     setError(null);
 
     try {
-      const nextPage = page + 1;
+      let newPageToken = pageToken;
+      let newYear = currentYear;
+      let searchParams: any = {
+        keywords: currentKeywords,
+        language: currentLanguage,
+        sortBy: currentSortBy,
+        maxResults: 50,
+      };
+
+      // 如果有 pageToken，使用分页
+      if (newPageToken) {
+        searchParams.pageToken = newPageToken;
+        setLoadingMessage(`正在加载更多...`);
+      } else {
+        // 没有更多分页 token，切换到下一年
+        if (newYear > 2020) {
+          newYear = newYear - 1;
+          searchParams.publishedAfter = `${newYear}-01-01T00:00:00Z`;
+          searchParams.publishedBefore = `${newYear}-12-31T23:59:59Z`;
+          searchParams.pageToken = undefined; // 重置分页 token
+          setLoadingMessage(`正在搜索 ${newYear} 年的视频...`);
+        } else {
+          // 已经到了最早的年份，没有更多数据了
+          setHasMore(false);
+          setLoadingMore(false);
+          return;
+        }
+      }
+
+      console.log('[handleLoadMore] 搜索参数:', searchParams);
+
       const response = await fetch('/api/influencers/collect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          keywords: currentKeywords,
-          language: currentLanguage,
-          sortBy: currentSortBy,
-          maxResults: 20,
-          page: nextPage,
-        }),
+        body: JSON.stringify(searchParams),
       });
 
       const result = await response.json();
@@ -162,8 +196,27 @@ export default function AIDiscoveryPage() {
         const newInfluencers = result.data.influencers || [];
         console.log('[handleLoadMore] 加载成功，新增达人:', newInfluencers.length);
 
+        // 如果没有新数据且当前是使用分页（不是按年份搜索），切换到下一年
+        if (newInfluencers.length === 0 && newPageToken) {
+          if (newYear > 2020) {
+            console.log('[handleLoadMore] 当前年份没有更多数据，切换到下一年');
+            newPageToken = null;
+            newYear = newYear - 1;
+            setCurrentYear(newYear);
+            setPageToken(null);
+            setLoadingMore(false);
+            // 递归调用
+            return handleLoadMore();
+          } else {
+            console.log('[handleLoadMore] 所有可能的数据都已加载完成');
+            setHasMore(false);
+            setLoadingMore(false);
+            return;
+          }
+        }
+
         // 去重：只添加不存在的达人
-        const existingChannelIds = new Set(influencers.map((inf: InfluencerProfile) => inf.channelId));
+        const existingChannelIds = new Set(allInfluencers.map((inf: InfluencerProfile) => inf.channelId));
         const uniqueNewInfluencers = newInfluencers.filter(
           (inf: InfluencerProfile) => !existingChannelIds.has(inf.channelId)
         );
@@ -172,13 +225,23 @@ export default function AIDiscoveryPage() {
 
         setInfluencers(prev => [...prev, ...uniqueNewInfluencers]);
         setAllInfluencers(prev => [...prev, ...uniqueNewInfluencers]);
-        setPage(nextPage);
+        setTotalCount((prev) => prev + uniqueNewInfluencers.length);
+        
+        // 更新状态
+        setPageToken(result.data.nextPageToken || null);
+        setCurrentYear(newYear);
         
         // 更新 hasMore 状态
         const hasMoreData = result.data.hasMore !== undefined 
           ? result.data.hasMore 
-          : uniqueNewInfluencers.length >= 20;
+          : !!result.data.nextPageToken || newYear > 2020;
         setHasMore(hasMoreData);
+
+        console.log('[handleLoadMore] 状态更新完成:', { 
+          nextPageToken: result.data.nextPageToken, 
+          newYear,
+          hasMore: hasMoreData 
+        });
       } else {
         setError(result.error || result.message || '加载更多失败');
       }
@@ -187,6 +250,7 @@ export default function AIDiscoveryPage() {
       setError(error instanceof Error ? error.message : '加载更多出错');
     } finally {
       setLoadingMore(false);
+      setLoadingMessage('');
     }
   };
 

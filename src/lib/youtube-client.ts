@@ -209,6 +209,10 @@ class YouTubeAPIClient {
         this.setCache(playlistCacheKey, playlistItems, 10 * 60 * 1000); // 10分钟缓存
       }
 
+      if (!playlistItems || playlistItems.length === 0) {
+        return [];
+      }
+
       const videoIds = playlistItems
         .map((item: any) => item.contentDetails?.videoId)
         .filter(Boolean);
@@ -237,11 +241,13 @@ class YouTubeAPIClient {
     type?: 'channel' | 'video';
     order?: 'date' | 'relevance' | 'viewCount';
     publishedAfter?: string;
+    publishedBefore?: string;
     relevanceLanguage?: string;
     regionCode?: string;
-  }): Promise<any[]> {
-    const cacheKey = `search:${params.query}:${params.maxResults || 50}:${params.type || 'video'}:${params.relevanceLanguage || 'all'}:${params.regionCode || 'all'}`;
-    const cached = this.getCache<any[]>(cacheKey);
+    pageToken?: string;
+  }): Promise<{ items: any[]; nextPageToken?: string | null; totalResults?: number }> {
+    const cacheKey = `search:${params.query}:${params.maxResults || 50}:${params.type || 'video'}:${params.relevanceLanguage || 'all'}:${params.regionCode || 'all'}:${params.pageToken || 'none'}:${params.publishedAfter || 'none'}`;
+    const cached = this.getCache<{ items: any[]; nextPageToken?: string | null }>(cacheKey);
     if (cached) return cached;
 
     const required = 100;
@@ -263,8 +269,16 @@ class YouTubeAPIClient {
         searchParams.relevanceLanguage = params.relevanceLanguage;
       }
       
+      if (params.pageToken) {
+        searchParams.pageToken = params.pageToken;
+      }
+
       if (params.publishedAfter) {
         searchParams.publishedAfter = params.publishedAfter;
+      }
+
+      if (params.publishedBefore) {
+        searchParams.publishedBefore = params.publishedBefore;
       }
 
       if (params.regionCode) {
@@ -274,8 +288,13 @@ class YouTubeAPIClient {
       const response = await this.youtube.search.list(searchParams);
 
       this.useQuota(required);
-      this.setCache(cacheKey, response.data.items || [], 20 * 60 * 1000); // 20分钟缓存
-      return response.data.items || [];
+      const result = {
+        items: response.data.items || [],
+        nextPageToken: response.data.nextPageToken || null,
+        totalResults: response.data.pageInfo?.totalResults
+      };
+      this.setCache(cacheKey, result, 20 * 60 * 1000); // 20分钟缓存
+      return result;
     } catch (error) {
       console.error('Search error:', error);
       throw error;

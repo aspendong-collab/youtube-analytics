@@ -54,8 +54,11 @@ class InfluencerCollector {
       order?: 'date' | 'relevance' | 'viewCount';
       includeRecentVideos?: boolean;
       recentVideosCount?: number;
+      pageToken?: string;
+      publishedAfter?: string;
+      publishedBefore?: string;
     } = {}
-  ): Promise<InfluencerProfile[]> {
+  ): Promise<{ profiles: InfluencerProfile[]; nextPageToken?: string | null; totalResults?: number }> {
     console.log(`[InfluencerCollector] 开始搜索达人: ${keyword}`);
     console.log(`[InfluencerCollector] 搜索参数:`, options);
 
@@ -69,19 +72,28 @@ class InfluencerCollector {
         order: options.order || 'relevance',
         relevanceLanguage: options.relevanceLanguage,
         regionCode: options.regionCode,
+        pageToken: options.pageToken,
+        publishedAfter: options.publishedAfter,
+        publishedBefore: options.publishedBefore,
       });
 
-      console.log(`[InfluencerCollector] 搜索到 ${searchResults.length} 个视频`);
+      console.log(`[InfluencerCollector] 搜索到 ${searchResults.items.length} 个视频`);
+      console.log(`[InfluencerCollector] 下一页 token: ${searchResults.nextPageToken}`);
+      console.log(`[InfluencerCollector] 总结果数: ${searchResults.totalResults}`);
 
-      if (searchResults.length === 0) {
+      if (searchResults.items.length === 0) {
         console.warn(`[InfluencerCollector] 未找到任何视频结果`);
-        return [];
+        return {
+          profiles: [],
+          nextPageToken: searchResults.nextPageToken,
+          totalResults: searchResults.totalResults
+        };
       }
 
       // 步骤2：提取唯一的频道ID
       console.log(`[InfluencerCollector] 步骤2: 提取频道ID...`);
       const channelMap = new Map<string, any[]>();
-      searchResults.forEach(item => {
+      searchResults.items.forEach(item => {
         const channelId = item.snippet?.channelId;
         if (channelId) {
           if (!channelMap.has(channelId)) {
@@ -320,7 +332,11 @@ class InfluencerCollector {
     const allProfiles = [...cachedProfiles, ...profiles];
     console.log(`[InfluencerCollector] 成功采集 ${allProfiles.length} 个达人档案（包含 ${cachedProfiles.length} 个缓存）`);
 
-    return allProfiles;
+    return {
+      profiles: allProfiles,
+      nextPageToken: searchResults.nextPageToken,
+      totalResults: searchResults.totalResults
+    };
     } catch (error) {
       console.error('[InfluencerCollector] 采集达人失败:', error);
       if (error instanceof Error) {

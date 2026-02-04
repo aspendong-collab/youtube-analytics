@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     console.log('[API /api/influencers/collect] 收到请求');
 
     const body = await request.json();
-    const { keyword, keywords, language, maxResults, regionCode, page, sortBy } = body;
+    const { keyword, keywords, language, maxResults, regionCode, pageToken, publishedAfter, publishedBefore, sortBy } = body;
 
     // 支持旧的 keyword 参数和新的 keywords 数组
     const searchKeywords = Array.isArray(keywords) ? keywords : (keyword ? [keyword] : []);
@@ -22,7 +22,9 @@ export async function POST(request: NextRequest) {
       language, 
       maxResults, 
       regionCode, 
-      page,
+      pageToken,
+      publishedAfter,
+      publishedBefore,
       sortBy
     });
 
@@ -67,38 +69,26 @@ export async function POST(request: NextRequest) {
       
       console.log('[API] 搜索查询:', searchQuery);
 
-      // 计算 offset：如果指定了 page，跳过前面的结果
-      const currentPage = page || 1;
-      const resultsPerPage = maxResults || 20;
-      const offset = (currentPage - 1) * resultsPerPage;
-
-      // 采集达人
-      const allInfluencers = await influencerCollector.collectByKeyword(searchQuery, {
-        maxResults: (resultsPerPage * 2) + 20, // 多采集一些，确保有足够的数据
+      // 采集达人（支持分页和时间维度）
+      const result = await influencerCollector.collectByKeyword(searchQuery, {
+        maxResults: maxResults || 50,
         regionCode: regionCode,
         relevanceLanguage: language !== 'all' ? language : undefined,
         order: sortBy || 'relevance',
+        pageToken: pageToken,
+        publishedAfter: publishedAfter,
+        publishedBefore: publishedBefore,
         includeRecentVideos: true,
         recentVideosCount: 10,
       });
 
       clearTimeout(timeout);
-      console.log(`[API] 采集完成，找到 ${allInfluencers.length} 个达人`);
-
-      // 根据 page 参数分页
-      let influencers = allInfluencers;
-      if (offset > 0 && offset < allInfluencers.length) {
-        influencers = allInfluencers.slice(offset, offset + resultsPerPage);
-      } else if (offset >= allInfluencers.length) {
-        influencers = [];
-      } else {
-        influencers = allInfluencers.slice(0, resultsPerPage);
-      }
-
-      console.log(`[API] 分页后返回 ${influencers.length} 个达人（page=${currentPage}, offset=${offset}, limit=${resultsPerPage}, total=${allInfluencers.length}）`);
+      console.log(`[API] 采集完成，找到 ${result.profiles.length} 个达人`);
+      console.log(`[API] 下一页 token: ${result.nextPageToken}`);
+      console.log(`[API] 总结果数: ${result.totalResults}`);
 
       // 根据排序方式对结果进行排序
-      let sortedInfluencers = [...influencers];
+      let sortedInfluencers = [...result.profiles];
       
       if (sortBy === 'viewCount') {
         sortedInfluencers.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
@@ -119,9 +109,9 @@ export async function POST(request: NextRequest) {
         data: {
           influencers: sortedInfluencers,
           count: sortedInfluencers.length,
-          total: allInfluencers.length, // 总数（用于判断是否还有更多）
-          page: currentPage,
-          hasMore: offset + resultsPerPage < allInfluencers.length,
+          nextPageToken: result.nextPageToken, // 下一页 token
+          totalResults: result.totalResults, // 总结果数
+          hasMore: !!result.nextPageToken, // 是否有更多
           quotaUsage: youtubeClient.getQuotaUsage(),
         },
       });
