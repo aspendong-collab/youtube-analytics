@@ -66,9 +66,14 @@ export async function POST(request: NextRequest) {
       
       console.log('[API] 搜索查询:', searchQuery);
 
+      // 计算 offset：如果指定了 page，跳过前面的结果
+      const currentPage = page || 1;
+      const resultsPerPage = maxResults || 20;
+      const offset = (currentPage - 1) * resultsPerPage;
+
       // 采集达人
-      const influencers = await influencerCollector.collectByKeyword(searchQuery, {
-        maxResults: maxResults || 20,
+      const allInfluencers = await influencerCollector.collectByKeyword(searchQuery, {
+        maxResults: (resultsPerPage * 2) + 20, // 多采集一些，确保有足够的数据
         regionCode: regionCode,
         relevanceLanguage: language !== 'all' ? language : undefined,
         order: sortBy || 'relevance',
@@ -77,7 +82,19 @@ export async function POST(request: NextRequest) {
       });
 
       clearTimeout(timeout);
-      console.log(`[API] 采集完成，找到 ${influencers.length} 个达人`);
+      console.log(`[API] 采集完成，找到 ${allInfluencers.length} 个达人`);
+
+      // 根据 page 参数分页
+      let influencers = allInfluencers;
+      if (offset > 0 && offset < allInfluencers.length) {
+        influencers = allInfluencers.slice(offset, offset + resultsPerPage);
+      } else if (offset >= allInfluencers.length) {
+        influencers = [];
+      } else {
+        influencers = allInfluencers.slice(0, resultsPerPage);
+      }
+
+      console.log(`[API] 分页后返回 ${influencers.length} 个达人（page=${currentPage}, offset=${offset}, limit=${resultsPerPage}, total=${allInfluencers.length}）`);
 
       // 根据排序方式对结果进行排序
       let sortedInfluencers = [...influencers];
@@ -101,6 +118,9 @@ export async function POST(request: NextRequest) {
         data: {
           influencers: sortedInfluencers,
           count: sortedInfluencers.length,
+          total: allInfluencers.length, // 总数（用于判断是否还有更多）
+          page: currentPage,
+          hasMore: offset + resultsPerPage < allInfluencers.length,
           quotaUsage: youtubeClient.getQuotaUsage(),
         },
       });

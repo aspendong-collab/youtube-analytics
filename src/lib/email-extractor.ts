@@ -155,17 +155,17 @@ export class EmailExtractor {
 
     // 基于数据源的权重
     const sourceWeights: Record<string, number> = {
-      'branding_settings': 95,      // 频道品牌设置
-      'channel_description': 75,    // 频道描述
-      'channel_title': 50,          // 频道标题
-      'channel_keywords': 60,       // 频道关键词
-      'video_description': 70,      // 视频描述
-      'channel_comment': 85,        // 频道作者评论
-      'user_comment': 40,           // 用户评论（低置信度）
-      'inferred_from_social': 35,   // 从社交媒体推断
-      'inferred_from_custom_url': 45, // 从自定义URL推断
-      'inferred_from_name': 30,     // 从频道名称推断
-      'user_submitted': 98,         // 用户提交
+      'branding_settings': 98,      // 频道品牌设置（达人主页个人信息，最准确）
+      'channel_description': 80,    // 频道描述
+      'channel_title': 40,          // 频道标题
+      'channel_keywords': 50,       // 频道关键词
+      'video_description': 75,      // 视频描述
+      'channel_comment': 90,        // 频道作者评论
+      'user_comment': 30,           // 用户评论（低置信度）
+      'inferred_from_social': 15,   // 从社交媒体推断（极低置信度）
+      'inferred_from_custom_url': 10, // 从自定义URL推断（极低置信度，避免误导）
+      'inferred_from_name': 8,      // 从频道名称推断（极低置信度）
+      'user_submitted': 99,         // 用户提交
       'smtp_verified': 100,         // SMTP验证通过
     };
 
@@ -399,6 +399,17 @@ export class EmailExtractor {
     // 按置信度排序
     const sorted = Array.from(uniqueEmails.values())
       .sort((a, b) => b.confidence - a.confidence);
+
+    // 优先过滤：如果有高置信度的真实邮箱，过滤掉推断邮箱
+    const hasRealEmail = sorted.some(e => e.confidence >= 60 && !e.inferred);
+    if (hasRealEmail) {
+      // 只保留非推断的邮箱
+      const filtered = sorted.filter(e => !e.inferred || e.confidence >= 50);
+      // 如果过滤后还有邮箱，使用过滤后的；否则使用原始的
+      if (filtered.length > 0) {
+        sorted.splice(0, sorted.length, ...filtered);
+      }
+    }
 
     // 收集来源信息
     const sources = {

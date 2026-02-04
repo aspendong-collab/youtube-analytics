@@ -67,8 +67,13 @@ export default function AIDiscoveryPage() {
         const newInfluencers = result.data.influencers || [];
         setInfluencers(newInfluencers);
         setAllInfluencers(newInfluencers);
-        setTotalCount(result.data.count || newInfluencers.length);
-        setHasMore(newInfluencers.length >= 20);
+        setTotalCount(result.data.total || newInfluencers.length);
+        
+        // 更新 hasMore 状态
+        const hasMoreData = result.data.hasMore !== undefined 
+          ? result.data.hasMore 
+          : newInfluencers.length >= 20;
+        setHasMore(hasMoreData);
       } else {
         console.error('[handleSearch] 搜索失败:', result.error);
         setError(result.error || result.message || '搜索失败');
@@ -157,10 +162,23 @@ export default function AIDiscoveryPage() {
         const newInfluencers = result.data.influencers || [];
         console.log('[handleLoadMore] 加载成功，新增达人:', newInfluencers.length);
 
-        setInfluencers(prev => [...prev, ...newInfluencers]);
-        setAllInfluencers(prev => [...prev, ...newInfluencers]);
+        // 去重：只添加不存在的达人
+        const existingChannelIds = new Set(influencers.map((inf: InfluencerProfile) => inf.channelId));
+        const uniqueNewInfluencers = newInfluencers.filter(
+          (inf: InfluencerProfile) => !existingChannelIds.has(inf.channelId)
+        );
+
+        console.log('[handleLoadMore] 去重后实际新增达人:', uniqueNewInfluencers.length);
+
+        setInfluencers(prev => [...prev, ...uniqueNewInfluencers]);
+        setAllInfluencers(prev => [...prev, ...uniqueNewInfluencers]);
         setPage(nextPage);
-        setHasMore(newInfluencers.length >= 20);
+        
+        // 更新 hasMore 状态
+        const hasMoreData = result.data.hasMore !== undefined 
+          ? result.data.hasMore 
+          : uniqueNewInfluencers.length >= 20;
+        setHasMore(hasMoreData);
       } else {
         setError(result.error || result.message || '加载更多失败');
       }
