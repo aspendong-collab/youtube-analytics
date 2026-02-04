@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { Search } from 'lucide-react';
 import type { InfluencerProfile } from '@/types/influencer';
+import AdvancedFilterBar, { type FilterOptions } from './advanced-filter-bar';
+import MetricsInfoDialog from './metrics-info-dialog';
 
 interface SearchPageProps {
   onSearch: (keyword: string) => Promise<void>;
-  onFilterChange: (filters: any) => void;
+  onFilterChange: (filters: FilterOptions) => void;
   onViewDetails?: (influencer: InfluencerProfile) => void;
   loading: boolean;
   influencers: InfluencerProfile[];
@@ -17,6 +19,7 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
   const [keyword, setKeyword] = useState('');
   const [searchHistory, setSearchHistory] = useState<string[]>(['生产力工具', '科技测评', '教程分享', '生活方式']);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [infoDialogOpen, setInfoDialogOpen] = useState(false);
 
   // 调试日志
   console.log('[SearchPage] 渲染状态:', { loading, influencersCount: influencers.length, keyword });
@@ -45,6 +48,11 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
     if (e.key === 'Enter') {
       handleSearch();
     }
+  };
+
+  const handleFilterChange = (filters: FilterOptions) => {
+    console.log('[SearchPage] 筛选器变化:', filters);
+    onFilterChange(filters);
   };
 
   return (
@@ -205,7 +213,10 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
 
           {/* 筛选器 */}
           <div className="bg-white rounded-2xl shadow-sm p-4 mb-6">
-            <FilterBar onChange={onFilterChange} />
+            <AdvancedFilterBar
+              onChange={handleFilterChange}
+              onShowInfo={() => setInfoDialogOpen(true)}
+            />
           </div>
 
           {/* 结果统计 */}
@@ -231,6 +242,9 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
         </div>
       )}
     </div>
+
+    {/* 指标说明弹窗 */}
+    <MetricsInfoDialog open={infoDialogOpen} onClose={() => setInfoDialogOpen(false)} />
   );
 }
 
@@ -241,34 +255,6 @@ function QuickEntryCard({ icon, title, description, onClick }: { icon: string; t
       <div className="text-3xl mb-3">{icon}</div>
       <p className="font-semibold text-[#1D1D1F] mb-1">{title}</p>
       <p className="text-sm text-[#86868B]">{description}</p>
-    </button>
-  );
-}
-
-// 筛选器组件（简化版）
-function FilterBar({ onChange }: { onChange: (filters: any) => void }) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      <FilterButton label="全部" active={true} onClick={() => onChange({})} />
-      <FilterButton label="📊 推荐度" onClick={() => onChange({ sortBy: 'score' })} />
-      <FilterButton label="👥 订阅数" onClick={() => onChange({ sortBy: 'subscribers' })} />
-      <FilterButton label="📈 增长率" onClick={() => onChange({ sortBy: 'growth' })} />
-      <FilterButton label="🗣️ 语种" onClick={() => onChange({ sortBy: 'language' })} />
-    </div>
-  );
-}
-
-function FilterButton({ label, active, onClick }: { label: string; active?: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-        active
-          ? 'bg-[#007AFF] text-white'
-          : 'bg-[#F5F5F7] text-[#1D1D1F] hover:bg-[#E5E5EA]'
-      }`}
-    >
-      {label}
     </button>
   );
 }

@@ -4,10 +4,12 @@ import { useState } from 'react';
 import SearchPage from '@/components/influencer/search-page';
 import DetailDialog from '@/components/influencer/detail-dialog';
 import type { InfluencerProfile } from '@/types/influencer';
+import type { FilterOptions } from '@/components/influencer/advanced-filter-bar';
 
 export default function AIDiscoveryPage() {
   const [loading, setLoading] = useState(false);
   const [influencers, setInfluencers] = useState<InfluencerProfile[]>([]);
+  const [allInfluencers, setAllInfluencers] = useState<InfluencerProfile[]>([]); // 保存原始数据
   const [selectedInfluencer, setSelectedInfluencer] = useState<InfluencerProfile | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -16,6 +18,7 @@ export default function AIDiscoveryPage() {
     console.log('[handleSearch] 开始搜索:', keyword);
     setLoading(true);
     setInfluencers([]); // 清空之前的结果
+    setAllInfluencers([]); // 清空原始数据
     setError(null); // 清空错误信息
 
     try {
@@ -33,7 +36,9 @@ export default function AIDiscoveryPage() {
 
       if (result.success) {
         console.log('[handleSearch] 搜索成功，找到达人:', result.data.influencers?.length || 0);
-        setInfluencers(result.data.influencers || []);
+        const newInfluencers = result.data.influencers || [];
+        setInfluencers(newInfluencers);
+        setAllInfluencers(newInfluencers); // 保存原始数据
       } else {
         console.error('[handleSearch] 搜索失败:', result.error);
         setError(result.error || result.message || '搜索失败');
@@ -47,21 +52,41 @@ export default function AIDiscoveryPage() {
     }
   };
 
-  const handleFilterChange = (filters: any) => {
-    // 简化的前端筛选
-    let filtered = [...influencers];
+  const handleFilterChange = (filters: FilterOptions) => {
+    console.log('[handleFilterChange] 筛选条件:', filters);
 
-    if (filters.sortBy === 'score') {
-      filtered.sort((a, b) => (b.score?.total || 0) - (a.score?.total || 0));
-    } else if (filters.sortBy === 'subscribers') {
-      filtered.sort((a, b) => b.subscriberCount - a.subscriberCount);
-    } else if (filters.sortBy === 'growth') {
-      filtered.sort((a, b) => b.viewsTrend - a.viewsTrend);
-    } else if (filters.sortBy === 'language') {
-      filtered.sort((a, b) => (a.inferredLanguage?.language || '').localeCompare(b.inferredLanguage?.language || ''));
+    let filtered = [...allInfluencers];
+
+    // 1. 按等级筛选
+    if (filters.tier !== 'all') {
+      filtered = filtered.filter((inf) => inf.score?.tier === filters.tier);
+    }
+
+    // 2. 按订阅数筛选
+    if (filters.subscribers !== 'all') {
+      const [min, max] = filters.subscribers.split('-').map(Number);
+      filtered = filtered.filter((inf) => inf.subscriberCount >= min && inf.subscriberCount < max);
+    }
+
+    // 3. 按增长率筛选
+    if (filters.growthRate !== 'all') {
+      const [min, max] = filters.growthRate.split('-').map(Number);
+      filtered = filtered.filter((inf) => inf.viewsTrend >= min && inf.viewsTrend < max);
+    }
+
+    // 4. 按语种筛选
+    if (filters.language !== 'all') {
+      filtered = filtered.filter((inf) => {
+        const language = inf.inferredLanguage?.language || inf.defaultLanguage || '';
+        if (filters.language === 'other') {
+          return !['zh', 'en', 'ja', 'ko', 'es', 'fr', 'de'].includes(language.toLowerCase());
+        }
+        return language.toLowerCase().startsWith(filters.language.toLowerCase());
+      });
     }
 
     setInfluencers(filtered);
+    console.log('[handleFilterChange] 筛选结果:', filtered.length);
   };
 
   const handleViewDetails = (influencer: InfluencerProfile) => {
