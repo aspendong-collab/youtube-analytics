@@ -48,6 +48,8 @@ class InfluencerCollector {
     options: {
       maxResults?: number;
       regionCode?: string;
+      relevanceLanguage?: string;
+      order?: 'date' | 'relevance' | 'viewCount';
       includeRecentVideos?: boolean;
       recentVideosCount?: number;
     } = {}
@@ -62,7 +64,9 @@ class InfluencerCollector {
         query: keyword,
         maxResults: options.maxResults || 50,
         type: 'video',
-        order: 'relevance',
+        order: options.order || 'relevance',
+        relevanceLanguage: options.relevanceLanguage,
+        regionCode: options.regionCode,
       });
 
       console.log(`[InfluencerCollector] 搜索到 ${searchResults.length} 个视频`);

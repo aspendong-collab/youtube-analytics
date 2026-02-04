@@ -237,8 +237,10 @@ class YouTubeAPIClient {
     type?: 'channel' | 'video';
     order?: 'date' | 'relevance' | 'viewCount';
     publishedAfter?: string;
+    relevanceLanguage?: string;
+    regionCode?: string;
   }): Promise<any[]> {
-    const cacheKey = `search:${params.query}:${params.maxResults || 50}:${params.type || 'video'}`;
+    const cacheKey = `search:${params.query}:${params.maxResults || 50}:${params.type || 'video'}:${params.relevanceLanguage || 'all'}:${params.regionCode || 'all'}`;
     const cached = this.getCache<any[]>(cacheKey);
     if (cached) return cached;
 
@@ -248,14 +250,28 @@ class YouTubeAPIClient {
     }
 
     try {
-      const response = await this.youtube.search.list({
+      const searchParams: any = {
         q: params.query,
         part: ['snippet', 'id'],
         maxResults: params.maxResults || 50,
         type: params.type || 'video',
         order: params.order || 'relevance',
-        publishedAfter: params.publishedAfter,
-      });
+      };
+
+      // 添加可选参数
+      if (params.relevanceLanguage) {
+        searchParams.relevanceLanguage = params.relevanceLanguage;
+      }
+      
+      if (params.publishedAfter) {
+        searchParams.publishedAfter = params.publishedAfter;
+      }
+
+      if (params.regionCode) {
+        searchParams.regionCode = params.regionCode;
+      }
+
+      const response = await this.youtube.search.list(searchParams);
 
       this.useQuota(required);
       this.setCache(cacheKey, response.data.items || [], 20 * 60 * 1000); // 20分钟缓存
