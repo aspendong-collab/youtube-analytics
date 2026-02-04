@@ -9,8 +9,11 @@ interface SearchPageProps {
   onFilterChange: (filters: any) => void;
   onViewDetails?: (influencer: InfluencerProfile) => void;
   loading: boolean;
+  loadingMore: boolean;
   influencers: InfluencerProfile[];
   error?: string | null;
+  hasMore: boolean;
+  onLoadMore: () => Promise<void>;
 }
 
 function QuickEntryCard({ icon, title, description, onClick }: { icon: string; title: string; description: string; onClick: () => void }) {
@@ -119,12 +122,12 @@ function InfluencerCard({ influencer, onViewDetails }: { influencer: InfluencerP
   );
 }
 
-export default function SearchPage({ onSearch, onFilterChange, onViewDetails, loading, influencers, error }: SearchPageProps) {
+export default function SearchPage({ onSearch, onFilterChange, onViewDetails, loading, loadingMore, influencers, error, hasMore, onLoadMore }: SearchPageProps) {
   const [keyword, setKeyword] = useState('');
   const [searchHistory, setSearchHistory] = useState<string[]>(['生产力工具', '科技测评', '教程分享', '生活方式']);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
-  console.log('[SearchPage] 渲染状态:', { loading, influencersCount: influencers.length, keyword });
+  console.log('[SearchPage] 渲染状态:', { loading, influencersCount: influencers.length, keyword, hasMore, loadingMore });
 
   const handleSearch = async (searchKeyword?: string) => {
     const keywordToSearch = searchKeyword || keyword;
@@ -148,6 +151,12 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
     if (e.key === 'Enter') {
       handleSearch();
     }
+  };
+
+  const handleLoadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    console.log('[SearchPage] 加载更多...');
+    await onLoadMore();
   };
 
   return (
@@ -304,9 +313,15 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
           </div>
 
           <div className="mt-8 text-center">
-            <button className="px-8 py-3 bg-white border border-[#E5E5EA] text-[#1D1D1F] rounded-xl hover:bg-[#F5F5F7] transition-colors font-medium">
-              加载更多...
-            </button>
+            {hasMore && (
+              <button
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="px-8 py-3 bg-white border border-[#E5E5EA] text-[#1D1D1F] rounded-xl hover:bg-[#F5F5F7] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingMore ? '加载中...' : '加载更多...'}
+              </button>
+            )}
           </div>
         </div>
       )}

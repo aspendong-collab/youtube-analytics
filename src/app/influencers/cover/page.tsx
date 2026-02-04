@@ -8,25 +8,33 @@ import type { FilterOptions } from '@/components/influencer/advanced-filter-bar'
 
 export default function AIDiscoveryPage() {
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [influencers, setInfluencers] = useState<InfluencerProfile[]>([]);
   const [allInfluencers, setAllInfluencers] = useState<InfluencerProfile[]>([]); // 保存原始数据
   const [selectedInfluencer, setSelectedInfluencer] = useState<InfluencerProfile | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentKeyword, setCurrentKeyword] = useState<string>('');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
   const handleSearch = async (keyword: string) => {
     console.log('[handleSearch] 开始搜索:', keyword);
     setLoading(true);
+    setLoadingMore(false);
     setInfluencers([]); // 清空之前的结果
     setAllInfluencers([]); // 清空原始数据
     setError(null); // 清空错误信息
+    setCurrentKeyword(keyword); // 保存当前搜索关键词
+    setPage(1); // 重置页码
+    setHasMore(true); // 重置是否有更多
 
     try {
       console.log('[handleSearch] 发送API请求...');
       const response = await fetch('/api/influencers/collect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword }),
+        body: JSON.stringify({ keyword, maxResults: 20 }),
       });
 
       console.log('[handleSearch] 收到响应:', response.status);
@@ -39,6 +47,8 @@ export default function AIDiscoveryPage() {
         const newInfluencers = result.data.influencers || [];
         setInfluencers(newInfluencers);
         setAllInfluencers(newInfluencers); // 保存原始数据
+        // 每页20个，如果返回少于20个，说明没有更多了
+        setHasMore(newInfluencers.length >= 20);
       } else {
         console.error('[handleSearch] 搜索失败:', result.error);
         setError(result.error || result.message || '搜索失败');
@@ -49,6 +59,50 @@ export default function AIDiscoveryPage() {
     } finally {
       setLoading(false);
       console.log('[handleSearch] 搜索完成，loading:', false);
+    }
+  };
+
+  const handleLoadMore = async () => {
+    if (loadingMore || !currentKeyword || !hasMore) return;
+
+    console.log('[handleLoadMore] 开始加载更多，当前页:', page, '关键词:', currentKeyword);
+    setLoadingMore(true);
+    setError(null);
+
+    try {
+      const nextPage = page + 1;
+      const response = await fetch('/api/influencers/collect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keyword: currentKeyword,
+          maxResults: 20,
+          page: nextPage,
+        }),
+      });
+
+      const result = await response.json();
+      console.log('[handleLoadMore] 响应数据:', result);
+
+      if (result.success) {
+        const newInfluencers = result.data.influencers || [];
+        console.log('[handleLoadMore] 加载成功，新增达人:', newInfluencers.length);
+
+        // 追加到现有列表
+        setInfluencers(prev => [...prev, ...newInfluencers]);
+        setAllInfluencers(prev => [...prev, ...newInfluencers]);
+        setPage(nextPage);
+
+        // 如果返回少于20个，说明没有更多了
+        setHasMore(newInfluencers.length >= 20);
+      } else {
+        setError(result.error || result.message || '加载更多失败');
+      }
+    } catch (error) {
+      console.error('[handleLoadMore] 加载更多错误:', error);
+      setError(error instanceof Error ? error.message : '加载更多出错');
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -107,8 +161,11 @@ export default function AIDiscoveryPage() {
         onFilterChange={handleFilterChange}
         onViewDetails={handleViewDetails}
         loading={loading}
+        loadingMore={loadingMore}
         influencers={influencers}
         error={error}
+        hasMore={hasMore}
+        onLoadMore={handleLoadMore}
       />
 
       <DetailDialog

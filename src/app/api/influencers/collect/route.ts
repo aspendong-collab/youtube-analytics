@@ -11,9 +11,9 @@ export async function POST(request: NextRequest) {
     console.log('[API /api/influencers/collect] 收到请求');
 
     const body = await request.json();
-    const { keyword, maxResults, regionCode } = body;
+    const { keyword, maxResults, regionCode, page } = body;
 
-    console.log('[API] 请求参数:', { keyword, maxResults, regionCode });
+    console.log('[API] 请求参数:', { keyword, maxResults, regionCode, page });
 
     if (!keyword) {
       console.error('[API] 缺少必需参数: keyword');
