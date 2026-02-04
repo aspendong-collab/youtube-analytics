@@ -21,22 +21,23 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
   // 调试日志
   console.log('[SearchPage] 渲染状态:', { loading, influencersCount: influencers.length, keyword });
 
-  const handleSearch = async () => {
-    if (!keyword.trim()) return;
+  const handleSearch = async (searchKeyword?: string) => {
+    const keywordToSearch = searchKeyword || keyword;
+    if (!keywordToSearch.trim()) return;
 
-    console.log('[SearchPage] 开始搜索:', keyword);
+    console.log('[SearchPage] 开始搜索:', keywordToSearch);
 
     // 添加到搜索历史
-    if (!searchHistory.includes(keyword)) {
-      setSearchHistory(prev => [keyword, ...prev].slice(0, 10));
+    if (!searchHistory.includes(keywordToSearch)) {
+      setSearchHistory(prev => [keywordToSearch, ...prev].slice(0, 10));
     }
 
     // 添加到最近搜索
-    if (!recentSearches.includes(keyword)) {
-      setRecentSearches(prev => [keyword, ...prev].slice(0, 5));
+    if (!recentSearches.includes(keywordToSearch)) {
+      setRecentSearches(prev => [keywordToSearch, ...prev].slice(0, 5));
     }
 
-    await onSearch(keyword);
+    await onSearch(keywordToSearch);
     console.log('[SearchPage] 搜索完成');
   };
 
@@ -88,7 +89,7 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
                 className="w-full pl-14 pr-4 py-4 bg-[#F5F5F7] rounded-xl text-[#1D1D1F] placeholder-[#86868B] text-lg focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
               />
               <button
-                onClick={handleSearch}
+                onClick={() => handleSearch()}
                 disabled={!keyword.trim()}
                 className="absolute right-2 top-1/2 -translate-y-1/2 px-6 py-2 bg-[#007AFF] text-white rounded-lg hover:bg-[#0056CC] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
@@ -98,10 +99,10 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
 
             {/* 快捷入口 */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-              <QuickEntryCard icon="🔍" title="关键词搜索" description="搜索关键词" />
-              <QuickEntryCard icon="🌍" title="热门内容" description="热门内容" />
-              <QuickEntryCard icon="📊" title="内容分类" description="内容分类" />
-              <QuickEntryCard icon="⭐" title="为你推荐" description="为你推荐" />
+              <QuickEntryCard icon="🔍" title="关键词搜索" description="搜索关键词" onClick={() => {}} />
+              <QuickEntryCard icon="🌍" title="热门内容" description="热门内容" onClick={() => {}} />
+              <QuickEntryCard icon="📊" title="内容分类" description="内容分类" onClick={() => {}} />
+              <QuickEntryCard icon="⭐" title="为你推荐" description="为你推荐" onClick={() => {}} />
             </div>
 
             {/* 推荐搜索 */}
@@ -194,7 +195,7 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
                 className="flex-1 bg-transparent text-[#1D1D1F] placeholder-[#86868B] focus:outline-none"
               />
               <button
-                onClick={handleSearch}
+                onClick={() => handleSearch()}
                 className="px-6 py-2 bg-[#007AFF] text-white rounded-lg hover:bg-[#0056CC] transition-colors font-medium"
               >
                 搜索
@@ -234,9 +235,9 @@ export default function SearchPage({ onSearch, onFilterChange, onViewDetails, lo
 }
 
 // 快捷入口卡片
-function QuickEntryCard({ icon, title, description }: { icon: string; title: string; description: string }) {
+function QuickEntryCard({ icon, title, description, onClick }: { icon: string; title: string; description: string; onClick: () => void }) {
   return (
-    <button className="p-6 bg-[#F5F5F7] rounded-xl hover:bg-[#E5E5EA] transition-colors text-left">
+    <button className="p-6 bg-[#F5F5F7] rounded-xl hover:bg-[#E5E5EA] transition-colors text-left" onClick={onClick}>
       <div className="text-3xl mb-3">{icon}</div>
       <p className="font-semibold text-[#1D1D1F] mb-1">{title}</p>
       <p className="text-sm text-[#86868B]">{description}</p>

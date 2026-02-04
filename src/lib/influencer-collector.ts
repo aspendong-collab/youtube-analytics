@@ -360,6 +360,9 @@ class InfluencerCollector {
       };
     }
 
+    // 保存 this 引用以避免上下文丢失
+    const self = this;
+
     const views = videos.map((v: any) => parseInt(v.statistics?.viewCount || '0'));
     const likes = videos.map((v: any) => parseInt(v.statistics?.likeCount || '0'));
     const comments = videos.map((v: any) => parseInt(v.statistics?.commentCount || '0'));
@@ -371,14 +374,14 @@ class InfluencerCollector {
     const engagementRate = avgViews > 0 ? ((avgLikes + avgComments) / avgViews) * 100 : 0;
 
     // 计算趋势
-    const viewsTrend = this.calculateTrend(views);
-    const likesTrend = this.calculateTrend(likes);
-    const commentsTrend = this.calculateTrend(comments);
+    const viewsTrend = self.calculateTrend(views);
+    const likesTrend = self.calculateTrend(likes);
+    const commentsTrend = self.calculateTrend(comments);
 
     // 计算时长
-    const durations = videos.map((v: any) => this.parseDuration(v.contentDetails?.duration || 'PT0S'));
+    const durations = videos.map((v: any) => self.parseDuration(v.contentDetails?.duration || 'PT0S'));
     const avgDurationSeconds = durations.reduce((a, b) => a + b, 0) / durations.length;
-    const avgDuration = this.formatDuration(avgDurationSeconds);
+    const avgDuration = self.formatDuration(avgDurationSeconds);
 
     // 估算成本
     const subscriberCount = videos[0]?.subscriberCount || 10000;
