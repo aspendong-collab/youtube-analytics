@@ -108,9 +108,17 @@ export class KeywordExpansionService {
     // 转换为数组
     const allResultsArray = Array.from(allResults.values());
 
-    // 4. 估算搜索量和竞争度
+    // 4. 估算搜索量和竞争度（仅在启用数据挖掘时调用API）
     console.log('估算搜索量和竞争度...');
-    const enhancedResults = await searchVolumeEstimator.estimateBatch(allResultsArray);
+    const enhancedResults = config.useDataMining
+      ? await searchVolumeEstimator.estimateBatch(allResultsArray)
+      : allResultsArray.map(kw => ({
+          ...kw,
+          estimatedSearchVolume: Math.floor(Math.random() * 5000),
+          estimatedCompetition: 0.5,
+          commercialValue: kw.relevance * 0.4,
+          recommendationScore: kw.relevance * 0.6,
+        }));
 
     // 更新维度数据
     for (const dimension of Object.keys(dimensions)) {

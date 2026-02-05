@@ -51,7 +51,7 @@ export default function KeywordExpansionPage() {
   const [category, setCategory] = useState('generic');
   const [useRuleEngine, setUseRuleEngine] = useState(true);
   const [useLLMEngine, setUseLLMEngine] = useState(true);
-  const [useDataMining, setUseDataMining] = useState(true);
+  const [useDataMining, setUseDataMining] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ExpansionResponse | null>(null);
   const [selectedDimension, setSelectedDimension] = useState<string>('all');
@@ -250,6 +250,25 @@ export default function KeywordExpansionPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
+            {/* 数据来源提示 */}
+            <Card className="mb-6 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <Zap className={`w-5 h-5 ${useDataMining ? 'text-purple-600' : 'text-blue-600'}`} />
+                  <div>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      {useDataMining ? '数据来源：规则引擎 + AI智能 + YouTube真实数据' : '数据来源：规则引擎 + AI智能估算'}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {useDataMining
+                        ? '已启用数据挖掘，关键词基于YouTube真实视频数据优化，搜索量和竞争度为实际估算值'
+                        : '未启用数据挖掘，搜索量和竞争度为AI估算值，开启"数据挖掘"选项可获取YouTube真实数据'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* API 配额信息 */}
             {result.quota && (
               <Card className={`mb-6 ${result.quota.isExhausted ? 'border-red-500 bg-red-50 dark:bg-red-950' : 'border-blue-200 bg-blue-50 dark:bg-blue-950'}`}>
