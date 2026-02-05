@@ -176,8 +176,8 @@ async function collectByLanguage(
 
   console.log(`[collectByLanguage] 获取到 ${videos.length} 个视频详情`);
 
-  // 提取关键词
-  const keywords = keywordExtractor.extractFromVideos(videos, language);
+  // 提取关键词（传递原始关键词用于相关性计算）
+  const keywords = keywordExtractor.extractFromVideos(videos, language, keyword);
 
   return {
     language,

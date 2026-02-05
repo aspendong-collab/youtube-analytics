@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Copy, Search, TrendingUp, TrendingDown, Minus, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
-import type { KeywordData } from '@/lib/keyword-extractor/extractor';
+import { Copy, Search, TrendingUp, TrendingDown, Minus, ExternalLink, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import type { KeywordData, KeywordCategory } from '@/lib/keyword-extractor/extractor';
 
 interface KeywordResultsProps {
   keyword: string;
@@ -24,12 +24,45 @@ export default function KeywordResults({
   onKeywordClick,
 }: KeywordResultsProps) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedCategory, setSelectedCategory] = useState<KeywordCategory | 'all'>('all');
   const itemsPerPage = 50;
-  const totalPages = Math.ceil(keywords.length / itemsPerPage);
 
+  // 类别标签映射
+  const categoryLabels: Record<KeywordCategory | 'all', string> = {
+    all: '全部',
+    productivity: '💼 生产力',
+    work: '👔 工作',
+    salary: '💰 薪资',
+    career: '📈 职业发展',
+    tech: '💻 技术/工具',
+    business: '🏢 商业',
+    learning: '📚 学习',
+    health: '🏃 健康',
+    lifestyle: '🌟 生活方式',
+    finance: '💵 财务',
+    tutorial: '🎓 教程',
+    other: '📌 其他',
+  };
+
+  // 按类别过滤
+  const filteredKeywords = selectedCategory === 'all'
+    ? keywords
+    : keywords.filter(kw => kw.category === selectedCategory);
+
+  const totalPages = Math.ceil(filteredKeywords.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentKeywords = keywords.slice(startIndex, endIndex);
+  const currentKeywords = filteredKeywords.slice(startIndex, endIndex);
+
+  // 类别统计
+  const categoryStats = keywords.reduce((acc, kw) => {
+    if (!acc[kw.category]) {
+      acc[kw.category] = 0;
+    }
+    acc[kw.category]++;
+    return acc;
+  }, {} as Record<KeywordCategory, number>);
+
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case 'up':
@@ -64,6 +97,12 @@ export default function KeywordResults({
 
   const searchOnYouTube = (kw: string) => {
     window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(kw)}`, '_blank');
+  };
+
+  // 重置页码
+  const handleCategoryChange = (category: KeywordCategory | 'all') => {
+    setSelectedCategory(category);
+    setCurrentPage(1);
   };
 
   return (
@@ -102,10 +141,51 @@ export default function KeywordResults({
         </CardContent>
       </Card>
 
+      {/* 类别过滤器 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="w-5 h-5" />
+            按类别筛选
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={selectedCategory === 'all' ? 'default' : 'outline'}
+              onClick={() => handleCategoryChange('all')}
+            >
+              全部 ({keywords.length})
+            </Button>
+            {(Object.keys(categoryLabels) as (KeywordCategory | 'all')[])
+              .filter(cat => cat !== 'all')
+              .map(category => {
+                const count = categoryStats[category as KeywordCategory] || 0;
+                return count > 0 ? (
+                  <Button
+                    key={category}
+                    size="sm"
+                    variant={selectedCategory === category ? 'default' : 'outline'}
+                    onClick={() => handleCategoryChange(category as KeywordCategory)}
+                  >
+                    {categoryLabels[category]} ({count})
+                  </Button>
+                ) : null;
+              })}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* 关键词列表 */}
       <Card>
         <CardHeader>
-          <CardTitle>热门关键词</CardTitle>
+          <CardTitle>
+            {selectedCategory === 'all' ? '热门关键词' : categoryLabels[selectedCategory].split(' ')[1]}
+            <span className="text-sm font-normal text-gray-500 ml-2">
+              显示 {startIndex + 1}-{Math.min(endIndex, filteredKeywords.length)} / 共 {filteredKeywords.length} 个
+            </span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -113,6 +193,8 @@ export default function KeywordResults({
               <TableRow>
                 <TableHead>排名</TableHead>
                 <TableHead>关键词</TableHead>
+                <TableHead>类别</TableHead>
+                <TableHead>相关性</TableHead>
                 <TableHead>出现频率</TableHead>
                 <TableHead>平均热度</TableHead>
                 <TableHead>关联视频</TableHead>
@@ -122,44 +204,68 @@ export default function KeywordResults({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentKeywords.map((kw, index) => (
-                <TableRow key={kw.keyword}>
-                  <TableCell className="font-medium">{startIndex + index + 1}</TableCell>
-                  <TableCell className="font-semibold">{kw.keyword}</TableCell>
-                  <TableCell>{kw.frequency}</TableCell>
-                  <TableCell>{formatNumber(kw.avgViews)}</TableCell>
-                  <TableCell>{kw.videoCount}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      {getTrendIcon(kw.trend)}
-                      <span className="text-xs">{getTrendText(kw.trend)}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{kw.language}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => copyKeyword(kw.keyword)}
-                        title="复制"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => searchOnYouTube(kw.keyword)}
-                        title="在 YouTube 搜索"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </Button>
-                    </div>
+              {currentKeywords.length > 0 ? (
+                currentKeywords.map((kw, index) => (
+                  <TableRow key={kw.keyword}>
+                    <TableCell className="font-medium">{startIndex + index + 1}</TableCell>
+                    <TableCell className="font-semibold">{kw.keyword}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-xs">
+                        {categoryLabels[kw.category].split(' ')[1]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <div className="w-16 bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-blue-500 h-2 rounded-full"
+                            style={{ width: `${kw.relevanceScore * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-xs">{(kw.relevanceScore * 100).toFixed(0)}%</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{kw.frequency}</TableCell>
+                    <TableCell>{formatNumber(kw.avgViews)}</TableCell>
+                    <TableCell>{kw.videoCount}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {getTrendIcon(kw.trend)}
+                        <span className="text-xs">{getTrendText(kw.trend)}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{kw.language}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => copyKeyword(kw.keyword)}
+                          title="复制"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => searchOnYouTube(kw.keyword)}
+                          title="在 YouTube 搜索"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={10} className="text-center py-8 text-gray-500">
+                    该类别暂无关键词
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
 
@@ -167,7 +273,7 @@ export default function KeywordResults({
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-4 pt-4 border-t">
               <div className="text-sm text-gray-500">
-                显示 {startIndex + 1}-{Math.min(endIndex, keywords.length)} / 共 {keywords.length} 个关键词
+                显示 {startIndex + 1}-{Math.min(endIndex, filteredKeywords.length)} / 共 {filteredKeywords.length} 个关键词
               </div>
               <div className="flex items-center gap-2">
                 <Button
