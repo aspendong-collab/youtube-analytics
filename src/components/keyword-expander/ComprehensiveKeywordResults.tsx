@@ -260,67 +260,76 @@ export default function ComprehensiveKeywordResults({
         </Card>
       </div>
 
-      {/* 搜索建议、相关问题、竞品关键词 */}
+      {/* 搜索建议、相关问题、竞品关键词 - 只显示有数据的模块 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">🔍 搜索建议 ({(data.suggestions || []).length})</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 max-h-60 overflow-y-auto">
-            {data.suggestions.slice(0, 20).map((suggestion, idx) => (
-              <div
-                key={idx}
-                className="text-sm p-2 bg-gray-50 rounded hover:bg-gray-100 cursor-pointer flex items-center justify-between group"
-                onClick={() => onKeywordClick?.(suggestion)}
-              >
-                <span className="truncate">{suggestion}</span>
-                <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 p-1 h-auto">
-                  <Copy className="w-3 h-3" />
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        {/* 搜索建议 */}
+        {data.suggestions && data.suggestions.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">🔍 搜索建议 ({data.suggestions.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 max-h-60 overflow-y-auto">
+              {data.suggestions.slice(0, 20).map((suggestion, idx) => (
+                <div
+                  key={idx}
+                  className="text-sm p-2 bg-gray-50 rounded hover:bg-gray-100 cursor-pointer flex items-center justify-between group"
+                  onClick={() => onKeywordClick?.(suggestion)}
+                >
+                  <span className="truncate">{suggestion}</span>
+                  <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 p-1 h-auto">
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">❓ 相关问题 ({(data.questions || []).length})</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 max-h-60 overflow-y-auto">
-            {(data.questions || []).slice(0, 20).map((question, idx) => (
-              <div
-                key={idx}
-                className="text-sm p-2 bg-gray-50 rounded hover:bg-gray-100 cursor-pointer flex items-center justify-between group"
-                onClick={() => onKeywordClick?.(question)}
-              >
-                <span className="truncate">{question}</span>
-                <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 p-1 h-auto">
-                  <Copy className="w-3 h-3" />
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        {/* 相关问题 */}
+        {data.questions && data.questions.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">❓ 相关问题 ({data.questions.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 max-h-60 overflow-y-auto">
+              {data.questions.slice(0, 20).map((question, idx) => (
+                <div
+                  key={idx}
+                  className="text-sm p-2 bg-gray-50 rounded hover:bg-gray-100 cursor-pointer flex items-center justify-between group"
+                  onClick={() => onKeywordClick?.(question)}
+                >
+                  <span className="truncate">{question}</span>
+                  <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 p-1 h-auto">
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">🏆 竞品关键词 ({(data.competitors || []).length})</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 max-h-60 overflow-y-auto">
-            {(data.competitors || []).slice(0, 20).map((competitor, idx) => (
-              <div
-                key={idx}
-                className="text-sm p-2 bg-gray-50 rounded hover:bg-gray-100 cursor-pointer flex items-center justify-between group"
-                onClick={() => onKeywordClick?.(competitor)}
-              >
-                <span className="truncate">{competitor}</span>
-                <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 p-1 h-auto">
-                  <Copy className="w-3 h-3" />
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        {/* 竞品关键词 */}
+        {data.competitors && data.competitors.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">🏆 竞品关键词 ({data.competitors.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 max-h-60 overflow-y-auto">
+              {data.competitors.slice(0, 20).map((competitor, idx) => (
+                <div
+                  key={idx}
+                  className="text-sm p-2 bg-gray-50 rounded hover:bg-gray-100 cursor-pointer flex items-center justify-between group"
+                  onClick={() => onKeywordClick?.(competitor)}
+                >
+                  <span className="truncate">{competitor}</span>
+                  <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 p-1 h-auto">
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* 过滤器 */}
