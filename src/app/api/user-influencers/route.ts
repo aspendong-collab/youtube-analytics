@@ -190,14 +190,67 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 检查是否已存在
+    // 检查 influencerId 是否对应一个存在的达人
+    // 如果不存在，使用 channelId 创建达人记录
+    let finalInfluencerId = influencerId;
+    let dbInfluencer = await dbInstance
+      .select()
+      .from(influencers)
+      .where(eq(influencers.id, influencerId))
+      .limit(1);
+
+    if (dbInfluencer.length === 0) {
+      // 达人不存在，尝试通过 channelId 查找
+      const byChannelId = await dbInstance
+        .select()
+        .from(influencers)
+        .where(eq(influencers.channelId, channelId))
+        .limit(1);
+
+      if (byChannelId.length > 0) {
+        // 通过 channelId 找到了达人，使用这个 ID
+        finalInfluencerId = byChannelId[0].id;
+        dbInfluencer = byChannelId;
+        console.log('[POST /api/user-influencers] 找到现有达人:', finalInfluencerId);
+      } else {
+        // 达人不存在，创建新记录
+        console.log('[POST /api/user-influencers] 创建新达人记录:', channelId);
+        const [newInfluencer] = await dbInstance
+          .insert(influencers)
+          .values({
+            channelId,
+            channelTitle: rest.channelTitle || 'Unknown',
+            thumbnail: rest.channelThumbnail || rest.avatar || null,
+            subscriberCount: rest.subscriberCount || 0,
+            totalVideos: rest.videoCount || 0,
+            totalViews: rest.viewCount || 0,
+            email: null,
+            phone: null,
+            wechat: null,
+            description: rest.description || null,
+            tags: [],
+            category: null,
+            niche: null,
+            level: 'unknown',
+            status: 'new',
+            isActive: true,
+          })
+          .returning();
+
+        finalInfluencerId = newInfluencer.id;
+        dbInfluencer = [newInfluencer];
+        console.log('[POST /api/user-influencers] 新达人已创建:', finalInfluencerId);
+      }
+    }
+
+    // 检查用户是否已添加该达人
     const existing = await dbInstance
       .select()
       .from(userInfluencers)
       .where(
         and(
           eq(userInfluencers.userId, userId),
-          eq(userInfluencers.influencerId, influencerId)
+          eq(userInfluencers.influencerId, finalInfluencerId)
         )
       )
       .limit(1);
@@ -209,12 +262,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 创建记录
+    // 创建用户达人关联记录
     const [newRecord] = await dbInstance
       .insert(userInfluencers)
       .values({
         userId,
-        influencerId,
+        influencerId: finalInfluencerId,
         channelId,
         ...rest,
         updatedAt: new Date(),
