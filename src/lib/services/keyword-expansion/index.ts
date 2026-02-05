@@ -207,9 +207,14 @@ export class KeywordExpansionService {
       }));
 
       await db.insert(expandedKeywords).values(keywordRows as any);
-    } catch (error) {
-      console.error('保存到数据库失败:', error);
-      throw error;
+    } catch (error: any) {
+      // 捕获数据库错误，但不影响主要功能
+      if (error.code === '42P01') {
+        console.error('数据库表不存在，跳过保存。请调用 /api/db/init 初始化数据库表');
+      } else {
+        console.error('保存到数据库失败:', error);
+      }
+      // 不再抛出错误，让主流程继续执行
     }
   }
 
