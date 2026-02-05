@@ -70,7 +70,7 @@ export default function ComprehensiveKeywordResults({
   };
 
   // 多重过滤
-  const filteredKeywords = data.keywords.filter(kw => {
+  const filteredKeywords = (data.keywords || []).filter(kw => {
     if (selectedCategory !== 'all' && kw.keywordType !== selectedCategory) return false;
     if (selectedIntent !== 'all' && kw.searchIntent !== selectedIntent) return false;
     if (selectedSource !== 'all' && (!kw.sources || !kw.sources.includes(selectedSource))) return false;
@@ -83,21 +83,21 @@ export default function ComprehensiveKeywordResults({
   const currentKeywords = filteredKeywords.slice(startIndex, endIndex);
 
   // 统计信息
-  const categoryStats = data.keywords.reduce((acc, kw) => {
+  const categoryStats = (data.keywords || []).reduce((acc, kw) => {
     const type = kw.keywordType;
     if (!acc[type]) acc[type] = 0;
     acc[type]++;
     return acc;
   }, {} as Record<string, number>);
 
-  const intentStats = data.keywords.reduce((acc, kw) => {
+  const intentStats = (data.keywords || []).reduce((acc, kw) => {
     const intent = kw.searchIntent;
     if (!acc[intent]) acc[intent] = 0;
     acc[intent]++;
     return acc;
   }, {} as Record<string, number>);
 
-  const sourceStats = data.keywords.reduce((acc, kw) => {
+  const sourceStats = (data.keywords || []).reduce((acc, kw) => {
     if (kw.sources && Array.isArray(kw.sources)) {
       kw.sources.forEach(src => {
         if (!acc[src]) acc[src] = 0;
@@ -180,25 +180,25 @@ export default function ComprehensiveKeywordResults({
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>发现关键词</CardDescription>
-            <CardTitle className="text-2xl">{data.statistics.totalKeywords}</CardTitle>
+            <CardTitle className="text-2xl">{data.statistics?.totalKeywords || (data.keywords?.length || 0)}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>月搜索量</CardDescription>
-            <CardTitle className="text-2xl">{formatNumber(data.statistics.totalSearchVolume)}</CardTitle>
+            <CardTitle className="text-2xl">{formatNumber(data.statistics?.totalSearchVolume || 0)}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>高机会</CardDescription>
-            <CardTitle className="text-2xl text-green-600">{data.statistics.highOpportunityCount}</CardTitle>
+            <CardTitle className="text-2xl text-green-600">{data.statistics?.highOpportunityCount || 0}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>平均竞争度</CardDescription>
-            <CardTitle className="text-2xl">{data.statistics.avgCompetition.toFixed(0)}</CardTitle>
+            <CardTitle className="text-2xl">{(data.statistics?.avgCompetition || 0).toFixed(0)}</CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -207,7 +207,7 @@ export default function ComprehensiveKeywordResults({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">🔍 搜索建议 ({data.suggestions.length})</CardTitle>
+            <CardTitle className="text-base">🔍 搜索建议 ({(data.suggestions || []).length})</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 max-h-60 overflow-y-auto">
             {data.suggestions.slice(0, 20).map((suggestion, idx) => (
@@ -227,10 +227,10 @@ export default function ComprehensiveKeywordResults({
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">❓ 相关问题 ({data.questions.length})</CardTitle>
+            <CardTitle className="text-base">❓ 相关问题 ({(data.questions || []).length})</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 max-h-60 overflow-y-auto">
-            {data.questions.slice(0, 20).map((question, idx) => (
+            {(data.questions || []).slice(0, 20).map((question, idx) => (
               <div
                 key={idx}
                 className="text-sm p-2 bg-gray-50 rounded hover:bg-gray-100 cursor-pointer flex items-center justify-between group"
@@ -247,10 +247,10 @@ export default function ComprehensiveKeywordResults({
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">🏆 竞品关键词 ({data.competitors.length})</CardTitle>
+            <CardTitle className="text-base">🏆 竞品关键词 ({(data.competitors || []).length})</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 max-h-60 overflow-y-auto">
-            {data.competitors.slice(0, 20).map((competitor, idx) => (
+            {(data.competitors || []).slice(0, 20).map((competitor, idx) => (
               <div
                 key={idx}
                 className="text-sm p-2 bg-gray-50 rounded hover:bg-gray-100 cursor-pointer flex items-center justify-between group"

@@ -78,7 +78,9 @@ export default function KeywordExpandPage() {
 
         const data = await response.json();
         setComprehensiveResults(data.data);
-        toast.success(`发现 ${data.data.statistics.totalKeywords} 个关键词，${data.data.suggestions.length} 个搜索建议`);
+        const keywordsCount = data.data.keywords?.length || 0;
+        const suggestionsCount = data.data.suggestions?.length || 0;
+        toast.success(`发现 ${keywordsCount} 个关键词，${suggestionsCount} 个搜索建议`);
       } else {
         // 使用旧的拓展 API
         const response = await fetch('/api/discovery/keywords/expand', {

@@ -309,19 +309,32 @@ class ComprehensiveKeywordCollector {
 
     // 步骤8：计算统计信息
     const keywordsArray = Array.from(mergedKeywords.values());
-    const stats = this.calculateStats(keywordsArray);
+    const detailedStats = this.calculateStats(keywordsArray);
+
+    // 计算简化的统计信息（用于前端展示）
+    const totalSearchVolume = keywordsArray.reduce((sum, kw) => sum + kw.searchVolume, 0);
+    const avgCompetition = keywordsArray.length > 0
+      ? keywordsArray.reduce((sum, kw) => sum + kw.competitionScore, 0) / keywordsArray.length
+      : 0;
+    const highOpportunityCount = keywordsArray.filter(kw => kw.opportunityScore > 70).length;
+
+    const statistics = {
+      totalKeywords: keywordsArray.length,
+      totalSearchVolume,
+      avgCompetition,
+      highOpportunityCount,
+    };
 
     console.log(`[KeywordCollector] 采集完成！总计: ${keywordsArray.length} 个关键词`);
 
     return {
-      keyword,
-      totalKeywords: keywordsArray.length,
       keywords: keywordsArray.sort((a, b) => b.opportunityScore - a.opportunityScore),
       suggestions: [...new Set(allSuggestions)],
       relatedSearches: [...new Set(allRelatedSearches)],
       questions: [...new Set(allQuestions)],
-      competitorKeywords: [...new Set(allCompetitorKeywords)],
-      stats,
+      competitors: [...new Set(allCompetitorKeywords)],
+      statistics,
+      stats: detailedStats,
       quotaUsed: youtubeClient.getQuotaUsage().used,
     };
   }
