@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbInstance } from '@/lib/db';
-import { userInfluencers, aiInfluencers } from '@/lib/db';
+import { userInfluencers, influencers } from '@/lib/db';
 import { eq, and, desc, asc, ilike, or, count } from 'drizzle-orm';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     if (search) {
       conditions.push(
         or(
-          ilike(aiInfluencers.channelTitle, `%${search}%`),
+          ilike(influencers.channelTitle, `%${search}%`),
           ilike(userInfluencers.notes, `%${search}%`)
         )
       );
@@ -83,10 +83,10 @@ export async function GET(request: NextRequest) {
         orderBy = orderField(userInfluencers.nextFollowUpDate);
         break;
       case 'subscriberCount':
-        orderBy = orderField(aiInfluencers.subscriberCount);
+        orderBy = orderField(influencers.subscriberCount);
         break;
       case 'totalScore':
-        orderBy = orderField(aiInfluencers.totalScore);
+        orderBy = orderField(influencers.totalScore);
         break;
       default:
         orderBy = orderField(userInfluencers.createdAt);
@@ -117,19 +117,19 @@ export async function GET(request: NextRequest) {
           createdAt: userInfluencers.createdAt,
           updatedAt: userInfluencers.updatedAt,
           // AI 达人信息
-          channelTitle: aiInfluencers.channelTitle,
-          channelThumbnail: aiInfluencers.channelThumbnail,
-          subscriberCount: aiInfluencers.subscriberCount,
-          viewCount: aiInfluencers.viewCount,
-          videoCount: aiInfluencers.videoCount,
-          engagementRate: aiInfluencers.engagementRate,
-          totalScore: aiInfluencers.totalScore,
-          scoreTier: aiInfluencers.scoreTier,
-          description: aiInfluencers.description,
-          keywords: aiInfluencers.keywords,
+          channelTitle: influencers.channelTitle,
+          channelThumbnail: influencers.channelThumbnail,
+          subscriberCount: influencers.subscriberCount,
+          viewCount: influencers.viewCount,
+          videoCount: influencers.videoCount,
+          engagementRate: influencers.engagementRate,
+          totalScore: influencers.totalScore,
+          scoreTier: influencers.scoreTier,
+          description: influencers.description,
+          keywords: influencers.keywords,
         })
         .from(userInfluencers)
-        .innerJoin(aiInfluencers, eq(userInfluencers.influencerId, aiInfluencers.id))
+        .innerJoin(influencers, eq(userInfluencers.influencerId, influencers.id))
         .where(and(...conditions))
         .orderBy(orderBy)
         .limit(limit)

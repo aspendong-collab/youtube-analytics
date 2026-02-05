@@ -7,6 +7,14 @@ import { insertUserSchema } from "@/storage/database/shared/schema";
 import { z } from "zod";
 
 export async function POST(request: Request) {
+  // 检查数据库连接
+  if (!db) {
+    return NextResponse.json(
+      { error: "数据库未配置" },
+      { status: 500 }
+    );
+  }
+
   try {
     const body = await request.json();
 
