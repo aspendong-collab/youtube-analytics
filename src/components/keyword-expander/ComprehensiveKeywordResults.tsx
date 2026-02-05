@@ -635,6 +635,7 @@ export default function ComprehensiveKeywordResults({
               )}
             </TableBody>
           </Table>
+          </div>
 
           {/* 分页控件 */}
           {totalPages > 1 && (
