@@ -55,11 +55,21 @@ export default function KeywordExpansionPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ExpansionResponse | null>(null);
   const [selectedDimension, setSelectedDimension] = useState<string>('all');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleExpand = async () => {
     if (!keyword.trim()) return;
 
     setLoading(true);
+    setErrorMessage(null);
+    setResult(null);
+
+    // 创建 AbortController 用于超时控制
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 60000); // 60秒超时
+
     try {
       const response = await fetch('/api/keywords/smart-expand', {
         method: 'POST',
@@ -71,15 +81,31 @@ export default function KeywordExpansionPage() {
           useLLMEngine,
           useDataMining,
         }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       const data = await response.json();
+
       if (data.success) {
         setResult(data.data);
       } else {
-        console.error('拓展失败:', data.error);
+        const errorMsg = data.error || data.details || '拓展失败，请重试';
+        setErrorMessage(errorMsg);
+        console.error('拓展失败:', errorMsg);
       }
-    } catch (error) {
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+
+      let errorMsg = '拓展失败，请重试';
+      if (error.name === 'AbortError') {
+        errorMsg = '请求超时，请尝试关闭"LLM引擎"或"数据挖掘"选项后再试';
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+
+      setErrorMessage(errorMsg);
       console.error('拓展失败:', error);
     } finally {
       setLoading(false);
@@ -244,12 +270,29 @@ export default function KeywordExpansionPage() {
         </Card>
 
         {/* 结果展示 */}
-        {result && (
+        {(result || errorMessage) && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
+            {/* 错误提示 */}
+            {errorMessage && (
+              <Card className="mb-6 border-red-500 bg-red-50 dark:bg-red-950">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 text-red-700 dark:text-red-300">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">拓展失败</p>
+                      <p className="text-xs mt-1">{errorMessage}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 成功结果 */}
+            {result && (
+              <>
             {/* 数据来源提示 */}
             <Card className="mb-6 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
               <CardContent className="pt-6">
@@ -473,6 +516,8 @@ export default function KeywordExpansionPage() {
                 </Table>
               </CardContent>
             </Card>
+              </>
+            )}
           </motion.div>
         )}
       </div>

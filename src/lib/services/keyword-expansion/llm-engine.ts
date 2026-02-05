@@ -32,17 +32,16 @@ export class LLMEngine {
 请只返回JSON数组，不要包含其他内容。`;
 
     try {
-      const messages: Array<{ role: 'user'; content: string }> = [
-        { role: 'user', content: prompt }
-      ];
-
-      const response = await this.client.invoke(messages, {
-        model: 'doubao-seed-1-6-flash-250615',
-        temperature: 0.8,
+      // 添加10秒超时控制
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('LLM timeout')), 10000);
       });
 
-      const content = response.content;
-      const data = JSON.parse(content);
+      const llmPromise = this.invokeLLM(prompt);
+
+      const response = await Promise.race([llmPromise, timeoutPromise]) as any;
+
+      const data = JSON.parse(response);
 
       const keywords = data.keywords || [];
 
@@ -64,6 +63,20 @@ export class LLMEngine {
     }
   }
 
+  // 调用LLM并返回响应内容
+  private async invokeLLM(prompt: string): Promise<string> {
+    const messages: Array<{ role: 'user'; content: string }> = [
+      { role: 'user', content: prompt }
+    ];
+
+    const response = await this.client.invoke(messages, {
+      model: 'doubao-seed-1-6-flash-250615',
+      temperature: 0.8,
+    });
+
+    return response.content;
+  }
+
   // 使用LLM生成所有维度的关键词
   async generateAllDimensions(keyword: string): Promise<Record<KeywordDimension, ExpansionResult[]>> {
     const results: Record<KeywordDimension, ExpansionResult[]> = {} as any;
@@ -71,8 +84,34 @@ export class LLMEngine {
     // 为每个维度生成关键词
     const dimensions: KeywordDimension[] = ['scenario', 'carrier', 'state', 'goal', 'method'];
 
-    for (const dimension of dimensions) {
-      results[dimension] = await this.generateDimensionKeywords(keyword, dimension);
+    // 使用Promise.allSettled并发调用，并为每个调用添加超时控制
+    const promises = dimensions.map(async (dimension) => {
+      try {
+        // 添加10秒超时控制
+        const timeoutPromise = new Promise<ExpansionResult[]>((_, reject) => {
+          setTimeout(() => reject(new Error('LLM timeout')), 10000);
+        });
+
+        const resultPromise = this.generateDimensionKeywords(keyword, dimension);
+        const results = await Promise.race([resultPromise, timeoutPromise]) as ExpansionResult[];
+        return { dimension, results };
+      } catch (error) {
+        console.error(`LLM ${dimension}维度生成失败:`, error);
+        return { dimension, results: [] };
+      }
+    });
+
+    const settledResults = await Promise.allSettled(promises);
+
+    for (const settled of settledResults) {
+      if (settled.status === 'fulfilled') {
+        const { dimension, results: dimensionResults } = settled.value;
+        // 设置正确的维度
+        results[dimension] = dimensionResults.map(k => ({
+          ...k,
+          dimension,
+        }));
+      }
     }
 
     return results;
@@ -109,36 +148,50 @@ export class LLMEngine {
 请只返回JSON对象，不要包含其他内容。`;
 
     try {
-      const messages: Array<{ role: 'user'; content: string }> = [
-        { role: 'user', content: prompt }
-      ];
-
-      const response = await this.client.invoke(messages, {
-        model: 'doubao-seed-1-6-flash-250615',
-        temperature: 0.8,
+      // 添加10秒超时控制
+      const timeoutPromise = new Promise<ExpansionResult[]>((_, reject) => {
+        setTimeout(() => reject(new Error('LLM timeout')), 10000);
       });
 
-      const content = response.content;
-      const data = JSON.parse(content);
+      const llmPromise = this.invokeLLMWithParse(prompt);
 
-      const keywords = data.keywords || [];
+      const keywords = await Promise.race([llmPromise, timeoutPromise]) as ExpansionResult[];
 
-      return keywords.map((k: any) => ({
-        keyword: k.keyword,
-        dimension,
-        source: 'llm',
-        relevance: k.relevance || 0.8,
-        type: k.type || 'broad',
-        intent: k.intent || 'info',
-        estimatedSearchVolume: 0,
-        estimatedCompetition: 0,
-        commercialValue: 0,
-        recommendationScore: 0,
-      }));
+      return keywords || [];
     } catch (error) {
       console.error(`LLM ${dimension}维度生成失败:`, error);
       return [];
     }
+  }
+
+  // 调用LLM并解析JSON响应
+  private async invokeLLMWithParse(prompt: string): Promise<ExpansionResult[]> {
+    const messages: Array<{ role: 'user'; content: string }> = [
+      { role: 'user', content: prompt }
+    ];
+
+    const response = await this.client.invoke(messages, {
+      model: 'doubao-seed-1-6-flash-250615',
+      temperature: 0.8,
+    });
+
+    const content = response.content;
+    const data = JSON.parse(content);
+
+    const keywords = data.keywords || [];
+
+    return keywords.map((k: any) => ({
+      keyword: k.keyword,
+      dimension: 'scenario', // 这里会在外层被替换
+      source: 'llm',
+      relevance: k.relevance || 0.8,
+      type: k.type || 'broad',
+      intent: k.intent || 'info',
+      estimatedSearchVolume: 0,
+      estimatedCompetition: 0,
+      commercialValue: 0,
+      recommendationScore: 0,
+    }));
   }
 
   // 使用LLM优化关键词
@@ -173,19 +226,14 @@ export class LLMEngine {
 请只返回JSON对象，不要包含其他内容。`;
 
     try {
-      const messages: Array<{ role: 'user'; content: string }> = [
-        { role: 'user', content: prompt }
-      ];
-
-      const response = await this.client.invoke(messages, {
-        model: 'doubao-seed-1-6-flash-250615',
-        temperature: 0.5,
+      // 添加15秒超时控制
+      const timeoutPromise = new Promise<ExpansionResult[]>((_, reject) => {
+        setTimeout(() => reject(new Error('LLM timeout')), 15000);
       });
 
-      const content = response.content;
-      const data = JSON.parse(content);
+      const llmPromise = this.invokeOptimize(prompt, keywords);
 
-      const evaluations = data.evaluations || [];
+      const evaluations = await Promise.race([llmPromise, timeoutPromise]) as any[];
 
       // 创建映射以便快速查找
       const evalMap = new Map();
@@ -212,6 +260,23 @@ export class LLMEngine {
       console.error('LLM关键词优化失败:', error);
       return keywords;
     }
+  }
+
+  // 调用LLM进行优化评估
+  private async invokeOptimize(prompt: string, keywords: ExpansionResult[]): Promise<any[]> {
+    const messages: Array<{ role: 'user'; content: string }> = [
+      { role: 'user', content: prompt }
+    ];
+
+    const response = await this.client.invoke(messages, {
+      model: 'doubao-seed-1-6-flash-250615',
+      temperature: 0.5,
+    });
+
+    const content = response.content;
+    const data = JSON.parse(content);
+
+    return data.evaluations || [];
   }
 }
 

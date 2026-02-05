@@ -14,6 +14,20 @@ export class DataMiningEngine {
       auth: process.env.YOUTUBE_API_KEY,
     });
   }
+
+  // 包装YouTube API调用，添加超时控制
+  private async callWithTimeout<T>(promise: Promise<T>, timeoutMs: number = 15000): Promise<T | null> {
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('YouTube API timeout')), timeoutMs);
+      });
+
+      return await Promise.race([promise, timeoutPromise]);
+    } catch (error) {
+      console.error('YouTube API调用失败:', error);
+      return null;
+    }
+  }
   // 从视频标签中提取关键词
   async extractFromTags(keyword: string, maxResults: number = 20): Promise<ExpansionResult[]> {
     try {
@@ -25,12 +39,20 @@ export class DataMiningEngine {
       }
 
       // 使用YouTube搜索API查找相关视频
-      const searchResponse = await this.youtube.search.list({
-        q: keyword,
-        part: ['snippet'],
-        maxResults: maxResults,
-        type: ['video'],
-      });
+      const searchResponse = await this.callWithTimeout(
+        this.youtube.search.list({
+          q: keyword,
+          part: ['snippet'],
+          maxResults: maxResults,
+          type: ['video'],
+        }),
+        15000 // 15秒超时
+      );
+
+      if (!searchResponse) {
+        console.warn('YouTube API search 超时，跳过标签挖掘');
+        return [];
+      }
 
       // 记录 API 调用
       await youtubeApiQuotaService.recordApiCall('search', 'search.list', true, null, {
@@ -58,10 +80,18 @@ export class DataMiningEngine {
       }
 
       // 获取视频详情（包含标签）
-      const videosResponse = await this.youtube.videos.list({
-        id: videoIds,
-        part: ['snippet', 'statistics'],
-      });
+      const videosResponse = await this.callWithTimeout(
+        this.youtube.videos.list({
+          id: videoIds,
+          part: ['snippet', 'statistics'],
+        }),
+        15000 // 15秒超时
+      );
+
+      if (!videosResponse) {
+        console.warn('YouTube API videos 超时，跳过标签提取');
+        return [];
+      }
 
       // 记录 API 调用
       await youtubeApiQuotaService.recordApiCall('videos', 'videos.list', true, null, {
@@ -129,12 +159,20 @@ export class DataMiningEngine {
       }
 
       // 搜索相关视频
-      const searchResponse = await this.youtube.search.list({
-        q: keyword,
-        part: ['snippet'],
-        maxResults: 5,
-        type: ['video'],
-      });
+      const searchResponse = await this.callWithTimeout(
+        this.youtube.search.list({
+          q: keyword,
+          part: ['snippet'],
+          maxResults: 5,
+          type: ['video'],
+        }),
+        15000 // 15秒超时
+      );
+
+      if (!searchResponse) {
+        console.warn('YouTube API search 超时，跳过评论挖掘');
+        return [];
+      }
 
       // 记录 API 调用
       await youtubeApiQuotaService.recordApiCall('search', 'search.list', true, null, {
@@ -165,12 +203,20 @@ export class DataMiningEngine {
 
       // 获取每个视频的评论
       for (const videoId of videoIds.slice(0, 3)) {
-        const commentsResponse = await this.youtube.commentThreads.list({
-          videoId,
-          part: ['snippet'],
-          maxResults: 20,
-          order: 'relevance',
-        });
+        const commentsResponse = await this.callWithTimeout(
+          this.youtube.commentThreads.list({
+            videoId,
+            part: ['snippet'],
+            maxResults: 20,
+            order: 'relevance',
+          }),
+          15000 // 15秒超时
+        );
+
+        if (!commentsResponse) {
+          console.warn(`YouTube API commentThreads 超时，跳过视频 ${videoId} 的评论提取`);
+          continue;
+        }
 
         // 记录 API 调用
         await youtubeApiQuotaService.recordApiCall('commentThreads', 'commentThreads.list', true, null, {
