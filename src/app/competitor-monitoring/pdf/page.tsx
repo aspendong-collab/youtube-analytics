@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Target, Play, Eye, Heart, MessageCircle, TrendingUp, Clock, User, RefreshCw, Video, ChevronDown, Plus, X, Check } from 'lucide-react';
+import { Target, Play, Eye, Heart, MessageCircle, TrendingUp, Clock, User, RefreshCw, Video, ChevronDown, Plus, X, Check, Trash2 } from 'lucide-react';
 
 interface CompetitorVideo {
   id: string;
@@ -136,6 +136,29 @@ export default function CompetitorMonitoringPDFPage() {
     setIsDropdownOpen(false);
   };
 
+  // 删除竞品
+  const handleDeleteCompetitor = (e: React.MouseEvent, competitorId: string) => {
+    e.stopPropagation(); // 防止触发选择竞品
+    
+    // 至少保留一个竞品
+    if (competitors.length <= 1) {
+      toast.error('至少需要保留一个竞品');
+      return;
+    }
+
+    const competitorToDelete = competitors.find(c => c.id === competitorId);
+    if (!competitorToDelete) return;
+
+    // 如果删除的是当前选中的竞品，清除选中状态
+    if (selectedCompetitor?.slug === competitorToDelete.slug) {
+      setSelectedCompetitor(null);
+    }
+
+    // 删除竞品
+    setCompetitors(competitors.filter(c => c.id !== competitorId));
+    toast.success(`已删除竞品 "${competitorToDelete.name}"`);
+  };
+
   // 格式化数字
   const formatNumber = (num: number) => {
     if (num >= 1000000) {
@@ -242,17 +265,26 @@ export default function CompetitorMonitoringPDFPage() {
                   {competitors.map((competitor) => (
                     <div
                       key={competitor.id}
-                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm border-t border-gray-100"
+                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm border-t border-gray-100 group"
                       onClick={() => handleSelectCompetitor(competitor)}
                     >
-                      <div className="flex items-center gap-2">
-                        {selectedCompetitor?.slug === competitor.slug && (
-                          <Check className="w-4 h-4 text-[#007AFF]" />
-                        )}
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${getCompetitorColor(competitor.name)}`} />
-                          <span>{competitor.name}</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1">
+                          {selectedCompetitor?.slug === competitor.slug && (
+                            <Check className="w-4 h-4 text-[#007AFF]" />
+                          )}
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${getCompetitorColor(competitor.name)}`} />
+                            <span>{competitor.name}</span>
+                          </div>
                         </div>
+                        <button
+                          onClick={(e) => handleDeleteCompetitor(e, competitor.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-100 rounded text-red-500"
+                          title="删除竞品"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
                       </div>
                     </div>
                   ))}
