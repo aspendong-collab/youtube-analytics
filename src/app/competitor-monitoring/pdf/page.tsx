@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Target, Play, Eye, Heart, MessageCircle, TrendingUp, Clock, User, RefreshCw, Video } from 'lucide-react';
+import { Target, Play, Eye, Heart, MessageCircle, TrendingUp, Clock, User, RefreshCw, Video, ChevronDown, Plus, X, Check } from 'lucide-react';
 
 interface CompetitorVideo {
   id: string;
@@ -36,11 +37,10 @@ interface CompetitorInfo {
   id: string;
   name: string;
   slug: string;
-  videoCount: number;
+  keywords: string[];
 }
 
 interface MonitoringData {
-  competitors: CompetitorInfo[];
   videos: CompetitorVideo[];
   total: number;
   timestamp: string;
@@ -49,16 +49,41 @@ interface MonitoringData {
 export default function CompetitorMonitoringPDFPage() {
   const [data, setData] = useState<MonitoringData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedCompetitor, setSelectedCompetitor] = useState<string>('');
+  const [selectedCompetitor, setSelectedCompetitor] = useState<{ name: string; slug: string; keywords: string[] } | null>(null);
   const [timeRange, setTimeRange] = useState<'1d' | '7d' | '30d'>('7d');
   const [sortBy, setSortBy] = useState<'views' | 'growth' | 'engagement' | 'relevance'>('views');
+  
+  // 下拉框状态
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [newCompetitorName, setNewCompetitorName] = useState('');
+  const [isAddingCompetitor, setIsAddingCompetitor] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // 竞品列表
+  const [competitors, setCompetitors] = useState<CompetitorInfo[]>([
+    { id: '1', name: 'PDFelement', slug: 'pdfelement', keywords: ['PDFelement', 'Wondershare PDFelement'] },
+    { id: '2', name: 'Foxit PDF', slug: 'foxit-pdf', keywords: ['Foxit PDF', 'Foxit Editor', 'Foxit Phantom'] },
+    { id: '3', name: 'PDFgear', slug: 'pdfgear', keywords: ['PDFgear', 'PDFgear Desktop'] },
+    { id: '4', name: 'UPDF', slug: 'updf', keywords: ['UPDF', 'Superace UPDF'] },
+  ]);
+
+  // 点击外部关闭下拉框
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // 获取监控数据
   const fetchMonitoringData = async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
-      if (selectedCompetitor) params.append('competitorSlug', selectedCompetitor);
+      if (selectedCompetitor) params.append('competitorSlug', selectedCompetitor.slug);
       params.append('timeRange', timeRange);
       params.append('sortBy', sortBy);
       params.append('limit', '50');
@@ -78,6 +103,37 @@ export default function CompetitorMonitoringPDFPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // 添加竞品
+  const handleAddCompetitor = () => {
+    if (!newCompetitorName.trim()) {
+      toast.error('请输入竞品名称');
+      return;
+    }
+
+    // 创建新竞品
+    const slug = newCompetitorName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const newCompetitor: CompetitorInfo = {
+      id: Date.now().toString(),
+      name: newCompetitorName,
+      slug: slug,
+      keywords: [newCompetitorName],
+    };
+
+    setCompetitors([...competitors, newCompetitor]);
+    setSelectedCompetitor(newCompetitor);
+    setNewCompetitorName('');
+    setIsAddingCompetitor(false);
+    setIsDropdownOpen(false);
+    
+    toast.success(`已添加竞品 "${newCompetitorName}"，点击"开始监控"查看相关视频`);
+  };
+
+  // 选择竞品
+  const handleSelectCompetitor = (competitor: CompetitorInfo | null) => {
+    setSelectedCompetitor(competitor);
+    setIsDropdownOpen(false);
   };
 
   // 格式化数字
@@ -144,54 +200,112 @@ export default function CompetitorMonitoringPDFPage() {
           PDF软件竞品监控
         </h1>
         <p className="text-sm text-[#86868B]">
-          监控主要PDF软件（PDFelement、Foxit PDF、PDFgear、UPDF）在YouTube上的热门内容和表现
+          监控PDF软件在YouTube上的热门内容和表现
         </p>
       </div>
 
       {/* 控制面板 */}
       <Card className="p-6">
         <div className="flex flex-wrap gap-4 items-end">
-          {/* 竞品选择 */}
-          <div className="flex-1 min-w-[200px]">
+          {/* 竞品选择 - 下拉框 */}
+          <div className="flex-1 min-w-[240px]" ref={dropdownRef}>
             <label className="block text-sm font-medium text-[#1D1D1F] mb-2">
               竞品筛选
             </label>
-            <div className="flex gap-2">
+            <div className="relative">
               <Button
-                variant={selectedCompetitor === '' ? 'default' : 'outline'}
-                onClick={() => setSelectedCompetitor('')}
-                className="flex-1"
+                variant="outline"
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="w-full justify-between font-normal h-10"
               >
-                全部
+                <span className="truncate">
+                  {selectedCompetitor ? selectedCompetitor.name : '全部竞品'}
+                </span>
+                <ChevronDown className="w-4 h-4 ml-2 flex-shrink-0" />
               </Button>
-              <Button
-                variant={selectedCompetitor === 'pdfelement' ? 'default' : 'outline'}
-                onClick={() => setSelectedCompetitor('pdfelement')}
-                className="flex-1"
-              >
-                PDFelement
-              </Button>
-              <Button
-                variant={selectedCompetitor === 'foxit-pdf' ? 'default' : 'outline'}
-                onClick={() => setSelectedCompetitor('foxit-pdf')}
-                className="flex-1"
-              >
-                Foxit
-              </Button>
-              <Button
-                variant={selectedCompetitor === 'pdfgear' ? 'default' : 'outline'}
-                onClick={() => setSelectedCompetitor('pdfgear')}
-                className="flex-1"
-              >
-                PDFgear
-              </Button>
-              <Button
-                variant={selectedCompetitor === 'updf' ? 'default' : 'outline'}
-                onClick={() => setSelectedCompetitor('updf')}
-                className="flex-1"
-              >
-                UPDF
-              </Button>
+
+              {/* 下拉框 */}
+              {isDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+                  {/* 全部选项 */}
+                  <div
+                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                    onClick={() => handleSelectCompetitor(null)}
+                  >
+                    <div className="flex items-center gap-2">
+                      {!selectedCompetitor && <Check className="w-4 h-4 text-[#007AFF]" />}
+                      <span>全部竞品</span>
+                    </div>
+                  </div>
+
+                  {/* 竞品列表 */}
+                  {competitors.map((competitor) => (
+                    <div
+                      key={competitor.id}
+                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm border-t border-gray-100"
+                      onClick={() => handleSelectCompetitor(competitor)}
+                    >
+                      <div className="flex items-center gap-2">
+                        {selectedCompetitor?.slug === competitor.slug && (
+                          <Check className="w-4 h-4 text-[#007AFF]" />
+                        )}
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${getCompetitorColor(competitor.name)}`} />
+                          <span>{competitor.name}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* 分隔线 */}
+                  <div className="border-t border-gray-200 my-2"></div>
+
+                  {/* 添加竞品 */}
+                  {isAddingCompetitor ? (
+                    <div className="px-3 py-2 border-t border-gray-100">
+                      <div className="flex gap-2">
+                        <Input
+                          type="text"
+                          placeholder="输入竞品名称"
+                          value={newCompetitorName}
+                          onChange={(e) => setNewCompetitorName(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleAddCompetitor()}
+                          className="flex-1 h-8 text-sm"
+                          autoFocus
+                        />
+                        <Button
+                          size="sm"
+                          onClick={handleAddCompetitor}
+                          className="h-8 px-2"
+                        >
+                          <Check className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setIsAddingCompetitor(false);
+                            setNewCompetitorName('');
+                          }}
+                          className="h-8 px-2"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm border-t border-gray-100 text-[#007AFF]"
+                      onClick={() => setIsAddingCompetitor(true)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Plus className="w-4 h-4" />
+                        <span>添加竞品</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -217,7 +331,7 @@ export default function CompetitorMonitoringPDFPage() {
           </div>
 
           {/* 排序方式 */}
-          <div className="min-w-[200px]">
+          <div className="min-w-[180px]">
             <label className="block text-sm font-medium text-[#1D1D1F] mb-2">
               排序方式
             </label>
@@ -256,30 +370,6 @@ export default function CompetitorMonitoringPDFPage() {
           </div>
         </div>
       </Card>
-
-      {/* 竞品统计概览 */}
-      {data && data.competitors.length > 0 && (
-        <Card className="p-6">
-          <h3 className="text-lg font-medium text-[#1D1D1F] mb-4">竞品视频数量统计</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {data.competitors.map((competitor) => (
-              <div
-                key={competitor.id}
-                className="p-4 bg-gray-50 rounded-lg"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={`w-3 h-3 rounded-full ${getCompetitorColor(competitor.name)}`} />
-                  <span className="font-medium text-[#1D1D1F]">{competitor.name}</span>
-                </div>
-                <div className="text-2xl font-bold text-[#007AFF]">
-                  {competitor.videoCount}
-                </div>
-                <div className="text-xs text-[#86868B]">个视频</div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
 
       {/* 视频列表 */}
       {data && data.videos.length > 0 && (
@@ -389,6 +479,14 @@ export default function CompetitorMonitoringPDFPage() {
           <p className="text-sm text-[#86868B] mb-4">
             选择竞品、时间范围和排序方式，点击"开始监控"查看相关视频
           </p>
+          <div className="flex items-center justify-center gap-2 text-sm text-[#86868B] mb-4">
+            <span>当前竞品:</span>
+            {competitors.map((c) => (
+              <Badge key={c.id} variant="outline">
+                {c.name}
+              </Badge>
+            ))}
+          </div>
           <Button onClick={fetchMonitoringData} size="lg">
             <Target className="w-4 h-4 mr-2" />
             开始监控
