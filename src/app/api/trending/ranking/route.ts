@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
     } else {
       // 按关键词搜索
       for (const keyword of keywordList) {
-        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(keyword)}&order=viewCount&publishedAfter=${publishedAfter.toISOString()}&maxResults=${Math.ceil(maxResults / keywordList.length)}&key=${apiKey}`;
+        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(keyword)}&order=viewCount&maxResults=${Math.ceil(maxResults / keywordList.length)}&key=${apiKey}`;
         console.log('[热门排行榜API] 搜索关键词:', keyword, searchUrl.replace(/key=[^&]+/, 'key=***'));
 
         const searchResponse = await fetch(searchUrl, {
@@ -285,16 +285,44 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // 按趋势分数排序
-    trendingVideos.sort((a, b) => b.trendScore - a.trendScore);
+    // 按播放量排序（热度）
+    trendingVideos.sort((a, b) => b.viewCount - a.viewCount);
+
+    // 根据时间段筛选（今天/本周/本月）
+    const filterNow = new Date();
+    let filterStartDate: Date;
+
+    if (period === 'today') {
+      // 今日：从今天 00:00:00 开始
+      filterStartDate = new Date(filterNow);
+      filterStartDate.setHours(0, 0, 0, 0);
+    } else if (period === 'week') {
+      // 本周：从本周一开始
+      const dayOfWeek = filterNow.getDay();
+      const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      filterStartDate = new Date(filterNow);
+      filterStartDate.setDate(filterNow.getDate() - daysSinceMonday);
+      filterStartDate.setHours(0, 0, 0, 0);
+    } else if (period === 'month') {
+      // 本月：从本月 1 号开始
+      filterStartDate = new Date(filterNow.getFullYear(), filterNow.getMonth(), 1, 0, 0, 0);
+    } else {
+      filterStartDate = new Date(filterNow);
+      filterStartDate.setDate(filterNow.getDate() - 7); // 默认过去 7 天
+    }
+
+    const filteredVideos = trendingVideos.filter(video => {
+      const publishedAt = new Date(video.publishedAt);
+      return publishedAt >= filterStartDate;
+    });
 
     // 设置排名
-    trendingVideos.forEach((video, index) => {
+    filteredVideos.forEach((video, index) => {
       video.trendRank = index + 1;
     });
 
     // 限制结果数量
-    const finalVideos = trendingVideos.slice(0, maxResults);
+    const finalVideos = filteredVideos.slice(0, maxResults);
 
     console.log('[热门排行榜API] 返回结果数:', finalVideos.length);
 
