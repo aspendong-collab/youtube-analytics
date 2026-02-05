@@ -8,6 +8,7 @@ import {
   integer,
   jsonb,
   index,
+  unique,
   decimal,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
@@ -20,7 +21,7 @@ export const users = pgTable(
     id: varchar("id", { length: 36 })
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    email: varchar("email", { length: 255 }).notNull().unique(),
+    email: varchar("email", { length: 255 }).notNull(),
     password: varchar("password", { length: 255 }).notNull(),
     name: varchar("name", { length: 100 }).notNull(),
     role: varchar("role", { length: 20 }).notNull().default("user"),
@@ -33,7 +34,7 @@ export const users = pgTable(
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   },
   (table) => ({
-    emailIdx: index("users_email_idx").on(table.email),
+    emailIdx: index("users_email_idx").on(table.email).unique(),
     statusIdx: index("users_status_idx").on(table.status),
     roleIdx: index("users_role_idx").on(table.role),
   })
@@ -46,7 +47,7 @@ export const videos = pgTable(
     id: varchar("id", { length: 36 })
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    videoId: varchar("video_id", { length: 20 }).notNull().unique(),
+    videoId: varchar("video_id", { length: 20 }).notNull(),
     title: varchar("title", { length: 500 }).notNull(),
     description: text("description"),
     thumbnail: text("thumbnail"),
@@ -69,7 +70,7 @@ export const videos = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }),
   },
   (table) => ({
-    videoIdIdx: index("videos_video_id_idx").on(table.videoId),
+    videoIdIdx: unique("videos_video_id_idx").on(table.videoId),
     publishDateIdx: index("videos_publish_date_idx").on(table.publishDate),
     publishStatusIdx: index("videos_publish_status_idx").on(table.publishStatus),
     statusDateIdx: index("videos_status_date_idx").on(table.publishStatus, table.publishDate),
@@ -134,7 +135,7 @@ export const comments = pgTable(
     id: varchar("id", { length: 36 })
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    commentId: varchar("comment_id", { length: 50 }).notNull().unique(),
+    commentId: varchar("comment_id", { length: 50 }).notNull(),
     videoId: varchar("video_id", { length: 20 }).notNull(),
     authorName: varchar("author_name", { length: 255 }),
     authorChannelId: varchar("author_channel_id", { length: 50 }),
@@ -150,6 +151,7 @@ export const comments = pgTable(
       .notNull(),
   },
   (table) => ({
+    commentIdIdx: unique("comments_comment_id_idx").on(table.commentId),
     videoIdIdx: index("comments_video_id_idx").on(table.videoId),
     sentimentIdx: index("comments_sentiment_idx").on(table.sentiment),
     highQualityIdx: index("comments_high_quality_idx").on(table.isHighQuality),
@@ -164,7 +166,7 @@ export const influencers = pgTable(
     id: varchar("id", { length: 36 })
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    channelId: varchar("channel_id", { length: 50 }).notNull().unique(), // YouTube 频道ID
+    channelId: varchar("channel_id", { length: 50 }).notNull(), // YouTube 频道ID
     channelTitle: varchar("channel_title", { length: 200 }).notNull(),
     thumbnail: text("thumbnail"), // 频道头像
     subscriberCount: integer("subscriber_count").default(0), // 订阅数
@@ -202,7 +204,7 @@ export const influencers = pgTable(
     lastCooperationAt: timestamp("last_cooperation_at", { withTimezone: true }), // 最后合作时间
   },
   (table) => ({
-    channelIdIdx: index("influencers_channel_id_idx").on(table.channelId),
+    channelIdIdx: unique("influencers_channel_id_idx").on(table.channelId),
     statusIdx: index("influencers_status_idx").on(table.status),
     levelIdx: index("influencers_level_idx").on(table.level),
     categoryIdx: index("influencers_category_idx").on(table.category),
@@ -291,7 +293,7 @@ export const influencerCache = pgTable(
     id: varchar("id", { length: 36 })
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    channelId: varchar("channel_id", { length: 50 }).notNull().unique(), // YouTube 频道ID
+    channelId: varchar("channel_id", { length: 50 }).notNull(), // YouTube 频道ID
     cachedData: jsonb("cached_data").notNull(), // 完整的达人数据（JSON）
     // 缓存元数据
     source: varchar("source", { length: 50 }).notNull(), // 数据来源：search, popular, manual
@@ -309,7 +311,7 @@ export const influencerCache = pgTable(
     lastRefreshedAt: timestamp("last_refreshed_at", { withTimezone: true }), // 最后刷新时间
   },
   (table) => ({
-    channelIdIdx: index("influencer_cache_channel_id_idx").on(table.channelId),
+    channelIdIdx: unique("influencer_cache_channel_id_idx").on(table.channelId),
     expiresAtIdx: index("influencer_cache_expires_at_idx").on(table.expiresAt),
     isValidIdx: index("influencer_cache_is_valid_idx").on(table.isValid),
     sourceIdx: index("influencer_cache_source_idx").on(table.source),
