@@ -6,11 +6,13 @@ import {
   type ExpansionResponse,
   type ExpansionResult,
   KeywordDimension,
+  type QuotaInfo,
 } from './types';
 import { ruleEngine } from './rules';
 import { llmEngine } from './llm-engine';
 import { dataMiningEngine } from './data-mining';
 import { searchVolumeEstimator } from './search-estimator';
+import { youtubeApiQuotaService } from '../youtube-api-quota';
 import { nanoid } from 'nanoid';
 
 /**
@@ -126,6 +128,16 @@ export class KeywordExpansionService {
       .sort((a, b) => (b.recommendationScore || 0) - (a.recommendationScore || 0))
       .slice(0, 20);
 
+    // 7. 获取配额信息
+    let quota: QuotaInfo | undefined;
+    if (config.useDataMining) {
+      try {
+        quota = await youtubeApiQuotaService.getTodayQuota('search');
+      } catch (error) {
+        console.error('获取配额信息失败:', error);
+      }
+    }
+
     return {
       expansionId,
       inputKeyword,
@@ -133,6 +145,7 @@ export class KeywordExpansionService {
       uniqueKeywords: enhancedResults.length,
       dimensions,
       topKeywords,
+      quota, // 返回配额信息
     };
   }
 

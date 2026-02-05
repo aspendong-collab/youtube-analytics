@@ -1,5 +1,6 @@
 import { ExpansionResult, YouTubeVideo } from './types';
 import { google } from 'googleapis';
+import { youtubeApiQuotaService } from '../youtube-api-quota';
 
 /**
  * 数据挖掘引擎：从YouTube数据中提取关键词
@@ -16,12 +17,26 @@ export class DataMiningEngine {
   // 从视频标签中提取关键词
   async extractFromTags(keyword: string, maxResults: number = 20): Promise<ExpansionResult[]> {
     try {
+      // 检查配额
+      const canCallSearch = await youtubeApiQuotaService.canMakeCall('search', 'search.list');
+      if (!canCallSearch) {
+        console.warn('YouTube API search 配额已用完，跳过标签挖掘');
+        return [];
+      }
+
       // 使用YouTube搜索API查找相关视频
       const searchResponse = await this.youtube.search.list({
         q: keyword,
         part: ['snippet'],
         maxResults: maxResults,
         type: ['video'],
+      });
+
+      // 记录 API 调用
+      await youtubeApiQuotaService.recordApiCall('search', 'search.list', true, null, {
+        keyword,
+        maxResults,
+        purpose: 'tagMining',
       });
 
       let videoIds: string[] = [];
@@ -35,10 +50,23 @@ export class DataMiningEngine {
         return [];
       }
 
+      // 检查 videos API 配额
+      const canCallVideos = await youtubeApiQuotaService.canMakeCall('videos', 'videos.list');
+      if (!canCallVideos) {
+        console.warn('YouTube API videos 配额已用完，跳过标签提取');
+        return [];
+      }
+
       // 获取视频详情（包含标签）
       const videosResponse = await this.youtube.videos.list({
         id: videoIds,
         part: ['snippet', 'statistics'],
+      });
+
+      // 记录 API 调用
+      await youtubeApiQuotaService.recordApiCall('videos', 'videos.list', true, null, {
+        videoIds: videoIds.length,
+        purpose: 'tagMining',
       });
 
       const keywords: ExpansionResult[] = [];
@@ -75,8 +103,17 @@ export class DataMiningEngine {
       // 去重
       const uniqueKeywords = this.deduplicateKeywords(keywords);
       return uniqueKeywords.slice(0, maxResults);
-    } catch (error) {
+    } catch (error: any) {
       console.error('标签提取失败:', error);
+      
+      if (error.code === 429 || error.code === 403) {
+        await youtubeApiQuotaService.recordApiCall('search', 'search.list', false, error.message, {
+          keyword,
+          errorCode: error.code,
+          purpose: 'tagMining',
+        });
+      }
+      
       return [];
     }
   }
@@ -84,12 +121,26 @@ export class DataMiningEngine {
   // 从视频评论中提取关键词
   async extractFromComments(keyword: string, maxResults: number = 15): Promise<ExpansionResult[]> {
     try {
+      // 检查配额
+      const canCallSearch = await youtubeApiQuotaService.canMakeCall('search', 'search.list');
+      if (!canCallSearch) {
+        console.warn('YouTube API search 配额已用完，跳过评论挖掘');
+        return [];
+      }
+
       // 搜索相关视频
       const searchResponse = await this.youtube.search.list({
         q: keyword,
         part: ['snippet'],
         maxResults: 5,
         type: ['video'],
+      });
+
+      // 记录 API 调用
+      await youtubeApiQuotaService.recordApiCall('search', 'search.list', true, null, {
+        keyword,
+        maxResults: 5,
+        purpose: 'commentMining',
       });
 
       let videoIds: string[] = [];
@@ -105,6 +156,13 @@ export class DataMiningEngine {
 
       const keywords: ExpansionResult[] = [];
 
+      // 检查评论 API 配额
+      const canCallComments = await youtubeApiQuotaService.canMakeCall('commentThreads', 'commentThreads.list');
+      if (!canCallComments) {
+        console.warn('YouTube API commentThreads 配额已用完，跳过评论提取');
+        return [];
+      }
+
       // 获取每个视频的评论
       for (const videoId of videoIds.slice(0, 3)) {
         const commentsResponse = await this.youtube.commentThreads.list({
@@ -112,6 +170,13 @@ export class DataMiningEngine {
           part: ['snippet'],
           maxResults: 20,
           order: 'relevance',
+        });
+
+        // 记录 API 调用
+        await youtubeApiQuotaService.recordApiCall('commentThreads', 'commentThreads.list', true, null, {
+          videoId,
+          maxResults: 20,
+          purpose: 'commentMining',
         });
 
         if (commentsResponse.data.items) {
@@ -143,8 +208,17 @@ export class DataMiningEngine {
       // 去重
       const uniqueKeywords = this.deduplicateKeywords(keywords);
       return uniqueKeywords.slice(0, maxResults);
-    } catch (error) {
+    } catch (error: any) {
       console.error('评论提取失败:', error);
+      
+      if (error.code === 429 || error.code === 403) {
+        await youtubeApiQuotaService.recordApiCall('search', 'search.list', false, error.message, {
+          keyword,
+          errorCode: error.code,
+          purpose: 'commentMining',
+        });
+      }
+      
       return [];
     }
   }

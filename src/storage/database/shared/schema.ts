@@ -10,6 +10,8 @@ import {
   index,
   unique,
   decimal,
+  date,
+  time,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -872,3 +874,65 @@ export type KeywordDimension = 'scenario' | 'carrier' | 'state' | 'goal' | 'meth
 export type KeywordSource = 'rule' | 'llm' | 'dataMining' | 'commentMining' | 'tagMining';
 export type KeywordType = 'broad' | 'long-tail' | 'question' | 'brand';
 export type KeywordIntent = 'info' | 'tutorial' | 'review' | 'transaction';
+
+// ==================== YouTube API 配额统计 ====================
+
+// YouTube API Quota 表 - 记录 YouTube API 配额使用情况
+export const youtubeApiQuota = pgTable(
+  "youtube_api_quota",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    date: date("date").notNull().unique(), // 日期，唯一索引
+    apiType: varchar("api_type", { length: 50 }).notNull(), // API类型：search, videos, comments, channels
+    quotaUsed: integer("quota_used").notNull().default(0), // 已使用配额
+    quotaLimit: integer("quota_limit").notNull().default(10000), // 配额限制（默认10000）
+    lastResetAt: timestamp("last_reset_at", { withTimezone: true }), // 最后重置时间
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: time }),
+  },
+  (table) => ({
+    dateApiTypeIdx: unique("youtube_api_quota_date_api_type_idx").on(table.date, table.apiType),
+    dateIdx: index("youtube_api_quota_date_idx").on(table.date),
+  })
+);
+
+// API 调用记录表 - 详细记录每次 API 调用
+export const apiCallLogs = pgTable(
+  "api_call_logs",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    apiType: varchar("api_type", { length: 50 }).notNull(), // API类型
+    operation: varchar("operation", { length: 100 }).notNull(), // 操作名称
+    quotaCost: integer("quota_cost").notNull().default(1), // 配额消耗
+    success: boolean("success").default(true), // 是否成功
+    errorMessage: text("error_message"), // 错误信息
+    metadata: jsonb("metadata"), // 额外元数据（请求参数、响应时间等）
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    apiTypeIdx: index("api_call_logs_api_type_idx").on(table.apiType),
+    successIdx: index("api_call_logs_success_idx").on(table.success),
+    createdAtIdx: index("api_call_logs_created_at_idx").on(table.createdAt),
+  })
+);
+
+// API 配额类型定义
+export type ApiType = 'search' | 'videos' | 'channels' | 'commentThreads' | 'videoCategories';
+export type ApiOperation = 'search.list' | 'videos.list' | 'channels.list' | 'commentThreads.list' | 'videoCategories.list';
+
+// ==================== YouTube API 配额统计 Types ====================
+
+export type YoutubeApiQuota = typeof youtubeApiQuota.$inferSelect;
+export type InsertYoutubeApiQuota = typeof youtubeApiQuota.$inferInsert;
+export type UpdateYoutubeApiQuota = Partial<InsertYoutubeApiQuota>;
+
+export type ApiCallLog = typeof apiCallLogs.$inferSelect;
+export type InsertApiCallLog = typeof apiCallLogs.$inferInsert;

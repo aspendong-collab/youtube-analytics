@@ -250,6 +250,41 @@ export default function KeywordExpansionPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
+            {/* API 配额信息 */}
+            {result.quota && (
+              <Card className={`mb-6 ${result.quota.isExhausted ? 'border-red-500 bg-red-50 dark:bg-red-950' : 'border-blue-200 bg-blue-50 dark:bg-blue-950'}`}>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <BarChart3 className={`w-5 h-5 ${result.quota.isExhausted ? 'text-red-600' : 'text-blue-600'}`} />
+                      <div>
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                          YouTube API 配额
+                        </p>
+                        <p className={`text-lg font-bold ${result.quota.isExhausted ? 'text-red-600' : 'text-blue-600'}`}>
+                          {result.quota.isExhausted ? '今日配额已用完' : `余量: ${result.quota.remaining.toLocaleString()} / ${result.quota.limit.toLocaleString()}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="w-48">
+                        <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400 mb-1">
+                          <span>使用情况</span>
+                          <span>{result.quota.percentage.toFixed(1)}%</span>
+                        </div>
+                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full transition-all ${result.quota.isExhausted ? 'bg-red-500' : result.quota.percentage > 80 ? 'bg-yellow-500' : 'bg-blue-500'}`}
+                            style={{ width: `${result.quota.percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* 统计概览 */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <Card>

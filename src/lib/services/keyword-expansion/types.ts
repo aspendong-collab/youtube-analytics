@@ -40,6 +40,17 @@ export interface DimensionResult {
   keywords: ExpansionResult[];
 }
 
+// API 配额信息
+export interface QuotaInfo {
+  apiType: string;
+  date: string;
+  used: number;
+  limit: number;
+  remaining: number;
+  percentage: number;
+  isExhausted: boolean;
+}
+
 export interface ExpansionResponse {
   expansionId: string;
   inputKeyword: string;
@@ -47,6 +58,7 @@ export interface ExpansionResponse {
   uniqueKeywords: number;
   dimensions: Record<KeywordDimension, ExpansionResult[]>;
   topKeywords: ExpansionResult[];
+  quota?: QuotaInfo; // 新增：配额信息
 }
 
 export interface YouTubeVideo {
