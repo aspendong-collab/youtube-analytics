@@ -58,6 +58,17 @@ export default function ComprehensiveKeywordResults({
     location: '📍 地理型',
   };
 
+  // 关键词类型标签映射（用于表格显示）
+  const typeLabels: Record<string, string> = {
+    core: '🎯 核心',
+    longtail: '📏 长尾',
+    question: '❓ 问题',
+    comparison: '⚖️ 比较',
+    list: '📋 列表',
+    location: '📍 地点',
+    phrase: '📝 词组',
+  };
+
   // 搜索意图标签映射
   const intentLabels: Record<typeof selectedIntent, string> = {
     all: '全部意图',
@@ -450,8 +461,10 @@ export default function ComprehensiveKeywordResults({
                     <div className="flex-1">
                       <p className="font-semibold text-sm">{kw.keyword}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        <Badge variant="secondary" className="text-xs">{kw.keywordType}</Badge>
-                        <Badge variant="secondary" className="text-xs">{kw.searchIntent}</Badge>
+                        <Badge variant="secondary" className="text-xs">{typeLabels[kw.keywordType] || kw.keywordType}</Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          {intentLabels[kw.searchIntent as keyof typeof intentLabels] || kw.searchIntent}
+                        </Badge>
                         <Badge variant="outline" className="text-xs">{audienceLabels[kw.targetAudience as keyof typeof audienceLabels] || kw.targetAudience}</Badge>
                       </div>
                     </div>
@@ -567,10 +580,14 @@ export default function ComprehensiveKeywordResults({
                       </div>
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
-                      <Badge variant="secondary" className="text-xs">{kw.keywordType}</Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        {typeLabels[kw.keywordType] || kw.keywordType}
+                      </Badge>
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
-                      <Badge variant="outline" className="text-xs">{kw.searchIntent}</Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {intentLabels[kw.searchIntent as keyof typeof intentLabels] || kw.searchIntent}
+                      </Badge>
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       <Badge variant="outline" className="text-xs">{audienceLabels[kw.targetAudience as keyof typeof audienceLabels] || kw.targetAudience}</Badge>
