@@ -488,103 +488,111 @@ export default function ComprehensiveKeywordResults({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[80px]">排名</TableHead>
-                <TableHead>关键词</TableHead>
-                <TableHead className="w-[100px]">搜索量</TableHead>
-                <TableHead className="w-[100px]">竞争度</TableHead>
-                <TableHead className="w-[100px]">难度</TableHead>
-                <TableHead className="w-[100px]">机会</TableHead>
-                <TableHead className="w-[80px]">趋势</TableHead>
-                <TableHead className="w-[120px]">类型</TableHead>
-                <TableHead className="w-[120px]">意图</TableHead>
-                <TableHead className="w-[120px]">受众</TableHead>
-                <TableHead className="w-[100px]">来源</TableHead>
-                <TableHead className="w-[120px]">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[70px] whitespace-nowrap">排名</TableHead>
+                  <TableHead className="w-[300px] min-w-[250px] max-w-[350px]">关键词</TableHead>
+                  <TableHead className="w-[110px] whitespace-nowrap">搜索量</TableHead>
+                  <TableHead className="w-[110px] whitespace-nowrap">竞争度</TableHead>
+                  <TableHead className="w-[120px] whitespace-nowrap">难度</TableHead>
+                  <TableHead className="w-[120px] whitespace-nowrap">机会</TableHead>
+                  <TableHead className="w-[90px] whitespace-nowrap">趋势</TableHead>
+                  <TableHead className="w-[100px] whitespace-nowrap">类型</TableHead>
+                  <TableHead className="w-[100px] whitespace-nowrap">意图</TableHead>
+                  <TableHead className="w-[100px] whitespace-nowrap">受众</TableHead>
+                  <TableHead className="w-[120px] whitespace-nowrap">来源</TableHead>
+                  <TableHead className="w-[110px] whitespace-nowrap">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
               {currentKeywords.length > 0 ? (
                 currentKeywords.map((kw, index) => (
                   <TableRow key={kw.keyword} className="hover:bg-gray-50">
-                    <TableCell className="font-medium">{startIndex + index + 1}</TableCell>
+                    <TableCell className="font-medium whitespace-nowrap">{startIndex + index + 1}</TableCell>
                     <TableCell>
-                      <div>
-                        <p className="font-semibold">{kw.keyword}</p>
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate" title={kw.keyword}>{kw.keyword}</p>
                         {kw.tags && kw.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">
-                            {kw.tags.slice(0, 3).map((tag, i) => (
+                            {kw.tags.slice(0, 2).map((tag, i) => (
                               <Badge key={i} variant="outline" className="text-xs">{tag}</Badge>
                             ))}
+                            {kw.tags.length > 2 && (
+                              <Badge variant="outline" className="text-xs">+{kw.tags.length - 2}</Badge>
+                            )}
                           </div>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <p className="font-medium">{formatNumber(kw.searchVolume)}</p>
                       <p className="text-xs text-gray-500">/月</p>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <Badge className={getCompetitionColor(kw.competition)}>
                         {getCompetitionText(kw.competition)}
                       </Badge>
                       <p className="text-xs text-gray-500 mt-1">{kw.competitionScore.toFixed(0)}</p>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <div className="w-12 bg-gray-200 rounded-full h-2">
+                        <div className="w-14 bg-gray-200 rounded-full h-2 flex-shrink-0">
                           <div
                             className="bg-orange-500 h-2 rounded-full"
                             style={{ width: `${kw.difficulty}%` }}
                           />
                         </div>
-                        <span className="text-xs font-medium">{kw.difficulty}</span>
+                        <span className="text-xs font-medium flex-shrink-0">{kw.difficulty}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <div className="w-12 bg-gray-200 rounded-full h-2">
+                        <div className="w-14 bg-gray-200 rounded-full h-2 flex-shrink-0">
                           <div
                             className={`h-2 rounded-full ${kw.opportunityScore > 70 ? 'bg-green-500' : kw.opportunityScore > 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
                             style={{ width: `${kw.opportunityScore}%` }}
                           />
                         </div>
-                        <span className={`text-xs font-medium ${kw.opportunityScore > 70 ? 'text-green-600' : kw.opportunityScore > 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        <span className={`text-xs font-medium flex-shrink-0 ${kw.opportunityScore > 70 ? 'text-green-600' : kw.opportunityScore > 40 ? 'text-yellow-600' : 'text-red-600'}`}>
                           {kw.opportunityScore}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         {getTrendIcon(kw.trend)}
                         <span className="text-xs">{getTrendText(kw.trend)}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <Badge variant="secondary" className="text-xs">{kw.keywordType}</Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <Badge variant="outline" className="text-xs">{kw.searchIntent}</Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <Badge variant="outline" className="text-xs">{audienceLabels[kw.targetAudience as keyof typeof audienceLabels] || kw.targetAudience}</Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {kw.sources?.map((src, i) => (
+                      <div className="flex flex-wrap gap-1 max-w-[120px]">
+                        {kw.sources?.slice(0, 2).map((src, i) => (
                           <Badge key={i} variant="outline" className="text-xs">{sourceLabels[src] || src}</Badge>
                         ))}
+                        {kw.sources && kw.sources.length > 2 && (
+                          <Badge variant="outline" className="text-xs">+{kw.sources.length - 2}</Badge>
+                        )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <div className="flex gap-1">
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => copyKeyword(kw.keyword)}
                           title="复制"
+                          className="p-2 h-8"
                         >
                           {copiedKeyword === kw.keyword ? <CopyCheck className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                         </Button>
@@ -593,6 +601,7 @@ export default function ComprehensiveKeywordResults({
                           variant="ghost"
                           onClick={() => searchOnYouTube(kw.keyword)}
                           title="在 YouTube 搜索"
+                          className="p-2 h-8"
                         >
                           <ExternalLink className="w-4 h-4" />
                         </Button>
