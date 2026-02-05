@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbInstance } from '@/lib/db';
-import { userInfluencers } from '@/lib/db';
+import { userInfluencers } from '@/storage/database/shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { getServerSession } from 'next-auth';
-import { authOptions } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 
 /**
  * PATCH /api/user-influencers/[id]
