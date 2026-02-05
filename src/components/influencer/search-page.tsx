@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, X, Globe, Eye, TrendingUp, MessageCircle, Mail, Star, Flame, Calendar, ThumbsUp } from 'lucide-react';
+import { Search, X, Globe, Eye, TrendingUp, MessageCircle, Mail, Star, Flame, Calendar, ThumbsUp, Plus, Check } from 'lucide-react';
 import type { InfluencerProfile } from '@/types/influencer';
+import { toast } from 'sonner';
 
 interface SearchPageProps {
   onSearch: (keywords: string[], language: string, sortBy: string) => Promise<void>;
@@ -58,6 +59,9 @@ function QuickEntryCard({ icon, title, description, onClick }: { icon: string; t
 }
 
 function InfluencerCard({ influencer, onViewDetails }: { influencer: InfluencerProfile; onViewDetails?: (influencer: InfluencerProfile) => void }) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [isAdded, setIsAdded] = useState(false);
+
   const formatSubscribers = (count: number | undefined | null) => {
     if (typeof count !== 'number' || isNaN(count)) return '-';
     return (count / 10000).toFixed(1) + '万';
@@ -95,6 +99,51 @@ function InfluencerCard({ influencer, onViewDetails }: { influencer: InfluencerP
            influencer.contactInfo?.email ||
            influencer.contactInfo?.businessEmail ||
            '-';
+  };
+
+  const handleAddToMyList = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // 阻止事件冒泡，避免触发查看详情
+
+    if (isAdded) {
+      toast.info('达人已在列表中');
+      return;
+    }
+
+    setIsAdding(true);
+    try {
+      // 检查达人是否有 id，如果没有使用 channelId 生成
+      const influencerId = influencer.id || influencer.channelId;
+
+      const response = await fetch('/api/user-influencers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          influencerId,
+          channelId: influencer.channelId,
+          status: 'interested',
+          priority: 'medium',
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        if (response.status === 409) {
+          toast.info('达人已在列表中');
+          setIsAdded(true);
+        } else {
+          throw new Error(error.error || '添加失败');
+        }
+        return;
+      }
+
+      toast.success('已添加到我的达人列表');
+      setIsAdded(true);
+    } catch (error) {
+      console.error('添加达人失败:', error);
+      toast.error(error instanceof Error ? error.message : '添加失败');
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   // 获取分类标签的颜色和样式
@@ -184,6 +233,34 @@ function InfluencerCard({ influencer, onViewDetails }: { influencer: InfluencerP
             <span className="flex-1 truncate text-[#007AFF]">{getEmail(influencer)}</span>
           </div>
         </div>
+
+        {/* 添加到我的达人按钮 */}
+        <button
+          onClick={handleAddToMyList}
+          disabled={isAdding || isAdded}
+          className={`w-full mt-3 flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+            isAdded
+              ? 'bg-green-100 text-green-700 cursor-default'
+              : 'bg-[#007AFF] text-white hover:bg-[#0062CC] active:scale-[0.98]'
+          } ${isAdding ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+          {isAdding ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              添加中...
+            </>
+          ) : isAdded ? (
+            <>
+              <Check className="w-4 h-4" />
+              已添加
+            </>
+          ) : (
+            <>
+              <Plus className="w-4 h-4" />
+              添加到我的达人
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

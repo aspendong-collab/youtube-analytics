@@ -317,6 +317,62 @@ export const influencerCache = pgTable(
   })
 );
 
+// 用户达人关系表 - 用户收藏/管理的AI达人
+export const userInfluencers = pgTable(
+  "user_influencers",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id", { length: 36 }).notNull(),
+    influencerId: varchar("influencer_id", { length: 36 }).notNull(), // 关联 ai_influencers.id
+    channelId: varchar("channel_id", { length: 50 }).notNull(), // 冗余字段，方便查询
+
+    // 跟进状态
+    status: varchar("status", { length: 30 }).notNull().default('interested'), // interested(感兴趣), contacted(已联系), negotiating(洽谈中), collaborating(合作中), completed(已完成), rejected(已拒绝)
+    priority: varchar("priority", { length: 10 }).notNull().default('medium'), // low(低), medium(中), high(高)
+
+    // 跟进记录
+    notes: text("notes"), // 跟进备注
+    lastContactDate: timestamp("last_contact_date", { withTimezone: true }), // 最后联系时间
+    nextFollowUpDate: timestamp("next_follow_up_date", { withTimezone: true }), // 下次跟进时间
+    contactCount: integer("contact_count").default(0), // 联系次数
+
+    // 预算和合同信息
+    estimatedBudget: decimal("estimated_budget", { precision: 10, scale: 2 }).default('0'), // 预估预算
+    actualBudget: decimal("actual_budget", { precision: 10, scale: 2 }).default('0'), // 实际预算
+    contractStatus: varchar("contract_status", { length: 20 }).default('none'), // none(无), pending(待签), signed(已签)
+
+    // 合作信息
+    cooperationStartDate: timestamp("cooperation_start_date", { withTimezone: true }), // 合作开始时间
+    cooperationEndDate: timestamp("cooperation_end_date", { withTimezone: true }), // 合作结束时间
+    cooperationCount: integer("cooperation_count").default(0), // 合作次数
+
+    // 标签和分类
+    tags: jsonb("tags").$type<string[]>(), // 自定义标签
+    category: varchar("category", { length: 50 }), // 分类
+
+    // 收藏
+    isFavorite: boolean("is_favorite").default(false),
+
+    // 时间戳
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    userIdInfluencerIdIdx: index("user_influencers_user_id_influencer_id_idx").on(table.userId, table.influencerId).unique(),
+    userIdIdx: index("user_influencers_user_id_idx").on(table.userId),
+    influencerIdIdx: index("user_influencers_influencer_id_idx").on(table.influencerId),
+    statusIdx: index("user_influencers_status_idx").on(table.status),
+    channelIdIdx: index("user_influencers_channel_id_idx").on(table.channelId),
+    isFavoriteIdx: index("user_influencers_is_favorite_idx").on(table.isFavorite),
+  })
+);
+
 // Influencers schemas
 export const insertInfluencerSchema = createInsertSchema(influencers).pick({
   channelId: true,

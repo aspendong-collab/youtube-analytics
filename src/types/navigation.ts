@@ -42,6 +42,10 @@ export const navItems: NavItem[] = [
     label: '达人管理',
     icon: '👥',
     path: '/influencers',
+    children: [
+      { id: 'my-influencers', label: '我的达人', path: '/my-influencers' },
+      { id: 'influencer-list', label: '达人列表', path: '/influencers' },
+    ],
   },
   {
     id: 'content-analysis',
