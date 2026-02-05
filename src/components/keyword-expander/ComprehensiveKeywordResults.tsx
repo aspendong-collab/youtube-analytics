@@ -73,7 +73,7 @@ export default function ComprehensiveKeywordResults({
   const filteredKeywords = data.keywords.filter(kw => {
     if (selectedCategory !== 'all' && kw.keywordType !== selectedCategory) return false;
     if (selectedIntent !== 'all' && kw.searchIntent !== selectedIntent) return false;
-    if (selectedSource !== 'all' && !kw.source.includes(selectedSource)) return false;
+    if (selectedSource !== 'all' && (!kw.sources || !kw.sources.includes(selectedSource))) return false;
     return true;
   });
 
@@ -98,10 +98,12 @@ export default function ComprehensiveKeywordResults({
   }, {} as Record<string, number>);
 
   const sourceStats = data.keywords.reduce((acc, kw) => {
-    kw.source.forEach(src => {
-      if (!acc[src]) acc[src] = 0;
-      acc[src]++;
-    });
+    if (kw.sources && Array.isArray(kw.sources)) {
+      kw.sources.forEach(src => {
+        if (!acc[src]) acc[src] = 0;
+        acc[src]++;
+      });
+    }
     return acc;
   }, {} as Record<string, number>);
 
@@ -500,7 +502,7 @@ export default function ComprehensiveKeywordResults({
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {kw.source.map((src, i) => (
+                        {kw.sources?.map((src, i) => (
                           <Badge key={i} variant="outline" className="text-xs">{sourceLabels[src as keyof typeof sourceLabels]}</Badge>
                         ))}
                       </div>
