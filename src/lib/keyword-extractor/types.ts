@@ -13,6 +13,17 @@ export type SearchIntent =
   | 'transactional'; // 交易类：准备行动/购买
 
 /**
+ * 目标受众类型
+ */
+export type TargetAudienceType =
+  | 'beginner'        // 初学者
+  | 'intermediate'    // 中级用户
+  | 'advanced'        // 高级用户/专家
+  | 'professional'    // 专业人士
+  | 'student'         // 学生
+  | 'general';        // 大众/一般用户
+
+/**
  * 关键词类型
  */
 export type KeywordType =
@@ -57,6 +68,7 @@ export interface EnhancedKeywordData {
 
   // 搜索意图
   searchIntent: SearchIntent;
+  targetAudience: TargetAudienceType;  // 目标受众类型
 
   // 统计数据
   searchVolume: number;        // 月搜索量（估算）

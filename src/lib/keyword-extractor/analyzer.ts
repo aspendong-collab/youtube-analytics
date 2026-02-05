@@ -9,6 +9,7 @@ import type {
   TrendType,
   SearchIntent,
   KeywordType,
+  TargetAudienceType,
 } from './types';
 
 /**
@@ -84,6 +85,50 @@ class KeywordAnalyzer {
 
     // 默认信息类
     return 'informational';
+  }
+
+  /**
+   * 分析目标受众类型
+   */
+  analyzeTargetAudience(keyword: string, searchIntent: SearchIntent): TargetAudienceType {
+    const lower = keyword.toLowerCase();
+
+    // 初学者相关
+    if (/\b(for beginners|beginner guide|basic|fundamentals|introduction|getting started|101|easy|simple|step\s+by\s+step|learn\s+to)\b/i.test(lower)) {
+      return 'beginner';
+    }
+
+    // 学生相关
+    if (/\b(for students|student|class|lesson|homework|study\s+guide|exam|course|curriculum)\b/i.test(lower)) {
+      return 'student';
+    }
+
+    // 中级用户
+    if (/\b(intermediate|practical|hands\s+on|real\s+world|application|improve|enhance|next\s+level|upgrade)\b/i.test(lower)) {
+      return 'intermediate';
+    }
+
+    // 高级/专家
+    if (/\b(advanced|expert|master|pro|professional|deep dive|comprehensive|ultimate|complete|mastery|specialist)\b/i.test(lower)) {
+      return 'advanced';
+    }
+
+    // 专业人士
+    if (/\b(for businesses|business|enterprise|corporate|professional|industry|commercial|workplace|career)\b/i.test(lower)) {
+      return 'professional';
+    }
+
+    // 根据搜索意图推断
+    if (searchIntent === 'informational') {
+      return 'beginner'; // 信息类通常面向初学者
+    }
+
+    if (searchIntent === 'commercial' || searchIntent === 'transactional') {
+      return 'general'; // 商业和交易类面向大众
+    }
+
+    // 默认为大众
+    return 'general';
   }
 
   /**

@@ -49,76 +49,112 @@ class ComprehensiveKeywordCollector {
 
     // 步骤1：采集YouTube搜索建议
     if (enableSuggestions) {
-      console.log('[KeywordCollector] 采集搜索建议...');
+      console.log('[KeywordCollector] 开始采集搜索建议...');
+      let suggestionSuccessCount = 0;
       for (const lang of languages) {
         try {
           const suggestions = await suggestionCollector.getVariantSuggestions(keyword, lang);
-          allSuggestions.push(...suggestions);
-          console.log(`[KeywordCollector] ${lang} 语言搜索建议: ${suggestions.length} 个`);
+          if (suggestions.length > 0) {
+            allSuggestions.push(...suggestions);
+            suggestionSuccessCount++;
+            console.log(`[KeywordCollector] ${lang} 语言搜索建议: ${suggestions.length} 个`);
+          } else {
+            console.warn(`[KeywordCollector] ${lang} 语言未获取到搜索建议，可能是API限制或网络问题`);
+          }
         } catch (error) {
-          console.error(`[KeywordCollector] ${lang} 搜索建议采集失败:`, error);
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          console.error(`[KeywordCollector] ${lang} 搜索建议采集失败:`, errorMsg);
+          // 继续尝试其他语言
         }
       }
+      console.log(`[KeywordCollector] 搜索建议采集完成: ${allSuggestions.length} 个，成功 ${suggestionSuccessCount}/${languages.length} 个语言`);
     }
 
     // 步骤2：采集相关搜索
     if (enableRelated) {
-      console.log('[KeywordCollector] 采集相关搜索...');
+      console.log('[KeywordCollector] 开始采集相关搜索...');
       try {
         const related = await relatedSearchCollector.getRelatedSearches(keyword);
-        allRelatedSearches.push(...related);
-        console.log(`[KeywordCollector] 相关搜索: ${related.length} 个`);
+        if (related.length > 0) {
+          allRelatedSearches.push(...related);
+          console.log(`[KeywordCollector] 相关搜索: ${related.length} 个`);
+        } else {
+          console.warn('[KeywordCollector] 未获取到相关搜索，可能是API限制或关键词过于具体');
+        }
       } catch (error) {
-        console.error('[KeywordCollector] 相关搜索采集失败:', error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error('[KeywordCollector] 相关搜索采集失败:', errorMsg);
       }
 
       // 采集相关话题
       try {
         const topics = await relatedSearchCollector.getRelatedTopics(keyword);
-        allRelatedSearches.push(...topics);
-        console.log(`[KeywordCollector] 相关话题: ${topics.length} 个`);
+        if (topics.length > 0) {
+          allRelatedSearches.push(...topics);
+          console.log(`[KeywordCollector] 相关话题: ${topics.length} 个`);
+        } else {
+          console.warn('[KeywordCollector] 未获取到相关话题');
+        }
       } catch (error) {
-        console.error('[KeywordCollector] 相关话题采集失败:', error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error('[KeywordCollector] 相关话题采集失败:', errorMsg);
       }
+      console.log(`[KeywordCollector] 相关搜索采集完成: ${allRelatedSearches.length} 个`);
     }
 
     // 步骤3：采集竞品关键词
     if (enableCompetitor) {
-      console.log('[KeywordCollector] 采集竞品关键词...');
+      console.log('[KeywordCollector] 开始采集竞品关键词...');
       try {
         const competitor = await relatedSearchCollector.getCompetitorKeywords(keyword);
-        allCompetitorKeywords.push(...competitor);
-        console.log(`[KeywordCollector] 竞品关键词: ${competitor.length} 个`);
+        if (competitor.length > 0) {
+          allCompetitorKeywords.push(...competitor);
+          console.log(`[KeywordCollector] 竞品关键词: ${competitor.length} 个`);
+        } else {
+          console.warn('[KeywordCollector] 未获取到竞品关键词');
+        }
       } catch (error) {
-        console.error('[KeywordCollector] 竞品关键词采集失败:', error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error('[KeywordCollector] 竞品关键词采集失败:', errorMsg);
       }
     }
 
     // 步骤4：采集问题型关键词
     if (enableQuestions) {
-      console.log('[KeywordCollector] 采集问题型关键词...');
+      console.log('[KeywordCollector] 开始采集问题型关键词...');
       try {
         const questions = await relatedSearchCollector.extractQuestionKeywords(keyword);
-        allQuestions.push(...questions);
-        console.log(`[KeywordCollector] 问题型关键词: ${questions.length} 个`);
+        if (questions.length > 0) {
+          allQuestions.push(...questions);
+          console.log(`[KeywordCollector] 问题型关键词: ${questions.length} 个`);
+        } else {
+          console.warn('[KeywordCollector] 未获取到问题型关键词');
+        }
       } catch (error) {
-        console.error('[KeywordCollector] 问题型关键词采集失败:', error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error('[KeywordCollector] 问题型关键词采集失败:', errorMsg);
       }
     }
 
     // 步骤5：采集YouTube视频数据
-    console.log(`[KeywordCollector] 采集YouTube视频数据...`);
+    console.log(`[KeywordCollector] 开始采集YouTube视频数据...`);
     const allVideos = [];
+    let videoSuccessCount = 0;
 
     for (const lang of languages) {
       try {
         const searchResults = await youtubeClient.searchInfluencers({
           query: keyword,
-          maxResults: maxVideos / languages.length,
+          maxResults: Math.floor(maxVideos / languages.length),
           type: 'video',
           order: 'relevance',
           relevanceLanguage: lang,
         });
+
+        if (!searchResults.items || searchResults.items.length === 0) {
+          console.warn(`[KeywordCollector] ${lang} 语言未找到相关视频`);
+          continue;
+        }
 
         const videoIds = searchResults.items
           .map(item => item.id?.videoId)
@@ -141,14 +177,22 @@ class ComprehensiveKeywordCollector {
           }));
 
           allVideos.push(...videos);
+          videoSuccessCount++;
           console.log(`[KeywordCollector] ${lang} 语言视频: ${videos.length} 个`);
         }
       } catch (error) {
-        console.error(`[KeywordCollector] ${lang} 视频采集失败:`, error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[KeywordCollector] ${lang} 视频采集失败:`, errorMsg);
+        // 继续尝试其他语言
       }
     }
 
-    console.log(`[KeywordCollector] 总计采集视频: ${allVideos.length} 个`);
+    console.log(`[KeywordCollector] 视频采集完成: ${allVideos.length} 个视频，成功 ${videoSuccessCount}/${languages.length} 个语言`);
+
+    if (allVideos.length === 0) {
+      console.error('[KeywordCollector] 警告：未采集到任何视频数据！可能是API配额问题或关键词过于冷门');
+      console.error('[KeywordCollector] 将仅返回搜索建议和相关搜索数据（如果有）');
+    }
 
     // 步骤6：从视频中提取关键词
     console.log('[KeywordCollector] 从视频提取关键词...');
@@ -166,6 +210,7 @@ class ComprehensiveKeywordCollector {
         if (!videoKeywordMap.has(kwText)) {
           const type = keywordAnalyzer.analyzeKeywordType(kwText);
           const intent = keywordAnalyzer.analyzeSearchIntent(kwText);
+          const audience = keywordAnalyzer.analyzeTargetAudience(kwText, intent);
           const competitionLevel = keywordAnalyzer.calculateCompetitionLevel(kw.videoCount || 0, kw.avgViews || 0);
           const competitionScore = keywordAnalyzer.calculateCompetitionScore(kw.videoCount || 0, kw.avgViews || 0);
           const searchVolume = keywordAnalyzer.estimateSearchVolume(kw.videoCount || 0, kw.avgViews || 0);
@@ -177,6 +222,7 @@ class ComprehensiveKeywordCollector {
             type,
             categoryTags: ['autocomplete'],
             searchIntent: intent,
+            targetAudience: audience,
             searchVolume,
             competitionLevel,
             competitionScore,
@@ -216,12 +262,14 @@ class ComprehensiveKeywordCollector {
       if (!mergedKeywords.has(suggestion)) {
         const type = keywordAnalyzer.analyzeKeywordType(suggestion);
         const intent = keywordAnalyzer.analyzeSearchIntent(suggestion);
+        const audience = keywordAnalyzer.analyzeTargetAudience(suggestion, intent);
 
         mergedKeywords.set(suggestion, {
           keyword: suggestion,
           type,
           categoryTags: ['autocomplete'],
           searchIntent: intent,
+          targetAudience: audience,
           searchVolume: 0, // 需要后续估算
           competitionLevel: 'medium',
           competitionScore: 50,
@@ -318,14 +366,50 @@ class ComprehensiveKeywordCollector {
       : 0;
     const highOpportunityCount = keywordsArray.filter(kw => kw.opportunityScore > 70).length;
 
+    // 数据源状态
+    const dataSourceStatus = {
+      suggestions: {
+        enabled: enableSuggestions,
+        success: allSuggestions.length > 0,
+        count: allSuggestions.length,
+      },
+      relatedSearches: {
+        enabled: enableRelated,
+        success: allRelatedSearches.length > 0,
+        count: allRelatedSearches.length,
+      },
+      competitorKeywords: {
+        enabled: enableCompetitor,
+        success: allCompetitorKeywords.length > 0,
+        count: allCompetitorKeywords.length,
+      },
+      questions: {
+        enabled: enableQuestions,
+        success: allQuestions.length > 0,
+        count: allQuestions.length,
+      },
+      videos: {
+        success: allVideos.length > 0,
+        count: allVideos.length,
+      },
+    };
+
+    console.log('[KeywordCollector] 数据源状态:', JSON.stringify(dataSourceStatus, null, 2));
+
     const statistics = {
       totalKeywords: keywordsArray.length,
       totalSearchVolume,
       avgCompetition,
       highOpportunityCount,
+      dataSourceStatus,
     };
 
     console.log(`[KeywordCollector] 采集完成！总计: ${keywordsArray.length} 个关键词`);
+    console.log(`[KeywordCollector] - 搜索建议: ${allSuggestions.length} 个`);
+    console.log(`[KeywordCollector] - 相关搜索: ${allRelatedSearches.length} 个`);
+    console.log(`[KeywordCollector] - 问题关键词: ${allQuestions.length} 个`);
+    console.log(`[KeywordCollector] - 竞品关键词: ${allCompetitorKeywords.length} 个`);
+    console.log(`[KeywordCollector] - 视频数据: ${allVideos.length} 个`);
 
     return {
       keywords: keywordsArray.sort((a, b) => b.opportunityScore - a.opportunityScore),

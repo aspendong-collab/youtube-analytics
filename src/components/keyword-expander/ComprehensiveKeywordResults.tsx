@@ -21,6 +21,13 @@ interface ComprehensiveKeywordResultsProps {
       totalSearchVolume: number;
       avgCompetition: number;
       highOpportunityCount: number;
+      dataSourceStatus?: {
+        suggestions: { enabled: boolean; success: boolean; count: number };
+        relatedSearches: { enabled: boolean; success: boolean; count: number };
+        competitorKeywords: { enabled: boolean; success: boolean; count: number };
+        questions: { enabled: boolean; success: boolean; count: number };
+        videos: { success: boolean; count: number };
+      };
     };
   };
   originalKeyword: string;
@@ -61,12 +68,23 @@ export default function ComprehensiveKeywordResults({
   };
 
   // 数据源标签映射
-  const sourceLabels: Record<typeof selectedSource, string> = {
-    all: '全部来源',
+  const sourceLabels: Record<string, string> = {
     autocomplete: '🔍 搜索建议',
     related: '🔗 相关搜索',
     competitor: '🏆 竞品',
     extracted: '📹 视频数据',
+    video: '📹 视频数据',
+    suggestion: '💡 搜索建议',
+  };
+
+  // 目标受众类型标签映射
+  const audienceLabels: Record<string, string> = {
+    beginner: '🌱 初学者',
+    intermediate: '📚 中级',
+    advanced: '🎓 高级',
+    professional: '💼 专业人士',
+    student: '👨‍🎓 学生',
+    general: '👥 大众',
   };
 
   // 多重过滤
@@ -170,11 +188,50 @@ export default function ComprehensiveKeywordResults({
     setCurrentPage(1);
   };
 
+  // 检查是否有数据源失败
+  const hasFailedDataSource = data.statistics?.dataSourceStatus ? Object.values(data.statistics.dataSourceStatus).some(
+    ds => ds.enabled !== undefined && !ds.success && ds.enabled
+  ) : false;
+
+  const failedDataSources = data.statistics?.dataSourceStatus ? Object.entries(data.statistics.dataSourceStatus)
+    .filter(([key, value]) => value.enabled !== undefined && !value.success && value.enabled)
+    .map(([key]) => key) : [];
+
   // 获取高机会关键词（机会评分 > 70）
   const highOpportunityKeywords = filteredKeywords.filter(kw => kw.opportunityScore > 70);
 
   return (
     <div className="space-y-6">
+      {/* 数据源状态警告 */}
+      {hasFailedDataSource && (
+        <Card className="border-yellow-200 bg-yellow-50/50">
+          <CardContent className="pt-4">
+            <div className="flex items-start gap-3">
+              <div className="text-yellow-600 mt-0.5">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-yellow-800 mb-1">部分数据源未成功获取数据</h4>
+                <p className="text-sm text-yellow-700">
+                  以下数据源可能由于API限制或网络问题未成功获取数据：
+                  <span className="font-medium">
+                    {failedDataSources.join(', ')}
+                  </span>
+                </p>
+                <p className="text-xs text-yellow-600 mt-1">
+                  已成功的数据源（{data.statistics?.dataSourceStatus?.videos?.success || data.keywords.some(kw => kw.sources?.includes('video')) ? '视频数据' : ''}
+                  {data.statistics?.dataSourceStatus?.suggestions?.success || data.suggestions.length > 0 ? '、搜索建议' : ''}
+                  {data.statistics?.dataSourceStatus?.relatedSearches?.success || data.relatedSearches.length > 0 ? '、相关搜索' : ''}）
+                  仍然可以提供有价值的分析结果。
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* 统计面板 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
@@ -386,6 +443,7 @@ export default function ComprehensiveKeywordResults({
                       <div className="flex flex-wrap gap-1 mt-1">
                         <Badge variant="secondary" className="text-xs">{kw.keywordType}</Badge>
                         <Badge variant="secondary" className="text-xs">{kw.searchIntent}</Badge>
+                        <Badge variant="outline" className="text-xs">{audienceLabels[kw.targetAudience as keyof typeof audienceLabels] || kw.targetAudience}</Badge>
                       </div>
                     </div>
                     <div className="text-right">
@@ -433,6 +491,7 @@ export default function ComprehensiveKeywordResults({
                 <TableHead className="w-[80px]">趋势</TableHead>
                 <TableHead className="w-[120px]">类型</TableHead>
                 <TableHead className="w-[120px]">意图</TableHead>
+                <TableHead className="w-[120px]">受众</TableHead>
                 <TableHead className="w-[100px]">来源</TableHead>
                 <TableHead className="w-[120px]">操作</TableHead>
               </TableRow>
@@ -501,9 +560,12 @@ export default function ComprehensiveKeywordResults({
                       <Badge variant="outline" className="text-xs">{kw.searchIntent}</Badge>
                     </TableCell>
                     <TableCell>
+                      <Badge variant="outline" className="text-xs">{audienceLabels[kw.targetAudience as keyof typeof audienceLabels] || kw.targetAudience}</Badge>
+                    </TableCell>
+                    <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {kw.sources?.map((src, i) => (
-                          <Badge key={i} variant="outline" className="text-xs">{sourceLabels[src as keyof typeof sourceLabels]}</Badge>
+                          <Badge key={i} variant="outline" className="text-xs">{sourceLabels[src] || src}</Badge>
                         ))}
                       </div>
                     </TableCell>
@@ -531,7 +593,7 @@ export default function ComprehensiveKeywordResults({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={12} className="text-center py-8 text-gray-500">
                     没有符合条件的关键词
                   </TableCell>
                 </TableRow>
