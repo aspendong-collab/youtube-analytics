@@ -1,10 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Copy, Search, TrendingUp, TrendingDown, Minus, ExternalLink } from 'lucide-react';
+import { Copy, Search, TrendingUp, TrendingDown, Minus, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { KeywordData } from '@/lib/keyword-extractor/extractor';
 
 interface KeywordResultsProps {
@@ -22,6 +23,13 @@ export default function KeywordResults({
   summary,
   onKeywordClick,
 }: KeywordResultsProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+  const totalPages = Math.ceil(keywords.length / itemsPerPage);
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentKeywords = keywords.slice(startIndex, endIndex);
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case 'up':
@@ -114,9 +122,9 @@ export default function KeywordResults({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {keywords.slice(0, 20).map((kw, index) => (
+              {currentKeywords.map((kw, index) => (
                 <TableRow key={kw.keyword}>
-                  <TableCell className="font-medium">{index + 1}</TableCell>
+                  <TableCell className="font-medium">{startIndex + index + 1}</TableCell>
                   <TableCell className="font-semibold">{kw.keyword}</TableCell>
                   <TableCell>{kw.frequency}</TableCell>
                   <TableCell>{formatNumber(kw.avgViews)}</TableCell>
@@ -154,6 +162,61 @@ export default function KeywordResults({
               ))}
             </TableBody>
           </Table>
+
+          {/* 分页控件 */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div className="text-sm text-gray-500">
+                显示 {startIndex + 1}-{Math.min(endIndex, keywords.length)} / 共 {keywords.length} 个关键词
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  上一页
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+
+                    return (
+                      <Button
+                        key={pageNum}
+                        size="sm"
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className="w-8 h-8"
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  下一页
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
