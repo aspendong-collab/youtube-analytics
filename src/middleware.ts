@@ -28,6 +28,7 @@ export function middleware(req: NextRequest) {
     '/api/check-env',
     '/api/users/pending',
     '/api/keywords',
+    '/api/db',
   ];
 
   // 组合所有公开路由
