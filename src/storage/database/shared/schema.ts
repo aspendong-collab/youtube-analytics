@@ -34,7 +34,7 @@ export const users = pgTable(
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   },
   (table) => ({
-    emailIdx: index("users_email_idx").on(table.email).unique(),
+    emailIdx: unique("users_email_idx").on(table.email),
     statusIdx: index("users_status_idx").on(table.status),
     roleIdx: index("users_role_idx").on(table.role),
   })
@@ -319,6 +319,33 @@ export const influencerCache = pgTable(
   })
 );
 
+// 用户收藏表（简单的收藏功能）
+export const userFavorites = pgTable(
+  "user_favorites",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id", { length: 36 }).notNull(),
+    influencerId: varchar("influencer_id", { length: 36 }).notNull(),
+    channelId: varchar("channel_id", { length: 50 }).notNull(),
+    note: text("note"), // 用户备注
+    tags: jsonb("tags").$type<string[]>(), // 用户自定义标签
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("user_favorites_user_id_idx").on(table.userId),
+    influencerIdIdx: index("user_favorites_influencer_id_idx").on(table.influencerId),
+    userIdInfluencerIdIdx: index("user_favorites_user_influencer_idx").on(table.userId, table.influencerId),
+    channelIdIdx: index("user_favorites_channel_id_idx").on(table.channelId),
+  })
+);
+
 // 用户达人关系表 - 用户收藏/管理的AI达人
 export const userInfluencers = pgTable(
   "user_influencers",
@@ -366,7 +393,7 @@ export const userInfluencers = pgTable(
       .notNull(),
   },
   (table) => ({
-    userIdInfluencerIdIdx: index("user_influencers_user_id_influencer_id_idx").on(table.userId, table.influencerId).unique(),
+    userIdInfluencerIdIdx: unique("user_influencers_user_id_influencer_id_idx").on(table.userId, table.influencerId),
     userIdIdx: index("user_influencers_user_id_idx").on(table.userId),
     influencerIdIdx: index("user_influencers_influencer_id_idx").on(table.influencerId),
     statusIdx: index("user_influencers_status_idx").on(table.status),

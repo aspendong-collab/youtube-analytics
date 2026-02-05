@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/storage/database/db';
-import { userFavorites, aiInfluencers } from '@/storage/database/influencer-schema';
+import { dbInstance } from '@/lib/db';
+import { userFavorites, influencers } from '@/storage/database/shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 
 /**
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     // 获取收藏记录
-    const favorites = await db
+    const favorites = await dbInstance
       .select({
         favoriteId: userFavorites.id,
         influencerId: userFavorites.influencerId,
@@ -57,12 +57,12 @@ export async function GET(request: NextRequest) {
 
     // 获取达人详细信息
     const channelIds = favorites.map(f => f.channelId);
-    const influencers = await db
+    const influencersData = await dbInstance
       .select()
-      .from(aiInfluencers)
-      .where(eq(aiInfluencers.channelId, channelIds[0] as any));
+      .from(influencers)
+      .where(eq(influencers.channelId, channelIds[0] as any));
 
-    const influencersMap = new Map(influencers.map(inf => [inf.channelId, inf]));
+    const influencersMap = new Map(influencersData.map(inf => [inf.channelId, inf]));
 
     // 合并数据
     const merged = favorites.map(fav => ({
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     }));
 
     // 获取总数
-    const totalResult = await db
+    const totalResult = await dbInstance
       .select({ count: userFavorites.id })
       .from(userFavorites)
       .where(eq(userFavorites.userId, userId));
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     const userId = session.user.id;
 
     // 检查是否已收藏
-    const existing = await db
+    const existing = await dbInstance
       .select()
       .from(userFavorites)
       .where(
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 创建收藏记录
-    const [favorite] = await db
+    const [favorite] = await dbInstance
       .insert(userFavorites)
       .values({
         userId,

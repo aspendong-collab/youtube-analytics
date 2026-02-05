@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/storage/database/db';
-import { userFavorites } from '@/storage/database/influencer-schema';
+import { dbInstance } from '@/lib/db';
+import { userFavorites } from '@/storage/database/shared/schema';
 import { eq, and } from 'drizzle-orm';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 
 /**
@@ -27,7 +27,7 @@ export async function DELETE(
     const userId = session.user.id;
 
     // 删除收藏记录
-    const result = await db
+    const result = await dbInstance
       .delete(userFavorites)
       .where(
         and(
@@ -79,7 +79,7 @@ export async function GET(
     const userId = session.user.id;
 
     // 检查收藏记录
-    const result = await db
+    const result = await dbInstance
       .select()
       .from(userFavorites)
       .where(

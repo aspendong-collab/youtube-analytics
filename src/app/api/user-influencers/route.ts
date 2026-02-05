@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dbInstance } from '@/lib/db';
 import { userInfluencers, influencers } from '@/storage/database/shared/schema';
 import { eq, and, desc, asc, ilike, or, count } from 'drizzle-orm';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 
 /**
