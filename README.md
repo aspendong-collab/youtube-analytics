@@ -46,7 +46,21 @@ coze start
 
 ### 部署到 Vercel
 
-详细的部署步骤请参考 [Vercel 部署指南](./VERCEL_DEPLOYMENT.md)。
+✅ **仓库状态**：已公开部署
+- GitHub 仓库已设置为公开
+- Vercel 自动部署已启用
+- 生产环境：https://youtube-analytics-opal.vercel.app
+
+📋 **部署文档**：
+- [部署指南](./DEPLOYMENT.md) - 完整的部署流程
+- [手动部署步骤](./MANUAL_DEPLOYMENT_STEPS.md) - 详细的手动部署方法
+- [部署诊断报告](./VERCEL_DEPLOYMENT_DIAGNOSIS.md) - 问题排查指南
+
+🚀 **最新功能**：
+- ✅ YouTube 关键词拓展工具
+- ✅ 多语言关键词分析（15+ 种语言）
+- ✅ 智能关键词提取和热度排序
+- ✅ 趋势分析和可视化展示
 
 快速部署步骤：
 
