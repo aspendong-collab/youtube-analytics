@@ -21,8 +21,13 @@ export const navItems: NavItem[] = [
     children: [
       { id: 'trending', label: '热门排行榜', path: '/trending/ranking' },
       { id: 'ai-influencer', label: 'AI达人推荐', path: '/influencers/cover' },
-      { id: 'keyword-expand', label: '关键词拓展', path: '/discovery/keywords' },
     ],
+  },
+  {
+    id: 'keyword-expansion',
+    label: '关键词拓展',
+    icon: '🔑',
+    path: '/keyword-expansion',
   },
   {
     id: 'monitoring',

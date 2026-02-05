@@ -733,3 +733,142 @@ export type UpdateCompetitorTask = z.infer<typeof updateCompetitorTaskSchema>;
 
 export type CompetitorTaskStatus = 'pending' | 'running' | 'completed' | 'failed';
 export type MentionType = 'title' | 'description' | 'tag' | 'all' | 'unknown';
+
+// ==================== 关键词智能拓展相关表 ====================
+
+// Keyword Expansions 表 - 存储关键词拓展记录
+export const keywordExpansions = pgTable(
+  "keyword_expansions",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    inputKeyword: varchar("input_keyword", { length: 500 }).notNull(), // 输入的关键词
+    inputCategory: varchar("input_category", { length: 20 }).notNull(), // 关键词类型：brand/generic/longtail
+    // 拓展结果（JSON格式存储）
+    expansionResult: jsonb("expansion_result").$type<{
+      scenarios: string[];
+      carriers: string[];
+      states: string[];
+      goals: string[];
+      methods: string[];
+    }>(),
+    // 统计信息
+    totalKeywords: integer("total_keywords").default(0),
+    uniqueKeywords: integer("unique_keywords").default(0),
+    // 拓展配置
+    useRuleEngine: boolean("use_rule_engine").default(true),
+    useLLMEngine: boolean("use_llm_engine").default(true),
+    useDataMining: boolean("use_data_mining").default(true),
+    // 元数据
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+  },
+  (table) => ({
+    inputKeywordIdx: index("keyword_expansions_input_keyword_idx").on(table.inputKeyword),
+    createdAtIdx: index("keyword_expansions_created_at_idx").on(table.createdAt),
+  })
+);
+
+// Expanded Keywords 表 - 存储拓展后的关键词详情
+export const expandedKeywords = pgTable(
+  "expanded_keywords",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    expansionId: varchar("expansion_id", { length: 36 }).notNull(), // 关联到keyword_expansions.id
+    keyword: varchar("keyword", { length: 500 }).notNull(),
+    dimension: varchar("dimension", { length: 20 }).notNull(), // 所属维度：scenario/carrier/state/goal/method
+    source: varchar("source", { length: 20 }).notNull(), // 来源：rule/llm/dataMining/commentMining/tagMining
+    // 指标
+    relevance: decimal("relevance", { precision: 3, scale: 2 }).default('0.00'), // 相关性（0-1）
+    estimatedSearchVolume: integer("estimated_search_volume").default(0), // 估算搜索量
+    estimatedCompetition: decimal("estimated_competition", { precision: 3, scale: 2 }).default('0.00'), // 估算竞争度（0-1）
+    commercialValue: decimal("commercial_value", { precision: 3, scale: 2 }).default('0.00'), // 商业价值（0-1）
+    recommendationScore: decimal("recommendation_score", { precision: 3, scale: 2 }).default('0.00'), // 推荐指数（0-1）
+    // 分类
+    type: varchar("type", { length: 20 }).default('broad'), // broad/long-tail/question/brand
+    intent: varchar("intent", { length: 20 }).default('info'), // info/tutorial/review/transaction
+    // 元数据
+    relatedKeywords: jsonb("related_keywords").$type<string[]>(),
+    sourceVideoIds: jsonb("source_video_ids").$type<string[]>(), // 来源视频ID列表
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    expansionIdIdx: index("expanded_keywords_expansion_id_idx").on(table.expansionId),
+    keywordIdx: index("expanded_keywords_keyword_idx").on(table.keyword),
+    dimensionIdx: index("expanded_keywords_dimension_idx").on(table.dimension),
+    sourceIdx: index("expanded_keywords_source_idx").on(table.source),
+    recommendationScoreIdx: index("expanded_keywords_recommendation_score_idx").on(table.recommendationScore),
+  })
+);
+
+// ==================== 关键词拓展 Schemas ====================
+
+// Keyword Expansion schemas
+export const insertKeywordExpansionSchema = createInsertSchema(keywordExpansions).pick({
+  inputKeyword: true,
+  inputCategory: true,
+  expansionResult: true,
+  totalKeywords: true,
+  uniqueKeywords: true,
+  useRuleEngine: true,
+  useLLMEngine: true,
+  useDataMining: true,
+});
+
+export const updateKeywordExpansionSchema = createInsertSchema(keywordExpansions)
+  .pick({
+    expansionResult: true,
+    totalKeywords: true,
+    uniqueKeywords: true,
+  })
+  .partial();
+
+// Expanded Keyword schemas
+export const insertExpandedKeywordSchema = createInsertSchema(expandedKeywords).pick({
+  expansionId: true,
+  keyword: true,
+  dimension: true,
+  source: true,
+  relevance: true,
+  estimatedSearchVolume: true,
+  estimatedCompetition: true,
+  commercialValue: true,
+  recommendationScore: true,
+  type: true,
+  intent: true,
+  relatedKeywords: true,
+  sourceVideoIds: true,
+});
+
+export const updateExpandedKeywordSchema = createInsertSchema(expandedKeywords)
+  .pick({
+    relevance: true,
+    estimatedSearchVolume: true,
+    estimatedCompetition: true,
+    commercialValue: true,
+    recommendationScore: true,
+    relatedKeywords: true,
+  })
+  .partial();
+
+// ==================== 关键词拓展 Types ====================
+
+export type KeywordExpansion = typeof keywordExpansions.$inferSelect;
+export type InsertKeywordExpansion = z.infer<typeof insertKeywordExpansionSchema>;
+export type UpdateKeywordExpansion = z.infer<typeof updateKeywordExpansionSchema>;
+
+export type ExpandedKeyword = typeof expandedKeywords.$inferSelect;
+export type InsertExpandedKeyword = z.infer<typeof insertExpandedKeywordSchema>;
+export type UpdateExpandedKeyword = z.infer<typeof updateExpandedKeywordSchema>;
+
+export type KeywordDimension = 'scenario' | 'carrier' | 'state' | 'goal' | 'method';
+export type KeywordSource = 'rule' | 'llm' | 'dataMining' | 'commentMining' | 'tagMining';
+export type KeywordType = 'broad' | 'long-tail' | 'question' | 'brand';
+export type KeywordIntent = 'info' | 'tutorial' | 'review' | 'transaction';
