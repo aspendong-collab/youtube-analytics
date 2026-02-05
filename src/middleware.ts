@@ -27,6 +27,7 @@ export function middleware(req: NextRequest) {
     '/api/health',
     '/api/check-env',
     '/api/users/pending',
+    '/api/keywords',
   ];
 
   // 组合所有公开路由
