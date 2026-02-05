@@ -2,9 +2,15 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { dbInstance as db } from "@/lib/db";
 import { users } from "@/storage/database/shared/schema";
-import { eq, and } from "drizzle-orm";
-import { insertUserSchema } from "@/storage/database/shared/schema";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
+
+// 本地定义验证 schema，避免构建时导入问题
+const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  name: z.string().min(1),
+});
 
 export async function POST(request: Request) {
   // 检查数据库连接
@@ -19,7 +25,7 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     // 验证输入
-    const validatedData = insertUserSchema.parse(body);
+    const validatedData = registerSchema.parse(body);
 
     // 检查邮箱是否已存在（只检查活跃用户）
     const existingUser = await db
