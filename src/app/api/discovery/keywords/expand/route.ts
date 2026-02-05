@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { youtubeClient } from '@/lib/youtube-client';
 import { keywordExtractor } from '@/lib/keyword-extractor/extractor';
+import { phraseExtractor } from '@/lib/keyword-extractor/phrase-extractor';
 import { getRegionCode, detectLanguage } from '@/lib/keyword-extractor/languages';
 
 /**
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    console.log('[API] 采集完成，开始提取关键词...');
+    console.log('[API] 采集完成，开始提取关键词和词组...');
 
     // 提取并合并关键词
     const allKeywords = new Map<string, any>();
@@ -75,17 +76,47 @@ export async function POST(request: NextRequest) {
         return scoreB - scoreA;
       });
 
+    // 提取并合并词组
+    const allPhrases = new Map<string, any>();
+
+    results.forEach(result => {
+      result.phrases.forEach((phrase: any) => {
+        if (!allPhrases.has(phrase.phrase)) {
+          allPhrases.set(phrase.phrase, {
+            ...phrase,
+          });
+        } else {
+          // 合并相同词组的统计数据
+          const existing = allPhrases.get(phrase.phrase);
+          existing.frequency += phrase.frequency;
+          existing.avgViews = (existing.avgViews * existing.videoCount + phrase.avgViews * phrase.videoCount) / (existing.videoCount + phrase.videoCount);
+          existing.videoCount += phrase.videoCount;
+        }
+      });
+    });
+
+    // 词组排序（相关性优先）
+    const sortedPhrases = Array.from(allPhrases.values())
+      .sort((a, b) => {
+        const scoreA = a.relevanceScore * 50 + a.frequency * 0.5 + (a.avgViews / 10000) * 0.3;
+        const scoreB = b.relevanceScore * 50 + b.frequency * 0.5 + (b.avgViews / 10000) * 0.3;
+        return scoreB - scoreA;
+      })
+      .slice(0, 100); // 最多返回100个词组
+
     // 计算汇总统计
     const summary = {
       totalKeywords: sortedKeywords.length,
+      totalPhrases: sortedPhrases.length,
       totalVideos: results.reduce((sum, r) => sum + r.totalVideos, 0),
       avgViews: sortedKeywords.reduce((sum, kw) => sum + kw.avgViews, 0) / sortedKeywords.length,
       avgEngagementRate: sortedKeywords.reduce((sum, kw) => sum + kw.avgEngagementRate, 0) / sortedKeywords.length,
       languages: languages.length,
       topKeyword: sortedKeywords[0]?.keyword || '',
+      topPhrase: sortedPhrases[0]?.phrase || '',
     };
 
-    console.log(`[API] 提取完成，发现 ${sortedKeywords.length} 个关键词`);
+    console.log(`[API] 提取完成，发现 ${sortedKeywords.length} 个关键词，${sortedPhrases.length} 个词组`);
 
     return NextResponse.json({
       success: true,
@@ -93,6 +124,7 @@ export async function POST(request: NextRequest) {
         keyword,
         languages,
         keywords: sortedKeywords,
+        phrases: sortedPhrases,
         summary,
         quotaUsage: youtubeClient.getQuotaUsage(),
       },
@@ -179,9 +211,13 @@ async function collectByLanguage(
   // 提取关键词（传递原始关键词用于相关性计算）
   const keywords = keywordExtractor.extractFromVideos(videos, language, keyword);
 
+  // 提取词组（传递原始关键词用于相关性计算和词组生成）
+  const phrases = phraseExtractor.extractPhrasesFromVideos(videos, language, keyword);
+
   return {
     language,
     totalVideos: videos.length,
     keywords,
+    phrases,
   };
 }

@@ -2,6 +2,7 @@
  * 关键词提取工具 - 改进版
  */
 import { LANGUAGE_CONFIGS, getRegionCode } from './languages';
+import { phraseExtractor, PhraseData } from './phrase-extractor';
 
 /**
  * 关键词来源

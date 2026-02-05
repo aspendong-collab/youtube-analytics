@@ -4,11 +4,14 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Search, Loader2, Globe } from 'lucide-react';
 import LanguageSelector from '@/components/keyword-expander/LanguageSelector';
 import KeywordResults from '@/components/keyword-expander/KeywordResults';
+import PhraseResults from '@/components/keyword-expander/PhraseResults';
 import type { KeywordData } from '@/lib/keyword-extractor/extractor';
+import type { PhraseData } from '@/lib/keyword-extractor/phrase-extractor';
 import { detectLanguage } from '@/lib/keyword-extractor/languages';
 
 export default function KeywordExpandPage() {
@@ -19,6 +22,7 @@ export default function KeywordExpandPage() {
     keyword: string;
     languages: string[];
     keywords: KeywordData[];
+    phrases: PhraseData[];
     summary: any;
   } | null>(null);
 
@@ -56,7 +60,7 @@ export default function KeywordExpandPage() {
 
       const data = await response.json();
       setResults(data.data);
-      toast.success(`发现 ${data.data.summary.totalKeywords} 个关键词`);
+      toast.success(`发现 ${data.data.summary.totalKeywords} 个关键词，${data.data.summary.totalPhrases} 个词组`);
     } catch (error) {
       console.error('搜索失败:', error);
       toast.error(error instanceof Error ? error.message : '搜索失败');
@@ -148,13 +152,34 @@ export default function KeywordExpandPage() {
 
       {/* 搜索结果 */}
       {results && (
-        <KeywordResults
-          keyword={results.keyword}
-          languages={results.languages}
-          keywords={results.keywords}
-          summary={results.summary}
-          onKeywordClick={handleKeywordClick}
-        />
+        <Tabs defaultValue="keywords" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="keywords">
+              热门关键词 ({results.summary.totalKeywords})
+            </TabsTrigger>
+            <TabsTrigger value="phrases">
+              词组拓展 ({results.summary.totalPhrases})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="keywords">
+            <KeywordResults
+              keyword={results.keyword}
+              languages={results.languages}
+              keywords={results.keywords}
+              summary={results.summary}
+              onKeywordClick={handleKeywordClick}
+            />
+          </TabsContent>
+
+          <TabsContent value="phrases">
+            <PhraseResults
+              phrases={results.phrases}
+              originalKeyword={results.keyword}
+              onPhraseClick={handleKeywordClick}
+            />
+          </TabsContent>
+        </Tabs>
       )}
 
       {/* 空状态 */}
