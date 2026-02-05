@@ -289,32 +289,46 @@ export async function GET(request: NextRequest) {
     trendingVideos.sort((a, b) => b.viewCount - a.viewCount);
 
     // 根据时间段筛选（今天/本周/本月）
-    const filterNow = new Date();
-    let filterStartDate: Date;
+    // 注意：只有当没有关键词时才应用时间筛选
+    // 当有关键词时，显示所有相关视频，不受时间限制
+    let filteredVideos = trendingVideos;
+    if (keywordList.length === 0) {
+      const filterNow = new Date();
+      let filterStartDate: Date;
 
-    if (period === 'today') {
-      // 今日：从今天 00:00:00 开始
-      filterStartDate = new Date(filterNow);
-      filterStartDate.setHours(0, 0, 0, 0);
-    } else if (period === 'week') {
-      // 本周：从本周一开始
-      const dayOfWeek = filterNow.getDay();
-      const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-      filterStartDate = new Date(filterNow);
-      filterStartDate.setDate(filterNow.getDate() - daysSinceMonday);
-      filterStartDate.setHours(0, 0, 0, 0);
-    } else if (period === 'month') {
-      // 本月：从本月 1 号开始
-      filterStartDate = new Date(filterNow.getFullYear(), filterNow.getMonth(), 1, 0, 0, 0);
+      if (period === 'today') {
+        // 今日：从今天 00:00:00 开始
+        filterStartDate = new Date(filterNow);
+        filterStartDate.setHours(0, 0, 0, 0);
+      } else if (period === 'week') {
+        // 本周：从本周一开始
+        const dayOfWeek = filterNow.getDay();
+        const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        filterStartDate = new Date(filterNow);
+        filterStartDate.setDate(filterNow.getDate() - daysSinceMonday);
+        filterStartDate.setHours(0, 0, 0, 0);
+      } else if (period === 'month') {
+        // 本月：从本月 1 号开始
+        filterStartDate = new Date(filterNow.getFullYear(), filterNow.getMonth(), 1, 0, 0, 0);
+      } else {
+        filterStartDate = new Date(filterNow);
+        filterStartDate.setDate(filterNow.getDate() - 7); // 默认过去 7 天
+      }
+
+      filteredVideos = trendingVideos.filter(video => {
+        const publishedAt = new Date(video.publishedAt);
+        return publishedAt >= filterStartDate;
+      });
+
+      console.log('[热门排行榜API] 时间筛选:', {
+        period,
+        filterStartDate: filterStartDate.toISOString(),
+        beforeFilter: trendingVideos.length,
+        afterFilter: filteredVideos.length
+      });
     } else {
-      filterStartDate = new Date(filterNow);
-      filterStartDate.setDate(filterNow.getDate() - 7); // 默认过去 7 天
+      console.log('[热门排行榜API] 关键词搜索模式，跳过时间筛选');
     }
-
-    const filteredVideos = trendingVideos.filter(video => {
-      const publishedAt = new Date(video.publishedAt);
-      return publishedAt >= filterStartDate;
-    });
 
     // 设置排名
     filteredVideos.forEach((video, index) => {
