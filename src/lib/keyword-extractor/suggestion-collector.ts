@@ -13,6 +13,27 @@ interface SearchSuggestion {
  */
 class YouTubeSuggestionCollector {
   private baseUrl = 'https://suggestqueries.google.com/complete/search';
+  private timeout = 5000; // 5秒超时
+
+  /**
+   * 带超时的 fetch
+   */
+  private async fetchWithTimeout(url: string, timeout: number = this.timeout): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${timeout}ms`);
+      }
+      throw error;
+    }
+  }
 
   /**
    * 获取搜索建议
@@ -31,16 +52,24 @@ class YouTubeSuggestionCollector {
     const suggestions = new Set<string>();
 
     // 第一层：直接查询
-    const level1 = await this.fetchSuggestions(query, lang, market);
-    level1.forEach(s => suggestions.add(s));
+    try {
+      const level1 = await this.fetchSuggestions(query, lang, market);
+      level1.forEach(s => suggestions.add(s));
+    } catch (error) {
+      console.error(`[SuggestionCollector] 获取第一层建议失败:`, error);
+    }
 
     // 第二层：对前10个建议进行递归查询
     if (depth >= 2) {
       const topSuggestions = Array.from(suggestions).slice(0, 10);
 
       for (const suggestion of topSuggestions) {
-        const level2 = await this.fetchSuggestions(suggestion, lang, market);
-        level2.forEach(s => suggestions.add(s));
+        try {
+          const level2 = await this.fetchSuggestions(suggestion, lang, market);
+          level2.forEach(s => suggestions.add(s));
+        } catch (error) {
+          console.error(`[SuggestionCollector] 获取第二层建议失败:`, error);
+        }
 
         // 防止过度采集
         if (suggestions.size > 200) break;
@@ -57,7 +86,7 @@ class YouTubeSuggestionCollector {
     try {
       const url = `${this.baseUrl}?client=firefox&ds=yt&q=${encodeURIComponent(query)}&hl=${lang}&gl=${market}`;
 
-      const response = await fetch(url);
+      const response = await this.fetchWithTimeout(url);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch suggestions: ${response.status}`);

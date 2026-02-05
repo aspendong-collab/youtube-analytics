@@ -7,6 +7,28 @@
  * 相关搜索采集器
  */
 class RelatedSearchCollector {
+  private timeout = 3000; // 3秒超时（比搜索建议更短，因为有多个请求）
+
+  /**
+   * 带超时的 fetch
+   */
+  private async fetchWithTimeout(url: string, timeout: number = this.timeout): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${timeout}ms`);
+      }
+      throw error;
+    }
+  }
+
   /**
    * 获取相关搜索词（基于搜索建议的变体）
    */
@@ -27,7 +49,7 @@ class RelatedSearchCollector {
       const query = `${keyword} ${letter}`;
       try {
         const url = `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(query)}&hl=${lang}&gl=${market}`;
-        const response = await fetch(url);
+        const response = await this.fetchWithTimeout(url);
         const data = await response.json();
 
         if (Array.isArray(data) && data.length >= 1) {
@@ -71,7 +93,7 @@ class RelatedSearchCollector {
       const query = `${prefix} ${keyword}`;
       try {
         const url = `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(query)}&hl=${lang}&gl=${market}`;
-        const response = await fetch(url);
+        const response = await this.fetchWithTimeout(url);
         const data = await response.json();
 
         if (Array.isArray(data) && data.length >= 1) {
@@ -128,7 +150,7 @@ class RelatedSearchCollector {
     for (const expansion of semanticExpansions) {
       try {
         const url = `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(expansion)}&hl=${lang}`;
-        const response = await fetch(url);
+        const response = await this.fetchWithTimeout(url);
         const data = await response.json();
 
         if (Array.isArray(data) && data.length >= 1) {
@@ -173,7 +195,7 @@ class RelatedSearchCollector {
     for (const pattern of competitorPatterns) {
       try {
         const url = `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(pattern)}`;
-        const response = await fetch(url);
+        const response = await this.fetchWithTimeout(url);
         const data = await response.json();
 
         if (Array.isArray(data) && data.length >= 1) {
@@ -197,7 +219,7 @@ class RelatedSearchCollector {
   /**
    * 挖掘问题型关键词
    */
-  async挖掘QuestionKeywords(keyword: string, lang: string = 'en'): Promise<string[]> {
+  async extractQuestionKeywords(keyword: string, lang: string = 'en'): Promise<string[]> {
     const questionPrefixes = [
       'what is',
       'how to',
@@ -222,7 +244,7 @@ class RelatedSearchCollector {
       try {
         const query = prefix === 'how to' ? `${prefix} ${keyword}` : `${prefix} ${keyword}`;
         const url = `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(query)}&hl=${lang}`;
-        const response = await fetch(url);
+        const response = await this.fetchWithTimeout(url);
         const data = await response.json();
 
         if (Array.isArray(data) && data.length >= 1) {

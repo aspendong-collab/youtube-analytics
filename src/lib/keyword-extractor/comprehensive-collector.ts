@@ -98,7 +98,7 @@ class ComprehensiveKeywordCollector {
     if (enableQuestions) {
       console.log('[KeywordCollector] 采集问题型关键词...');
       try {
-        const questions = await relatedSearchCollector['getRelatedTopics'](keyword); // 使用已存在的方法
+        const questions = await relatedSearchCollector.extractQuestionKeywords(keyword);
         allQuestions.push(...questions);
         console.log(`[KeywordCollector] 问题型关键词: ${questions.length} 个`);
       } catch (error) {
