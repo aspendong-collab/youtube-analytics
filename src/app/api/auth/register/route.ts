@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { dbInstance as db } from "@/lib/db";
-import { users } from "@/storage/database/shared/schema";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 // 本地定义验证 schema，避免构建时导入问题
@@ -13,6 +10,11 @@ const registerSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  // 动态导入数据库和 schema，避免构建时导入问题
+  const { dbInstance: db } = await import("@/lib/db");
+  const { users } = await import("@/storage/database/shared/schema");
+  const { eq } = await import("drizzle-orm");
+
   // 检查数据库连接
   if (!db) {
     return NextResponse.json(
