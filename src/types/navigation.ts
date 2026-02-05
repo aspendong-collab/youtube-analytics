@@ -38,6 +38,15 @@ export const navItems: NavItem[] = [
     ],
   },
   {
+    id: 'competitor-monitoring',
+    label: '竞品监控',
+    icon: '📈',
+    path: '/competitor-monitoring',
+    children: [
+      { id: 'pdf-software', label: 'PDF软件', path: '/competitor-monitoring/pdf' },
+    ],
+  },
+  {
     id: 'influencers',
     label: '达人管理',
     icon: '👥',

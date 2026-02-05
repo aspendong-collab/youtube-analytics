@@ -455,6 +455,195 @@ export const updateInfluencerSchema = createInsertSchema(influencers)
   })
   .partial();
 
+// ==================== 竞品监控相关表 ====================
+
+// Competitors 表 - 存储竞品信息
+export const competitors = pgTable(
+  "competitors",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    name: varchar("name", { length: 100 }).notNull(), // 竞品名称，如 "PDFelement"
+    slug: varchar("slug", { length: 50 }).notNull().unique(), // URL友好的标识符
+    category: varchar("category", { length: 50 }).notNull(), // 分类，如 "PDF软件"
+    description: text("description"), // 描述
+    company: varchar("company", { length: 100 }), // 公司名称
+    website: varchar("website", { length: 255 }), // 官网地址
+    logo: text("logo"), // Logo URL
+    // 监控配置
+    isActive: boolean("is_active").default(true).notNull(), // 是否启用监控
+    keywords: jsonb("keywords").$type<string[]>(), // 监控关键词列表
+    priority: integer("priority").default(0), // 优先级（0-10），数字越大优先级越高
+    // 元数据
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+  },
+  (table) => ({
+    slugIdx: unique("competitors_slug_idx").on(table.slug),
+    categoryIdx: index("competitors_category_idx").on(table.category),
+    isActiveIdx: index("competitors_is_active_idx").on(table.isActive),
+    priorityIdx: index("competitors_priority_idx").on(table.priority),
+  })
+);
+
+// Competitor Videos 表 - 竞品监控视频关联表（存储视频与竞品的关系）
+export const competitorVideos = pgTable(
+  "competitor_videos",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    competitorId: varchar("competitor_id", { length: 36 }).notNull(), // 关联到 competitors.id
+    videoId: varchar("video_id", { length: 20 }).notNull(), // YouTube视频ID
+    relevanceScore: decimal("relevance_score", { precision: 3, scale: 2 }).default('0'), // 相关性评分（0-1）
+    mentionType: varchar("mention_type", { length: 20 }).default('unknown'), // 提及类型：title, description, tag, all
+    // 统计数据（快照）
+    viewsAtDetection: integer("views_at_detection").default(0), // 检测时的播放量
+    viewsCurrent: integer("views_current").default(0), // 当前播放量
+    viewsGrowth: integer("views_growth").default(0), // 播放量增长
+    growthRate: decimal("growth_rate", { precision: 5, scale: 2 }).default('0'), // 增长率
+    firstDetectedAt: timestamp("first_detected_at", { withTimezone: true }), // 首次检测时间
+    lastDetectedAt: timestamp("last_detected_at", { withTimezone: true }), // 最后检测时间
+    // 元数据
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+  },
+  (table) => ({
+    competitorIdIdx: index("competitor_videos_competitor_id_idx").on(table.competitorId),
+    videoIdIdx: index("competitor_videos_video_id_idx").on(table.videoId),
+    firstDetectedIdx: index("competitor_videos_first_detected_idx").on(table.firstDetectedAt),
+    uniqueCompetitorVideo: unique("competitor_videos_unique_idx").on(table.competitorId, table.videoId),
+  })
+);
+
+// Competitor Monitoring Tasks 表 - 监控任务执行记录
+export const competitorTasks = pgTable(
+  "competitor_tasks",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    taskType: varchar("task_type", { length: 50 }).notNull(), // 任务类型：daily_scan, keyword_search, etc.
+    status: varchar("status", { length: 20 }).notNull().default('pending'), // 状态：pending, running, completed, failed
+    // 执行信息
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    duration: integer("duration"), // 执行时长（秒）
+    // 统计信息
+    competitorsScanned: integer("competitors_scanned").default(0), // 扫描的竞品数
+    videosFound: integer("videos_found").default(0), // 发现的视频数
+    videosAdded: integer("videos_added").default(0), // 新增的视频数
+    apiCalls: integer("api_calls").default(0), // API调用次数
+    apiQuotaUsed: integer("api_quota_used").default(0), // 使用的API配额
+    // 错误信息
+    errorMessage: text("error_message"),
+    errorDetails: jsonb("error_details").$type<any>(),
+    // 元数据
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+  },
+  (table) => ({
+    taskTypeIdx: index("competitor_tasks_task_type_idx").on(table.taskType),
+    statusIdx: index("competitor_tasks_status_idx").on(table.status),
+    startedAtIdx: index("competitor_tasks_started_at_idx").on(table.startedAt),
+    createdAtIdx: index("competitor_tasks_created_at_idx").on(table.createdAt),
+  })
+);
+
+// ==================== 竞品监控 Schemas ====================
+
+// Competitor schemas
+export const insertCompetitorSchema = createInsertSchema(competitors).pick({
+  name: true,
+  slug: true,
+  category: true,
+  description: true,
+  company: true,
+  website: true,
+  logo: true,
+  isActive: true,
+  keywords: true,
+  priority: true,
+});
+
+export const updateCompetitorSchema = createInsertSchema(competitors)
+  .pick({
+    name: true,
+    category: true,
+    description: true,
+    company: true,
+    website: true,
+    logo: true,
+    isActive: true,
+    keywords: true,
+    priority: true,
+  })
+  .partial();
+
+// Competitor Video schemas
+export const insertCompetitorVideoSchema = createInsertSchema(competitorVideos).pick({
+  competitorId: true,
+  videoId: true,
+  relevanceScore: true,
+  mentionType: true,
+  viewsAtDetection: true,
+  viewsCurrent: true,
+  viewsGrowth: true,
+  growthRate: true,
+  firstDetectedAt: true,
+  lastDetectedAt: true,
+});
+
+export const updateCompetitorVideoSchema = createInsertSchema(competitorVideos)
+  .pick({
+    relevanceScore: true,
+    mentionType: true,
+    viewsCurrent: true,
+    viewsGrowth: true,
+    growthRate: true,
+    lastDetectedAt: true,
+  })
+  .partial();
+
+// Competitor Task schemas
+export const insertCompetitorTaskSchema = createInsertSchema(competitorTasks).pick({
+  taskType: true,
+  status: true,
+  startedAt: true,
+  completedAt: true,
+  duration: true,
+  competitorsScanned: true,
+  videosFound: true,
+  videosAdded: true,
+  apiCalls: true,
+  apiQuotaUsed: true,
+  errorMessage: true,
+  errorDetails: true,
+});
+
+export const updateCompetitorTaskSchema = createInsertSchema(competitorTasks)
+  .pick({
+    status: true,
+    startedAt: true,
+    completedAt: true,
+    duration: true,
+    competitorsScanned: true,
+    videosFound: true,
+    videosAdded: true,
+    apiCalls: true,
+    apiQuotaUsed: true,
+    errorMessage: true,
+    errorDetails: true,
+  })
+  .partial();
+
 // Influencer Cache schemas
 export const insertInfluencerCacheSchema = createInsertSchema(influencerCache).pick({
   channelId: true,
@@ -528,3 +717,19 @@ export type SentimentType = 'positive' | 'neutral' | 'negative';
 // Influencer types
 export type InfluencerStatus = 'available' | 'contacted' | 'collaborating' | 'blacklist';
 export type InfluencerLevel = 'S' | 'A' | 'B' | 'C' | 'D';
+
+// Competitor types
+export type Competitor = typeof competitors.$inferSelect;
+export type InsertCompetitor = z.infer<typeof insertCompetitorSchema>;
+export type UpdateCompetitor = z.infer<typeof updateCompetitorSchema>;
+
+export type CompetitorVideo = typeof competitorVideos.$inferSelect;
+export type InsertCompetitorVideo = z.infer<typeof insertCompetitorVideoSchema>;
+export type UpdateCompetitorVideo = z.infer<typeof updateCompetitorVideoSchema>;
+
+export type CompetitorTask = typeof competitorTasks.$inferSelect;
+export type InsertCompetitorTask = z.infer<typeof insertCompetitorTaskSchema>;
+export type UpdateCompetitorTask = z.infer<typeof updateCompetitorTaskSchema>;
+
+export type CompetitorTaskStatus = 'pending' | 'running' | 'completed' | 'failed';
+export type MentionType = 'title' | 'description' | 'tag' | 'all' | 'unknown';
