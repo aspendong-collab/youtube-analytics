@@ -253,6 +253,8 @@ export class InfluencerAffiliateService {
       const relevanceLanguage = InfluencerAffiliateService.LANGUAGE_CODES[language] || 'en';
       const regionCode = InfluencerAffiliateService.REGION_CODES[language] || 'US';
 
+      console.log(`[AffiliateService] 调用 YouTube Search API: keyword="${keyword}", lang=${relevanceLanguage}, region=${regionCode}, maxResults=${maxResults}`);
+
       const searchResponse = await Promise.race([
         this.youtube.search.list({
           q: keyword,
@@ -264,7 +266,7 @@ export class InfluencerAffiliateService {
           order: 'relevance'
         }),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('YouTube API search timeout')), 15000)
+          setTimeout(() => reject(new Error('YouTube API search timeout (30s)')), 30000)
         )
       ]);
 
@@ -281,6 +283,7 @@ export class InfluencerAffiliateService {
       const channelIds: string[] = [];
 
       if (searchResponse.data.items) {
+        console.log(`[AffiliateService] YouTube Search API 返回 ${searchResponse.data.items.length} 个结果`);
         for (const item of searchResponse.data.items) {
           if (item.id?.videoId) {
             videoIds.push(item.id.videoId);
@@ -289,11 +292,16 @@ export class InfluencerAffiliateService {
             channelIds.push(item.snippet.channelId);
           }
         }
+      } else {
+        console.warn('[AffiliateService] YouTube Search API 未返回任何结果');
       }
 
       if (videoIds.length === 0) {
+        console.log('[AffiliateService] 未找到任何视频 ID');
         return [];
       }
+
+      console.log(`[AffiliateService] 准备获取 ${videoIds.length} 个视频的详细信息`);
 
       // 获取视频详情
       const videosResponse = await Promise.race([
@@ -302,7 +310,7 @@ export class InfluencerAffiliateService {
           part: ['snippet', 'statistics']
         }),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('YouTube API videos timeout')), 15000)
+          setTimeout(() => reject(new Error('YouTube API videos timeout (30s)')), 30000)
         )
       ]);
 
@@ -314,6 +322,7 @@ export class InfluencerAffiliateService {
 
       const videos: YouTubeVideo[] = [];
       if (videosResponse.data.items) {
+        console.log(`[AffiliateService] YouTube Videos API 返回 ${videosResponse.data.items.length} 个视频详情`);
         for (const video of videosResponse.data.items) {
           videos.push({
             id: video.id,
@@ -330,11 +339,25 @@ export class InfluencerAffiliateService {
             subscriberCount: undefined // 需要额外获取
           });
         }
+      } else {
+        console.warn('[AffiliateService] YouTube Videos API 未返回任何视频详情');
       }
 
+      console.log(`[AffiliateService] 成功获取 ${videos.length} 个视频的完整信息`);
       return videos;
     } catch (error) {
-      console.error('[AffiliateService] 搜索视频失败:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[AffiliateService] 搜索视频失败:', errorMessage);
+
+      // 如果是配额问题，记录详细信息
+      if (errorMessage.includes('quota')) {
+        console.error('[AffiliateService] YouTube API 配额已用完，请稍后重试或升级配额');
+      } else if (errorMessage.includes('timeout')) {
+        console.error('[AffiliateService] YouTube API 请求超时，网络可能较慢');
+      } else if (errorMessage.includes('API key')) {
+        console.error('[AffiliateService] YouTube API Key 无效或未配置');
+      }
+
       return [];
     }
   }
@@ -358,7 +381,7 @@ export class InfluencerAffiliateService {
           order: 'relevance'
         }),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('YouTube API comments timeout')), 10000)
+          setTimeout(() => reject(new Error('YouTube API comments timeout (20s)')), 20000)
         )
       ]);
 

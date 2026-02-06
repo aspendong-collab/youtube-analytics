@@ -108,14 +108,20 @@ export default function AffiliateExpansionPage() {
       if (result.success) {
         setInfluencers(result.data);
         if (result.data.length === 0) {
-          setError('未找到符合条件的博主，请尝试其他关键词');
+          setError('未找到符合条件的博主。可能的原因：\n• 该关键词没有相关的 affiliate 博主\n• YouTube API 响应超时或配额限制\n• 请尝试其他更具体的关键词');
         }
       } else {
-        setError(result.error || '搜索失败');
+        if (result.code === 'TIMEOUT') {
+          setError('搜索超时，YouTube API 响应时间过长，请稍后重试');
+        } else if (result.code === 'QUOTA_EXCEEDED') {
+          setError('YouTube API 配额已用完，请稍后重试');
+        } else {
+          setError(result.error || '搜索失败，请稍后重试');
+        }
       }
     } catch (err) {
       console.error('搜索失败:', err);
-      setError('搜索失败，请稍后重试');
+      setError('网络错误，请检查网络连接后重试');
     } finally {
       setLoading(false);
     }
@@ -242,9 +248,11 @@ export default function AffiliateExpansionPage() {
       {error && (
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-red-800">
-              <AlertCircle className="h-5 w-5" />
-              <span>{error}</span>
+            <div className="flex items-start gap-3 text-red-800">
+              <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+              <div className="whitespace-pre-line text-sm">
+                {error}
+              </div>
             </div>
           </CardContent>
         </Card>
