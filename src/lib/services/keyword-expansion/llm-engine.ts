@@ -228,9 +228,14 @@ export class LLMEngine {
 
       const response = await Promise.race([llmPromise, timeoutPromise]) as any;
 
+      console.log('LLM 响应:', response.substring(0, 100)); // 打印前100个字符
       const data = JSON.parse(response);
 
       const keywords = data.keywords || [];
+      console.log(`LLM 生成 ${keywords.length} 个关键词`);
+      if (keywords.length === 0) {
+        console.warn('LLM 返回空数组，响应:', response);
+      }
 
       return keywords.map((k: any) => {
         const relevance = k.relevance || 0.8;
@@ -249,6 +254,8 @@ export class LLMEngine {
       });
     } catch (error) {
       console.error('LLM场景生成失败:', error);
+      console.error('错误详情:', error instanceof Error ? error.message : String(error));
+      console.error('错误堆栈:', error instanceof Error ? error.stack : 'No stack');
       return [];
     }
   }
@@ -399,15 +406,20 @@ ALL keywords must be in ${targetLanguage} language.`;
       { role: 'user', content: prompt }
     ];
 
+    console.log('调用 LLM API，prompt 长度:', prompt.length);
+
     const response = await this.client.invoke(messages, {
       model: 'doubao-seed-1-6-flash-250615',
       temperature: 0.8,
     });
 
     const content = response.content;
+    console.log('LLM 响应内容:', content.substring(0, 200)); // 打印前200个字符
+
     const data = JSON.parse(content);
 
     const keywords = data.keywords || [];
+    console.log(`解析得到 ${keywords.length} 个关键词`);
 
     return keywords.map((k: any) => {
       const relevance = k.relevance || 0.8;

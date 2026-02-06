@@ -73,7 +73,7 @@ export default function KeywordExpansionPage() {
   const [language, setLanguage] = useState<SupportedLanguage>('zh-CN');
   const [useRuleEngine, setUseRuleEngine] = useState(true);
   const [useLLMEngine, setUseLLMEngine] = useState(true);
-  const [useDataMining, setUseDataMining] = useState(false);
+  const [useDataMining, setUseDataMining] = useState(true); // 默认启用数据挖掘
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ExpansionResponse | null>(null);
   const [selectedDimension, setSelectedDimension] = useState<string>('all');

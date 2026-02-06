@@ -87,6 +87,7 @@ export class DataMiningEngine {
   // 从视频标签中提取关键词
   async extractFromTags(keyword: string, maxResults: number = 20): Promise<ExpansionResult[]> {
     try {
+      console.log(`[数据挖掘-标签] 开始提取关键词: ${keyword}`);
       // 检查配额
       const canCallSearch = await youtubeApiQuotaService.canMakeCall('search', 'search.list');
       if (!canCallSearch) {
@@ -199,9 +200,12 @@ export class DataMiningEngine {
 
       // 去重
       const uniqueKeywords = this.deduplicateKeywords(keywords);
+      console.log(`[数据挖掘-标签] 提取完成，共 ${uniqueKeywords.length} 个关键词`);
       return uniqueKeywords.slice(0, maxResults);
     } catch (error: any) {
       console.error('标签提取失败:', error);
+      console.error('错误详情:', error.message);
+      console.error('错误堆栈:', error.stack);
       
       if (error.code === 429 || error.code === 403) {
         await youtubeApiQuotaService.recordApiCall('search', 'search.list', false, error.message, {
@@ -218,6 +222,7 @@ export class DataMiningEngine {
   // 从视频评论中提取关键词
   async extractFromComments(keyword: string, maxResults: number = 15): Promise<ExpansionResult[]> {
     try {
+      console.log(`[数据挖掘-评论] 开始提取关键词: ${keyword}`);
       // 检查配额
       const canCallSearch = await youtubeApiQuotaService.canMakeCall('search', 'search.list');
       if (!canCallSearch) {
@@ -329,9 +334,12 @@ export class DataMiningEngine {
 
       // 去重
       const uniqueKeywords = this.deduplicateKeywords(keywords);
+      console.log(`[数据挖掘-评论] 提取完成，共 ${uniqueKeywords.length} 个关键词`);
       return uniqueKeywords.slice(0, maxResults);
     } catch (error: any) {
       console.error('评论提取失败:', error);
+      console.error('错误详情:', error.message);
+      console.error('错误堆栈:', error.stack);
       
       if (error.code === 429 || error.code === 403) {
         await youtubeApiQuotaService.recordApiCall('search', 'search.list', false, error.message, {
