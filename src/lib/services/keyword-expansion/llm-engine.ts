@@ -1,17 +1,19 @@
 import { ExpansionResult, KeywordDimension, SupportedLanguage, LANGUAGE_NAMES, YOUTUBE_LANGUAGE_CODES } from './types';
-import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
 
 /**
- * LLM引擎：使用大语言模型进行智能关键词拓展
+ * LLM引擎：使用 DeepSeek 大语言模型进行智能关键词拓展
  */
 export class LLMEngine {
-  private client: LLMClient;
   private customHeaders: Record<string, string> | undefined;
+  private apiKey: string | undefined;
 
   constructor(customHeaders?: Record<string, string>) {
-    const config = new Config();
-    this.client = new LLMClient(config);
     this.customHeaders = customHeaders;
+    this.apiKey = process.env.DEEPSEEK_API_KEY;
+
+    if (!this.apiKey) {
+      console.warn('[LLM引擎] 未找到 DEEPSEEK_API_KEY 环境变量，LLM 功能将不可用');
+    }
   }
 
   /**
@@ -279,21 +281,45 @@ export class LLMEngine {
 
   // 调用LLM并返回响应内容
   private async invokeLLM(prompt: string): Promise<string> {
-    const messages: Array<{ role: 'user'; content: string }> = [
-      { role: 'user', content: prompt }
-    ];
+    if (!this.apiKey) {
+      throw new Error('DEEPSEEK_API_KEY 未配置');
+    }
 
-    const response = await this.client.invoke(
-      messages,
-      {
-        model: 'deepseek-chat',
-        temperature: 0.8,
+    console.log('[LLM引擎] 调用 DeepSeek API...');
+
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`,
       },
-      undefined,
-      this.customHeaders
-    );
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.8,
+        max_tokens: 2000,
+      }),
+    });
 
-    return response.content;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[LLM引擎] DeepSeek API 调用失败:', response.status, errorText);
+      throw new Error(`DeepSeek API 错误: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+
+    if (!content) {
+      console.error('[LLM引擎] DeepSeek API 返回空响应，完整响应:', JSON.stringify(data));
+      throw new Error('DeepSeek API 返回空响应');
+    }
+
+    console.log('[LLM引擎] DeepSeek API 调用成功，响应长度:', content.length);
+    console.log('[LLM引擎] 响应内容前200字符:', content.substring(0, 200));
+    return content;
   }
 
   // 使用LLM生成所有维度的关键词
@@ -309,9 +335,9 @@ export class LLMEngine {
     // 使用Promise.allSettled并发调用，并为每个调用添加超时控制
     const promises = dimensions.map(async (dimension) => {
       try {
-        // 添加10秒超时控制
+        // 添加40秒超时控制
         const timeoutPromise = new Promise<ExpansionResult[]>((_, reject) => {
-          setTimeout(() => reject(new Error('LLM timeout')), 10000);
+          setTimeout(() => reject(new Error('LLM timeout')), 40000);
         });
 
         const resultPromise = this.generateDimensionKeywords(keyword, dimension, language);
@@ -406,9 +432,9 @@ Return JSON:
 ALL keywords must be in ${targetLanguage} language.`;
 
     try {
-      // 添加10秒超时控制
+      // 添加50秒超时控制
       const timeoutPromise = new Promise<ExpansionResult[]>((_, reject) => {
-        setTimeout(() => reject(new Error('LLM timeout')), 10000);
+        setTimeout(() => reject(new Error('LLM timeout')), 50000);
       });
 
       const llmPromise = this.invokeLLMWithParse(prompt);
@@ -424,29 +450,70 @@ ALL keywords must be in ${targetLanguage} language.`;
 
   // 调用LLM并解析JSON响应
   private async invokeLLMWithParse(prompt: string): Promise<ExpansionResult[]> {
-    const messages: Array<{ role: 'user'; content: string }> = [
-      { role: 'user', content: prompt }
-    ];
+    if (!this.apiKey) {
+      throw new Error('DEEPSEEK_API_KEY 未配置');
+    }
 
-    console.log('调用 LLM API，prompt 长度:', prompt.length);
+    console.log('[LLM引擎] 调用 DeepSeek API，prompt 长度:', prompt.length);
 
-    const response = await this.client.invoke(
-      messages,
-      {
-        model: 'deepseek-chat',
-        temperature: 0.8,
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`,
       },
-      undefined,
-      this.customHeaders
-    );
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.8,
+        max_tokens: 2000,
+      }),
+    });
 
-    const content = response.content;
-    console.log('LLM 响应内容:', content.substring(0, 200)); // 打印前200个字符
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[LLM引擎] DeepSeek API 调用失败:', response.status, errorText);
+      throw new Error(`DeepSeek API 错误: ${response.status} - ${errorText}`);
+    }
 
-    const data = JSON.parse(content);
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
 
-    const keywords = data.keywords || [];
-    console.log(`解析得到 ${keywords.length} 个关键词`);
+    if (!content) {
+      throw new Error('DeepSeek API 返回空响应');
+    }
+
+    console.log('[LLM引擎] LLM 响应内容:', content.substring(0, 200)); // 打印前200个字符
+
+    // 移除 markdown 代码块标记
+    let cleanContent = content.trim();
+    if (cleanContent.startsWith('```json')) {
+      cleanContent = cleanContent.substring(7);
+    } else if (cleanContent.startsWith('```')) {
+      cleanContent = cleanContent.substring(3);
+    }
+    if (cleanContent.endsWith('```')) {
+      cleanContent = cleanContent.substring(0, cleanContent.length - 3);
+    }
+    cleanContent = cleanContent.trim();
+
+    let jsonData;
+    try {
+      jsonData = JSON.parse(cleanContent);
+    } catch (parseError) {
+      console.error('[LLM引擎] JSON 解析失败，原始内容:', content);
+      console.error('[LLM引擎] 清理后的内容:', cleanContent);
+      throw new Error(`JSON 解析失败: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+    }
+
+    const keywords = jsonData.keywords || [];
+
+    console.log(`[LLM引擎] 解析得到 ${keywords.length} 个关键词`);
+    if (keywords.length === 0) {
+      console.warn('[LLM引擎] 关键词数组为空，完整响应:', JSON.stringify(jsonData));
+    }
 
     return keywords.map((k: any) => {
       const relevance = k.relevance || 0.8;
@@ -535,24 +602,43 @@ ALL keywords must be in ${targetLanguage} language.`;
 
   // 调用LLM进行优化评估
   private async invokeOptimize(prompt: string, keywords: ExpansionResult[]): Promise<any[]> {
-    const messages: Array<{ role: 'user'; content: string }> = [
-      { role: 'user', content: prompt }
-    ];
+    if (!this.apiKey) {
+      throw new Error('DEEPSEEK_API_KEY 未配置');
+    }
 
-    const response = await this.client.invoke(
-      messages,
-      {
-        model: 'deepseek-chat',
-        temperature: 0.5,
+    console.log('[LLM引擎] 调用 DeepSeek API 进行优化评估...');
+
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`,
       },
-      undefined,
-      this.customHeaders
-    );
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.5,
+        max_tokens: 3000,
+      }),
+    });
 
-    const content = response.content;
-    const data = JSON.parse(content);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[LLM引擎] DeepSeek API 调用失败:', response.status, errorText);
+      throw new Error(`DeepSeek API 错误: ${response.status} - ${errorText}`);
+    }
 
-    return data.evaluations || [];
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+
+    if (!content) {
+      throw new Error('DeepSeek API 返回空响应');
+    }
+
+    const jsonData = JSON.parse(content);
+    return jsonData.evaluations || [];
   }
 }
 

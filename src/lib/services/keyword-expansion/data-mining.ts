@@ -25,7 +25,7 @@ export class DataMiningEngine {
   }
 
   // 包装YouTube API调用，添加超时控制
-  private async callWithTimeout<T>(promise: Promise<T>, timeoutMs: number = 15000): Promise<T | null> {
+  private async callWithTimeout<T>(promise: Promise<T>, timeoutMs: number = 3000): Promise<T | null> {
     try {
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('YouTube API timeout')), timeoutMs);
@@ -33,7 +33,7 @@ export class DataMiningEngine {
 
       return await Promise.race([promise, timeoutPromise]);
     } catch (error) {
-      console.error('YouTube API调用失败:', error);
+      console.error('[数据挖掘] YouTube API调用超时或失败:', error instanceof Error ? error.message : String(error));
       return null;
     }
   }

@@ -314,7 +314,7 @@ Please return in the following JSON format (do NOT include any other text):
           order: 'relevance'
         }),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('YouTube API search timeout (10s)')), 10000)
+          setTimeout(() => reject(new Error('YouTube API search timeout (3s)')), 3000)
         )
       ]);
 
@@ -373,16 +373,22 @@ Please return in the following JSON format (do NOT include any other text):
 
       return { isValid, estimatedVolume, averageViews };
     } catch (error) {
-      console.error(`[语义拓展] 验证关键词 "${keyword}" 热度失败:`, error);
+      console.error(`[语义拓展] 验证关键词 "${keyword}" 热度失败:`, error instanceof Error ? error.message : String(error));
 
       // 如果是配额限制错误，默认返回有效
-      if (error.code === 429 || error.code === 403) {
-        await youtubeApiQuotaService.recordApiCall('search', 'search.list', false, error.message, {
+      if ((error as any).code === 429 || (error as any).code === 403) {
+        await youtubeApiQuotaService.recordApiCall('search', 'search.list', false, (error as Error).message, {
           keyword,
-          errorCode: error.code,
+          errorCode: (error as any).code,
           purpose: 'semanticExpansion'
         });
         return { isValid: true, estimatedVolume: 1000, averageViews: 10000 };
+      }
+
+      // 如果是超时错误，返回一个合理的估算值（假设关键词有一定的热度）
+      if (error instanceof Error && error.message.includes('timeout')) {
+        console.warn(`[语义拓展] YouTube API 超时，使用估算值: ${keyword}`);
+        return { isValid: true, estimatedVolume: 500, averageViews: 5000 };
       }
 
       return { isValid: false, estimatedVolume: 0, averageViews: 0 };
