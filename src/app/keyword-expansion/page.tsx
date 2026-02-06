@@ -798,7 +798,7 @@ export default function KeywordExpansionPage() {
                 <CardTitle>数据来源统计</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-5 gap-4">
                   {(() => {
                     const allKeywords = Object.values(result.dimensions).flat();
                     const sources = [
@@ -806,6 +806,7 @@ export default function KeywordExpansionPage() {
                       { source: 'llm', name: 'AI生成', color: 'bg-blue-500', icon: Zap },
                       { source: 'tagMining', name: '标签提取', color: 'bg-green-500', icon: Target },
                       { source: 'commentMining', name: '评论提取', color: 'bg-purple-500', icon: Home },
+                      { source: 'semanticExpansion', name: '语义相似度', color: 'bg-orange-500', icon: Languages },
                     ];
                     return sources.map(({ source, name, color, icon: Icon }) => {
                       const count = allKeywords.filter((k: any) => k.source === source).length;

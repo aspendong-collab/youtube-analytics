@@ -286,7 +286,7 @@ export class LLMEngine {
     const response = await this.client.invoke(
       messages,
       {
-        model: 'doubao-seed-1-6-flash-250615',
+        model: 'deepseek-chat',
         temperature: 0.8,
       },
       undefined,
@@ -433,7 +433,7 @@ ALL keywords must be in ${targetLanguage} language.`;
     const response = await this.client.invoke(
       messages,
       {
-        model: 'doubao-seed-1-6-flash-250615',
+        model: 'deepseek-chat',
         temperature: 0.8,
       },
       undefined,
@@ -542,7 +542,7 @@ ALL keywords must be in ${targetLanguage} language.`;
     const response = await this.client.invoke(
       messages,
       {
-        model: 'doubao-seed-1-6-flash-250615',
+        model: 'deepseek-chat',
         temperature: 0.5,
       },
       undefined,
