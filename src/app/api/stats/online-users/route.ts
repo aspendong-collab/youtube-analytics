@@ -4,21 +4,38 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-
-// 模拟在线人数（实际应该使用 WebSocket 或 Redis）
-let onlineUsers = Math.floor(Math.random() * 50) + 10;
+import { db } from '@/storage/database/db';
+import { users } from '@/storage/database/shared/schema';
+import { sql } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
-    // 在实际应用中，这里应该从数据库或 Redis 获取真实的在线人数
-    // 目前使用模拟数据
-    onlineUsers = Math.floor(Math.random() * 50) + 10;
+    // 统计最近5分钟内有活动的用户
+    // 5分钟 = 5 * 60 * 1000 = 300000 毫秒
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+    // 查询活跃用户（基于 updatedAt 或 lastLoginAt）
+    // 条件：
+    // 1. isActive = true
+    // 2. status = 'approved'
+    // 3. (updatedAt > 5分钟前 OR lastLoginAt > 5分钟前)
+    const onlineUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(
+        sql`${users.isActive} = true
+          AND ${users.status} = 'approved'
+          AND (${users.updatedAt} > ${fiveMinutesAgo} OR ${users.lastLoginAt} > ${fiveMinutesAgo})`
+      );
+
+    const count = onlineUsers.length;
 
     return NextResponse.json({
       success: true,
       data: {
-        onlineUsers,
-        timestamp: new Date().toISOString()
+        onlineUsers: count,
+        timestamp: new Date().toISOString(),
+        note: '统计最近5分钟内有活动的已激活且已审核用户'
       }
     });
   } catch (error) {
