@@ -936,3 +936,271 @@ export type UpdateYoutubeApiQuota = Partial<InsertYoutubeApiQuota>;
 
 export type ApiCallLog = typeof apiCallLogs.$inferSelect;
 export type InsertApiCallLog = typeof apiCallLogs.$inferInsert;
+
+// ==================== Affiliate 拓展相关表 ====================
+
+// Affiliate Videos 表 - 记录包含 affiliate 标识的视频
+export const affiliateVideos = pgTable(
+  "affiliate_videos",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    videoId: varchar("video_id", { length: 20 }).notNull(),
+    channelId: varchar("channel_id", { length: 50 }).notNull(),
+    videoTitle: varchar("video_title", { length: 500 }),
+    thumbnail: text("thumbnail"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    viewCount: integer("view_count").default(0),
+    likeCount: integer("like_count").default(0),
+
+    // Affiliate 检测结果
+    affiliateScore: decimal("affiliate_score", { precision: 5, scale: 2 }).default('0'), // 0-100
+    affiliateEvidence: jsonb("affiliate_evidence").notNull(), // 完整的检测证据
+    descriptionAnalysis: jsonb("description_analysis"), // 视频描述分析结果
+    commentAnalysis: jsonb("comment_analysis"), // 评论分析结果
+
+    // 提取的联系信息
+    extractedEmail: varchar("extracted_email", { length: 255 }),
+    extractedSocialLinks: jsonb("extracted_social_links").$type<string[]>(),
+
+    // 元数据
+    searchKeyword: varchar("search_keyword", { length: 200 }), // 搜索关键词
+    searchLanguage: varchar("search_language", { length: 20 }), // 搜索语言
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+  },
+  (table) => ({
+    videoIdIdx: unique("affiliate_videos_video_id_idx").on(table.videoId),
+    channelIdIdx: index("affiliate_videos_channel_id_idx").on(table.channelId),
+    affiliateScoreIdx: index("affiliate_videos_affiliate_score_idx").on(table.affiliateScore),
+    searchKeywordIdx: index("affiliate_videos_search_keyword_idx").on(table.searchKeyword),
+    createdAtIdx: index("affiliate_videos_created_at_idx").on(table.createdAt),
+  })
+);
+
+// Affiliate Links 表 - 记录具体的 affiliate 链接
+export const affiliateLinks = pgTable(
+  "affiliate_links",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    videoId: varchar("video_id", { length: 20 }).notNull(),
+    channelId: varchar("channel_id", { length: 50 }).notNull(),
+
+    // 链接信息
+    linkType: varchar("link_type", { length: 20 }).notNull(), // ref, utm, short, keyword, disclosure
+    linkValue: text("link_value").notNull(), // 链接值或关键词
+    fullUrl: text("full_url"), // 完整 URL（如果有）
+    position: varchar("position", { length: 20 }).notNull(), // description, comment
+
+    // 统计信息
+    frequency: integer("frequency").default(1), // 出现次数
+
+    // 元数据
+    searchKeyword: varchar("search_keyword", { length: 200 }),
+    searchLanguage: varchar("search_language", { length: 20 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    videoIdIdx: index("affiliate_links_video_id_idx").on(table.videoId),
+    channelIdIdx: index("affiliate_links_channel_id_idx").on(table.channelId),
+    linkTypeIdx: index("affiliate_links_link_type_idx").on(table.linkType),
+    searchKeywordIdx: index("affiliate_links_search_keyword_idx").on(table.searchKeyword),
+  })
+);
+
+// Affiliate Influencers 表 - 存储已识别的 affiliate 博主信息
+export const affiliateInfluencers = pgTable(
+  "affiliate_influencers",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    channelId: varchar("channel_id", { length: 50 }).notNull().unique(),
+    channelTitle: varchar("channel_title", { length: 200 }).notNull(),
+    thumbnail: text("thumbnail"),
+    subscriberCount: integer("subscriber_count").default(0),
+    totalVideos: integer("total_videos").default(0),
+    totalViews: integer("total_views").default(0),
+
+    // Affiliate 信息
+    affiliateScore: decimal("affiliate_score", { precision: 5, scale: 2 }).default('0'), // 0-100
+    affiliateStatus: varchar("affiliate_status", { length: 20 }).default('potential'), // potential, verified, rejected
+    affiliateVerifiedAt: timestamp("affiliate_verified_at", { withTimezone: true }),
+    affiliateEvidence: jsonb("affiliate_evidence").$type<Array<{
+      type: string;
+      value: string;
+      fullUrl?: string;
+      position: string;
+      videoId?: string;
+    }>>(),
+
+    // 联系信息
+    email: varchar("email", { length: 255 }),
+    phone: varchar("phone", { length: 20 }),
+    wechat: varchar("wechat", { length: 50 }),
+    extractedEmails: jsonb("extracted_emails").$type<string[]>(), // 从视频中提取的邮箱列表
+    socialLinks: jsonb("social_links").$type<string[]>(),
+
+    // 博主信息
+    description: text("description"),
+    tags: jsonb("tags").$type<string[]>(),
+    category: varchar("category", { length: 50 }),
+    niche: varchar("niche", { length: 100 }),
+
+    // 评分
+    recommendationScore: decimal("recommendation_score", { precision: 5, scale: 2 }).default('0'),
+    qualityScore: decimal("quality_score", { precision: 5, scale: 2 }).default('0'),
+    engagementRate: decimal("engagement_rate", { precision: 5, scale: 2 }).default('0'),
+
+    // 合作状态
+    cooperationStatus: varchar("cooperation_status", { length: 30 }).default('available'), // available, contacted, negotiating, collaborating, completed, rejected
+    lastCooperationDate: timestamp("last_cooperation_date", { withTimezone: true }),
+    cooperationCount: integer("cooperation_count").default(0),
+    notes: text("notes"), // 合作备注
+
+    // 元数据
+    searchKeyword: varchar("search_keyword", { length: 200 }), // 识别时使用的关键词
+    searchLanguage: varchar("search_language", { length: 20 }), // 识别时的语言
+    isFavorite: boolean("is_favorite").default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+  },
+  (table) => ({
+    channelIdIdx: unique("affiliate_influencers_channel_id_idx").on(table.channelId),
+    affiliateScoreIdx: index("affiliate_influencers_affiliate_score_idx").on(table.affiliateScore),
+    affiliateStatusIdx: index("affiliate_influencers_affiliate_status_idx").on(table.affiliateStatus),
+    cooperationStatusIdx: index("affiliate_influencers_cooperation_status_idx").on(table.cooperationStatus),
+    categoryIdx: index("affiliate_influencers_category_idx").on(table.category),
+    searchKeywordIdx: index("affiliate_influencers_search_keyword_idx").on(table.searchKeyword),
+    isFavoriteIdx: index("affiliate_influencers_is_favorite_idx").on(table.isFavorite),
+    createdAtIdx: index("affiliate_influencers_created_at_idx").on(table.createdAt),
+  })
+);
+
+// ==================== Affiliate 拓展 Schemas ====================
+
+// Affiliate Video schemas
+export const insertAffiliateVideoSchema = createInsertSchema(affiliateVideos).pick({
+  videoId: true,
+  channelId: true,
+  videoTitle: true,
+  thumbnail: true,
+  publishedAt: true,
+  viewCount: true,
+  likeCount: true,
+  affiliateScore: true,
+  affiliateEvidence: true,
+  descriptionAnalysis: true,
+  commentAnalysis: true,
+  extractedEmail: true,
+  extractedSocialLinks: true,
+  searchKeyword: true,
+  searchLanguage: true,
+});
+
+export const updateAffiliateVideoSchema = createInsertSchema(affiliateVideos)
+  .pick({
+    affiliateScore: true,
+    affiliateEvidence: true,
+    extractedEmail: true,
+    extractedSocialLinks: true,
+  })
+  .partial();
+
+// Affiliate Link schemas
+export const insertAffiliateLinkSchema = createInsertSchema(affiliateLinks).pick({
+  videoId: true,
+  channelId: true,
+  linkType: true,
+  linkValue: true,
+  fullUrl: true,
+  position: true,
+  frequency: true,
+  searchKeyword: true,
+  searchLanguage: true,
+});
+
+// Affiliate Influencer schemas
+export const insertAffiliateInfluencerSchema = createInsertSchema(affiliateInfluencers).pick({
+  channelId: true,
+  channelTitle: true,
+  thumbnail: true,
+  subscriberCount: true,
+  totalVideos: true,
+  totalViews: true,
+  affiliateScore: true,
+  affiliateStatus: true,
+  affiliateEvidence: true,
+  email: true,
+  phone: true,
+  wechat: true,
+  extractedEmails: true,
+  socialLinks: true,
+  description: true,
+  tags: true,
+  category: true,
+  niche: true,
+  recommendationScore: true,
+  qualityScore: true,
+  engagementRate: true,
+  cooperationStatus: true,
+  searchKeyword: true,
+  searchLanguage: true,
+  isFavorite: true,
+});
+
+export const updateAffiliateInfluencerSchema = createInsertSchema(affiliateInfluencers)
+  .pick({
+    channelTitle: true,
+    thumbnail: true,
+    subscriberCount: true,
+    totalVideos: true,
+    totalViews: true,
+    affiliateScore: true,
+    affiliateStatus: true,
+    affiliateEvidence: true,
+    email: true,
+    phone: true,
+  wechat: true,
+    extractedEmails: true,
+    socialLinks: true,
+    description: true,
+    tags: true,
+    category: true,
+    niche: true,
+    recommendationScore: true,
+    qualityScore: true,
+    engagementRate: true,
+    cooperationStatus: true,
+    lastCooperationDate: true,
+    cooperationCount: true,
+    notes: true,
+    isFavorite: true,
+  })
+  .partial();
+
+// ==================== Affiliate 拓展 Types ====================
+
+export type AffiliateVideo = typeof affiliateVideos.$inferSelect;
+export type InsertAffiliateVideo = z.infer<typeof insertAffiliateVideoSchema>;
+export type UpdateAffiliateVideo = z.infer<typeof updateAffiliateVideoSchema>;
+
+export type AffiliateLink = typeof affiliateLinks.$inferSelect;
+export type InsertAffiliateLink = z.infer<typeof insertAffiliateLinkSchema>;
+
+export type AffiliateInfluencer = typeof affiliateInfluencers.$inferSelect;
+export type InsertAffiliateInfluencer = z.infer<typeof insertAffiliateInfluencerSchema>;
+export type UpdateAffiliateInfluencer = z.infer<typeof updateAffiliateInfluencerSchema>;
+
+export type AffiliateLinkType = 'ref' | 'utm' | 'short' | 'keyword' | 'disclosure';
+export type AffiliateStatus = 'potential' | 'verified' | 'rejected';
+export type CooperationStatus = 'available' | 'contacted' | 'negotiating' | 'collaborating' | 'completed' | 'rejected';

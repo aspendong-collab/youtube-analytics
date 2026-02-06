@@ -31,6 +31,12 @@ export const navItems: NavItem[] = [
     path: '/keyword-expansion',
   },
   {
+    id: 'affiliate-expansion',
+    label: 'Affiliate 拓展',
+    icon: '🤝',
+    path: '/affiliate-expansion',
+  },
+  {
     id: 'monitoring',
     label: '视频监控',
     icon: '📹',
