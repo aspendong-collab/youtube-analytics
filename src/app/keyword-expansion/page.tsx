@@ -684,6 +684,38 @@ export default function KeywordExpansionPage() {
               </Card>
             </div>
 
+            {/* 来源统计 */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>数据来源统计</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-4 gap-4">
+                  {(() => {
+                    const allKeywords = Object.values(result.dimensions).flat();
+                    const sources = [
+                      { source: 'rule', name: '规则引擎', color: 'bg-slate-500', icon: Sparkles },
+                      { source: 'llm', name: 'AI生成', color: 'bg-blue-500', icon: Zap },
+                      { source: 'tagMining', name: '标签提取', color: 'bg-green-500', icon: Target },
+                      { source: 'commentMining', name: '评论提取', color: 'bg-purple-500', icon: Home },
+                    ];
+                    return sources.map(({ source, name, color, icon: Icon }) => {
+                      const count = allKeywords.filter((k: any) => k.source === source).length;
+                      return (
+                        <div key={source} className={`p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800`}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className={`w-3 h-3 rounded-full ${color}`} />
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{name}</span>
+                          </div>
+                          <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{count}</p>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* 维度统计 */}
             <Card className="mb-6">
               <CardHeader>

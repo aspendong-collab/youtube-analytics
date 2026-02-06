@@ -39,6 +39,8 @@ export class KeywordExpansionService {
     if (config.useRuleEngine) {
       console.log('启用规则引擎...');
       const ruleResults = ruleEngine.applyAllRules(inputKeyword, language);
+      const ruleCount = Object.values(ruleResults).flat().length;
+      console.log(`规则引擎生成 ${ruleCount} 个关键词`);
 
       for (const [dimension, results] of Object.entries(ruleResults)) {
         dimensions[dimension as KeywordDimension] = results;
@@ -56,6 +58,8 @@ export class KeywordExpansionService {
       console.log('启用LLM引擎...');
       try {
         const llmResults = await llmEngine.generateAllDimensions(inputKeyword, language);
+        const llmCount = Object.values(llmResults).flat().length;
+        console.log(`LLM引擎生成 ${llmCount} 个关键词`);
 
         for (const [dimension, results] of Object.entries(llmResults)) {
           if (!dimensions[dimension as KeywordDimension]) {
@@ -84,6 +88,7 @@ export class KeywordExpansionService {
 
         // 从标签中提取
         const tagKeywords = await dataMiningEngine.extractFromTags(inputKeyword);
+        console.log(`数据挖掘-标签提取：生成 ${tagKeywords.length} 个关键词`);
         tagKeywords.forEach(result => {
           const key = `${result.dimension}-${result.keyword}`;
           if (!allResults.has(key)) {
@@ -97,6 +102,7 @@ export class KeywordExpansionService {
 
         // 从评论中提取
         const commentKeywords = await dataMiningEngine.extractFromComments(inputKeyword);
+        console.log(`数据挖掘-评论提取：生成 ${commentKeywords.length} 个关键词`);
         commentKeywords.forEach(result => {
           const key = `${result.dimension}-${result.keyword}`;
           if (!allResults.has(key)) {
@@ -171,6 +177,15 @@ export class KeywordExpansionService {
         console.error('获取配额信息失败:', error);
       }
     }
+
+    // 统计各来源关键词数量
+    const sourceStats = {
+      rule: enhancedResults.filter(k => k.source === 'rule').length,
+      llm: enhancedResults.filter(k => k.source === 'llm').length,
+      tagMining: enhancedResults.filter(k => k.source === 'tagMining').length,
+      commentMining: enhancedResults.filter(k => k.source === 'commentMining').length,
+    };
+    console.log('各来源关键词统计:', sourceStats);
 
     return {
       expansionId,
