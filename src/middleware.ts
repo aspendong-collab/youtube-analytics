@@ -26,6 +26,7 @@ export function middleware(req: NextRequest) {
     '/api/test',
     '/api/health',
     '/api/check-env',
+    '/api/check-env-youtube',
     '/api/users/pending',
     '/api/keywords',
     '/api/db',

@@ -37,15 +37,27 @@ export class YoutubeApiKeyPool {
 
     // 策略 1: 读取 YOUTUBE_API_KEY_N 格式（Vercel 常用）
     // 例如: YOUTUBE_API_KEY_1, YOUTUBE_API_KEY_2, ...
+    console.log('[YoutubeApiKeyPool] 开始从环境变量读取 YouTube API Key...');
+    console.log('[YoutubeApiKeyPool] 检查 YOUTUBE_API_KEY_N 格式 (N = 1 to 20)');
+
     for (let i = 1; i <= 20; i++) {
       const key = process.env[`YOUTUBE_API_KEY_${i}`];
       if (key && key.trim().length > 0) {
         keyList.push(key.trim());
+        console.log(`[YoutubeApiKeyPool] ✓ 找到 YOUTUBE_API_KEY_${i}: ${key.substring(0, 10)}...`);
+      } else {
+        // 只在前几个 key 不存在时输出日志
+        if (i <= 6) {
+          console.log(`[YoutubeApiKeyPool] ✗ YOUTUBE_API_KEY_${i} 未找到或为空`);
+        }
       }
     }
 
+    console.log(`[YoutubeApiKeyPool] 通过 YOUTUBE_API_KEY_N 格式找到 ${keyList.length} 个 Key`);
+
     // 策略 2: 读取 YOUTUBE_API_KEYS 或 YOUTUBE_API_KEY（兼容旧格式）
     if (keyList.length === 0) {
+      console.log('[YoutubeApiKeyPool] YOUTUBE_API_KEY_N 格式未找到，尝试读取 YOUTUBE_API_KEYS 或 YOUTUBE_API_KEY...');
       const envKey = process.env.YOUTUBE_API_KEYS || process.env.YOUTUBE_API_KEY || '';
       if (envKey) {
         try {
@@ -56,6 +68,7 @@ export class YoutubeApiKeyPool {
           // 解析失败，尝试逗号分隔
           keyList = envKey.split(',').map(k => k.trim()).filter(k => k.length > 0);
         }
+        console.log(`[YoutubeApiKeyPool] 通过 YOUTUBE_API_KEYS/KEY 格式找到 ${keyList.length} 个 Key`);
       }
     }
 
@@ -79,8 +92,12 @@ export class YoutubeApiKeyPool {
       this.keys.set(keyInfo.id, keyInfo);
     });
 
-    console.log(`[YoutubeApiKeyPool] 已初始化 ${keyList.length} 个 YouTube API Key (格式: YOUTUBE_API_KEY_1, YOUTUBE_API_KEY_2, ...)`);
-    console.log(`[YoutubeApiKeyPool] 总配额: ${keyList.length * 10000}, 每日可用`);
+    console.log(`[YoutubeApiKeyPool] ✓ 已初始化 ${keyList.length} 个 YouTube API Key`);
+    console.log(`[YoutubeApiKeyPool] ✓ 总配额: ${keyList.length * 10000}, 每日可用`);
+    console.log(`[YoutubeApiKeyPool] Key 列表:`);
+    keyList.forEach((key, index) => {
+      console.log(`  - Key ${index + 1}: ${key.substring(0, 10)}...${key.substring(key.length - 5)}`);
+    });
   }
 
   /**

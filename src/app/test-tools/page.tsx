@@ -56,6 +56,26 @@ export default function TestToolsPage() {
     setLoading(false);
   };
 
+  // 检查环境变量
+  const checkEnv = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/check-env-youtube');
+      const result = await response.json();
+      setTestResult({
+        type: 'Environment Variables',
+        data: result,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      setTestResult({
+        type: 'Error',
+        error: error.message
+      });
+    }
+    setLoading(false);
+  };
+
   // 测试 Affiliate 拓展
   const testAffiliate = async () => {
     setLoading(true);
@@ -132,6 +152,9 @@ export default function TestToolsPage() {
                 </Button>
                 <Button onClick={testKeyPool} disabled={loading} variant="outline">
                   {loading ? '测试中...' : '运行完整测试'}
+                </Button>
+                <Button onClick={checkEnv} disabled={loading} variant="secondary">
+                  {loading ? '检查中...' : '检查环境变量'}
                 </Button>
               </div>
 
