@@ -25,7 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Search, Sparkles, Loader2, TrendingUp, BarChart3, Target, Wrench, Car, Home, Award, Zap, Languages, ChevronDown, X, Flame } from 'lucide-react';
+import { Search, Sparkles, Loader2, TrendingUp, BarChart3, Target, Wrench, Car, Home, Award, Zap, Languages, ChevronDown, X, Flame, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import type { ExpansionResponse, ExpansionResult, SupportedLanguage } from '@/lib/services/keyword-expansion/types';
 import { LANGUAGE_NAMES, detectKeywordType } from '@/lib/services/keyword-expansion/types';
 
@@ -79,6 +79,10 @@ export default function KeywordExpansionPage() {
   const [selectedDimension, setSelectedDimension] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all'); // 新增：关键词类型选择
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // 排序状态
+  const [sortBy, setSortBy] = useState<'volume' | 'competition' | 'recommendation' | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // 搜索推荐相关状态
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -281,7 +285,56 @@ export default function KeywordExpansionPage() {
       );
     }
 
+    // 按排序字段和方向排序
+    if (sortBy) {
+      filteredKeywords.sort((a, b) => {
+        let valueA: number;
+        let valueB: number;
+
+        switch (sortBy) {
+          case 'volume':
+            valueA = a.estimatedSearchVolume || 0;
+            valueB = b.estimatedSearchVolume || 0;
+            break;
+          case 'competition':
+            valueA = a.estimatedCompetition || 0;
+            valueB = b.estimatedCompetition || 0;
+            break;
+          case 'recommendation':
+            valueA = a.recommendationScore || 0;
+            valueB = b.recommendationScore || 0;
+            break;
+          default:
+            return 0;
+        }
+
+        return sortOrder === 'asc' ? valueA - valueB : valueB - valueA;
+      });
+    }
+
     return filteredKeywords;
+  };
+
+  // 处理排序
+  const handleSort = (column: 'volume' | 'competition' | 'recommendation') => {
+    if (sortBy === column) {
+      // 如果点击当前排序列，切换排序方向
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // 如果点击新的排序列，设置为该列，默认降序
+      setSortBy(column);
+      setSortOrder('desc');
+    }
+  };
+
+  // 获取排序图标
+  const getSortIcon = (column: 'volume' | 'competition' | 'recommendation') => {
+    if (sortBy !== column) {
+      return <ArrowUpDown className="w-4 h-4 ml-1 text-slate-400" />;
+    }
+    return sortOrder === 'asc'
+      ? <ArrowUp className="w-4 h-4 ml-1 text-blue-600" />
+      : <ArrowDown className="w-4 h-1 ml-1 text-blue-600" />;
   };
 
   const getDimensionStats = () => {
@@ -646,7 +699,11 @@ export default function KeywordExpansionPage() {
                           ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
                           : 'border-slate-200 dark:border-slate-800'
                       }`}
-                      onClick={() => setSelectedDimension(key)}
+                      onClick={() => {
+                        setSelectedDimension(key);
+                        setSortBy(null);
+                        setSortOrder('desc');
+                      }}
                     >
                       <div className="flex items-center gap-2 mb-2">
                         <Icon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
@@ -671,7 +728,11 @@ export default function KeywordExpansionPage() {
                 <div className="grid grid-cols-4 gap-4">
                   {/* 全部 */}
                   <div
-                    onClick={() => setSelectedType('all')}
+                    onClick={() => {
+                      setSelectedType('all');
+                      setSortBy(null);
+                      setSortOrder('desc');
+                    }}
                     className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                       selectedType === 'all'
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
@@ -701,7 +762,11 @@ export default function KeywordExpansionPage() {
                     return (
                       <div
                         key={type}
-                        onClick={() => setSelectedType(type)}
+                        onClick={() => {
+                          setSelectedType(type);
+                          setSortBy(null);
+                          setSortOrder('desc');
+                        }}
                         className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                           isSelected
                             ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
@@ -737,6 +802,8 @@ export default function KeywordExpansionPage() {
                         onClick={() => {
                           setSelectedDimension('all');
                           setSelectedType('all');
+                          setSortBy(null);
+                          setSortOrder('desc');
                         }}
                         className="ml-2 text-xs underline hover:text-blue-900 dark:hover:text-blue-100"
                       >
@@ -770,9 +837,33 @@ export default function KeywordExpansionPage() {
                       <TableHead>关键词</TableHead>
                       <TableHead>维度</TableHead>
                       <TableHead>来源</TableHead>
-                      <TableHead>搜索量</TableHead>
-                      <TableHead>竞争度</TableHead>
-                      <TableHead>推荐指数</TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('volume')}
+                          className="flex items-center gap-1 hover:text-blue-600 transition-colors"
+                        >
+                          搜索量
+                          {getSortIcon('volume')}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('competition')}
+                          className="flex items-center gap-1 hover:text-blue-600 transition-colors"
+                        >
+                          竞争度
+                          {getSortIcon('competition')}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('recommendation')}
+                          className="flex items-center gap-1 hover:text-blue-600 transition-colors"
+                        >
+                          推荐指数
+                          {getSortIcon('recommendation')}
+                        </button>
+                      </TableHead>
                       <TableHead>类型</TableHead>
                     </TableRow>
                   </TableHeader>
