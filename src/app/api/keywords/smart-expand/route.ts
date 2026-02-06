@@ -10,7 +10,7 @@ import type { ExpansionConfig, SupportedLanguage } from '@/lib/services/keyword-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { keyword, category, useRuleEngine, useLLMEngine, useDataMining, language } = body;
+    const { keyword, category, useRuleEngine, useLLMEngine, useDataMining, useSemanticExpansion, language } = body;
 
     // 参数验证
     if (!keyword || typeof keyword !== 'string' || keyword.trim().length === 0) {
@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
       useRuleEngine: useRuleEngine !== false, // 默认启用
       useLLMEngine: useLLMEngine !== false, // 默认启用
       useDataMining: useDataMining !== false, // 默认启用
+      useSemanticExpansion: useSemanticExpansion !== false, // 默认启用
       keywordCategory: category || 'generic',
       language: language || 'zh-CN', // 默认简体中文
     };

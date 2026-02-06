@@ -13,6 +13,7 @@ import { ruleEngine } from './rules';
 import { llmEngine } from './llm-engine';
 import { DataMiningEngine } from './data-mining';
 import { searchVolumeEstimator } from './search-estimator';
+import { SemanticExpansionService } from './semantic-expansion';
 import { youtubeApiQuotaService } from '../youtube-api-quota';
 import { nanoid } from 'nanoid';
 
@@ -137,10 +138,50 @@ export class KeywordExpansionService {
       console.log('[主流程] 数据挖掘引擎未启用');
     }
 
+    // 4. 语义相似度拓展（新增功能）
+    if (config.useSemanticExpansion) {
+      console.log('[主流程] 启用语义相似度拓展...');
+      try {
+        const semanticService = new SemanticExpansionService(language);
+        const semanticResults = await semanticService.expand(inputKeyword, {
+          maxResults: 15,
+          minSearchVolume: 1000,
+          excludeOriginal: true,
+          includeSynonyms: true,
+          includeAntonyms: false,
+          includeRelated: true
+        });
+
+        console.log(`[主流程] 语义相似度拓展：生成 ${semanticResults.length} 个关键词`);
+
+        semanticResults.forEach(result => {
+          const key = `semantic-${result.keyword}`;
+          if (!allResults.has(key)) {
+            allResults.set(key, result);
+            // 将语义关键词归类到最相关的维度
+            const semanticDimension = this.mapSemanticToDimension(result.metadata?.semanticType);
+            if (!dimensions[semanticDimension]) {
+              dimensions[semanticDimension] = [];
+            }
+            dimensions[semanticDimension].push(result);
+          }
+        });
+
+        if (semanticResults.length === 0) {
+          console.warn('[主流程] 语义相似度拓展未生成任何关键词，可能是API配额不足或超时');
+        }
+      } catch (error) {
+        console.error('[主流程] 语义相似度拓展失败:', error);
+        console.error('[主流程] 错误详情:', error instanceof Error ? error.message : String(error));
+      }
+    } else {
+      console.log('[主流程] 语义相似度拓展未启用');
+    }
+
     // 转换为数组
     const allResultsArray = Array.from(allResults.values());
 
-    // 4. 估算搜索量和竞争度（仅在启用数据挖掘时调用API）
+    // 5. 估算搜索量和竞争度（仅在启用数据挖掘时调用API）
     console.log('估算搜索量和竞争度...');
     const enhancedResults = config.useDataMining
       ? await searchVolumeEstimator.estimateBatch(allResultsArray)
@@ -337,6 +378,23 @@ export class KeywordExpansionService {
     } catch (error) {
       console.error('获取拓展详情失败:', error);
       return null;
+    }
+  }
+
+  /**
+   * 将语义关键词映射到维度
+   */
+  private mapSemanticToDimension(semanticType?: string): KeywordDimension {
+    // 根据语义类型映射到最相关的维度
+    switch (semanticType) {
+      case 'synonym':
+        return 'method'; // 同义词通常与使用方法相关
+      case 'antonym':
+        return 'goal'; // 反义词通常与使用目标相关（对比）
+      case 'related':
+      case 'variation':
+      default:
+        return 'scenario'; // 相关词通常与使用场景相关
     }
   }
 }

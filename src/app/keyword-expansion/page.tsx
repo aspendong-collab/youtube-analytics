@@ -74,6 +74,7 @@ export default function KeywordExpansionPage() {
   const [useRuleEngine, setUseRuleEngine] = useState(true);
   const [useLLMEngine, setUseLLMEngine] = useState(true);
   const [useDataMining, setUseDataMining] = useState(true); // 默认启用数据挖掘
+  const [useSemanticExpansion, setUseSemanticExpansion] = useState(true); // 新增：语义相似度拓展开关
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ExpansionResponse | null>(null);
   const [selectedDimension, setSelectedDimension] = useState<string>('all');
@@ -288,6 +289,7 @@ export default function KeywordExpansionPage() {
           useRuleEngine,
           useLLMEngine,
           useDataMining,
+          useSemanticExpansion, // 新增：语义相似度拓展开关
           language,
         }),
         signal: controller.signal,
@@ -311,6 +313,7 @@ export default function KeywordExpansionPage() {
           llm: allKeywords.filter((k: any) => k.source === 'llm').length,
           tagMining: allKeywords.filter((k: any) => k.source === 'tagMining').length,
           commentMining: allKeywords.filter((k: any) => k.source === 'commentMining').length,
+          semanticExpansion: allKeywords.filter((k: any) => k.source === 'semanticExpansion').length, // 新增：语义相似度统计
         };
         console.log('各来源统计:', sourceStats);
         console.log('所有维度关键词数量:', Object.keys(data.data.dimensions || {}).reduce((acc, dim) => {
@@ -627,6 +630,19 @@ export default function KeywordExpansionPage() {
                     id="data-mining"
                     checked={useDataMining}
                     onCheckedChange={setUseDataMining}
+                  />
+                </div>
+                <div className="flex items-center justify-between space-x-2">
+                  <Label htmlFor="semantic-expansion" className="flex flex-col space-y-1">
+                    <span>语义相似度拓展</span>
+                    <span className="font-normal text-xs text-slate-500">
+                      近义词、同义词、相关词
+                    </span>
+                  </Label>
+                  <Switch
+                    id="semantic-expansion"
+                    checked={useSemanticExpansion}
+                    onCheckedChange={setUseSemanticExpansion}
                   />
                 </div>
               </div>

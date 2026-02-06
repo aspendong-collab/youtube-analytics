@@ -379,7 +379,7 @@ export class SemanticExpansionService {
     const results: ExpansionResult[] = validatedKeywords.map(({ semantic, validation }) => {
       const result: ExpansionResult = {
         keyword: semantic.keyword,
-        dimension: 'semantic', // 语义维度
+        dimension: 'semantic' as any, // 语义维度，会在后面映射到标准维度
         source: 'semanticExpansion',
         relevance: semantic.confidence,
         type: this.detectKeywordType(semantic.keyword),

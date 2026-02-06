@@ -59,6 +59,7 @@ export interface ExpansionConfig {
   useRuleEngine: boolean;
   useLLMEngine: boolean;
   useDataMining: boolean;
+  useSemanticExpansion: boolean; // 新增：语义相似度拓展开关
   keywordCategory: 'brand' | 'generic' | 'longtail';
   language: SupportedLanguage; // 新增：语言设置
 }
@@ -74,7 +75,7 @@ export interface KeywordRule {
 }
 
 export type KeywordDimension = 'scenario' | 'carrier' | 'state' | 'goal' | 'method';
-export type KeywordSource = 'rule' | 'llm' | 'dataMining' | 'commentMining' | 'tagMining';
+export type KeywordSource = 'rule' | 'llm' | 'dataMining' | 'commentMining' | 'tagMining' | 'semanticExpansion';
 
 export interface ExpansionResult {
   keyword: string;
@@ -89,6 +90,10 @@ export interface ExpansionResult {
   intent?: 'info' | 'tutorial' | 'review' | 'transaction';
   relatedKeywords?: string[];
   sourceVideoIds?: string[];
+  metadata?: {
+    semanticType?: string;
+    reason?: string;
+  };
 }
 
 export interface DimensionResult {
