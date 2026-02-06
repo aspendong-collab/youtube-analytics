@@ -243,13 +243,6 @@ export class InfluencerAffiliateService {
     maxResults: number
   ): Promise<YouTubeVideo[]> {
     try {
-      // 检查配额
-      const canCallSearch = await youtubeApiQuotaService.canMakeCall('search', 'search.list');
-      if (!canCallSearch) {
-        console.warn('[AffiliateService] YouTube API search 配额已用完');
-        return [];
-      }
-
       const relevanceLanguage = InfluencerAffiliateService.LANGUAGE_CODES[language] || 'en';
       const regionCode = InfluencerAffiliateService.REGION_CODES[language] || 'US';
 
@@ -270,7 +263,7 @@ export class InfluencerAffiliateService {
         )
       ]);
 
-      // 记录 API 调用
+      // 记录 API 调用（成功后才记录）
       await youtubeApiQuotaService.recordApiCall('search', 'search.list', true, null, {
         keyword,
         maxResults,
@@ -367,12 +360,6 @@ export class InfluencerAffiliateService {
    */
   private async fetchVideoComments(videoId: string, maxResults: number = 10): Promise<Array<{ textDisplay: string }>> {
     try {
-      // 检查配额
-      const canCallComments = await youtubeApiQuotaService.canMakeCall('commentThreads', 'commentThreads.list');
-      if (!canCallComments) {
-        return [];
-      }
-
       const commentsResponse = await Promise.race([
         this.youtube.commentThreads.list({
           videoId,
@@ -385,7 +372,7 @@ export class InfluencerAffiliateService {
         )
       ]);
 
-      // 记录 API 调用
+      // 记录 API 调用（成功后才记录）
       await youtubeApiQuotaService.recordApiCall('commentThreads', 'commentThreads.list', true, null, {
         videoId,
         maxResults,
