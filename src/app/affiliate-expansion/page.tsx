@@ -23,6 +23,25 @@ const LANGUAGE_OPTIONS = [
   { value: 'zh-TW', label: '繁體中文', flag: '🇹🇼' },
 ];
 
+// 拓展模式选项
+const EXPANSION_MODE_OPTIONS = [
+  {
+    value: 'multi-dimensional',
+    label: '多维度拓展',
+    description: '基于场景、载体、状态、目标、方法等多维度进行关键词拓展'
+  },
+  {
+    value: 'semantic',
+    label: '语义相似度',
+    description: '基于近义词、同义词、反义词等语义相关的关键词拓展'
+  },
+  {
+    value: 'hybrid',
+    label: '混合模式',
+    description: '结合多维度和语义相似度，覆盖更广的关键词范围'
+  }
+];
+
 interface AffiliateLink {
   type: 'ref' | 'utm' | 'short' | 'keyword' | 'disclosure';
   value: string;
@@ -70,6 +89,7 @@ interface InfluencerInfo {
 export default function AffiliateExpansionPage() {
   const [keyword, setKeyword] = useState('');
   const [language, setLanguage] = useState('en');
+  const [expansionMode, setExpansionMode] = useState('multi-dimensional');
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [influencers, setInfluencers] = useState<InfluencerInfo[]>([]);
@@ -79,6 +99,7 @@ export default function AffiliateExpansionPage() {
   const [selectedInfluencer, setSelectedInfluencer] = useState<InfluencerInfo | null>(null);
   const [notes, setNotes] = useState('');
   const [currentKeyword, setCurrentKeyword] = useState('');
+  const [usedKeywords, setUsedKeywords] = useState<string[]>([]);
 
   const handleSearch = async (loadMore: boolean = false) => {
     if (!keyword.trim()) {
@@ -106,6 +127,7 @@ export default function AffiliateExpansionPage() {
         body: JSON.stringify({
           keyword: currentKeyword || keyword,
           language,
+          expansionMode,
           maxVideos: 200, // 增加到 200 个视频
           maxResults: 100, // 增加到 100 个博主
           minAffiliateScore: 0,
@@ -123,6 +145,8 @@ export default function AffiliateExpansionPage() {
           setInfluencers([...influencers, ...newInfluencers]);
         } else {
           setInfluencers(newInfluencers);
+          // 设置使用的关键词
+          setUsedKeywords(result.meta?.keywordsUsed || [keyword]);
         }
 
         // 判断是否还有更多结果
@@ -222,8 +246,8 @@ export default function AffiliateExpansionPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4 items-end">
-            <div className="flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div className="md:col-span-1">
               <Label htmlFor="keyword">关键词</Label>
               <Input
                 id="keyword"
@@ -234,7 +258,7 @@ export default function AffiliateExpansionPage() {
                 disabled={loading}
               />
             </div>
-            <div className="w-48">
+            <div>
               <Label htmlFor="language">语言</Label>
               <Select value={language} onValueChange={setLanguage} disabled={loading}>
                 <SelectTrigger id="language">
@@ -250,6 +274,26 @@ export default function AffiliateExpansionPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label htmlFor="expansionMode">拓展模式</Label>
+              <Select value={expansionMode} onValueChange={setExpansionMode} disabled={loading}>
+                <SelectTrigger id="expansionMode">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXPANSION_MODE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <div className="flex flex-col">
+                        <span>{option.label}</span>
+                        <span className="text-xs text-gray-500">{option.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end">
             <Button onClick={handleSearch} disabled={loading} className="px-8">
               {loading ? (
                 <>
@@ -284,6 +328,32 @@ export default function AffiliateExpansionPage() {
       {/* 搜索结果 */}
       {influencers.length > 0 && (
         <div className="space-y-4">
+          {/* 使用的关键词 */}
+          {usedKeywords.length > 1 && (
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-800">
+                    语义拓展：基于 "{currentKeyword}" 生成了 {usedKeywords.length - 1} 个相关关键词
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {usedKeywords.map((kw, index) => (
+                    <Badge
+                      key={kw}
+                      variant={index === 0 ? "default" : "secondary"}
+                      className={index === 0 ? "bg-blue-600 text-white" : "bg-white text-blue-800 border-blue-300"}
+                    >
+                      {index === 0 ? '原始词' : `相关词 ${index}`}
+                      <span className="ml-1 font-medium">{kw}</span>
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">
               找到 <span className="text-blue-600">{influencers.length}</span> 个符合条件的博主

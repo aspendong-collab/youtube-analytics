@@ -5,12 +5,21 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { InfluencerAffiliateService } from '@/lib/services/influencer-affiliate';
+import { SemanticExpansionService } from '@/lib/services/keyword-expansion/semantic-expansion';
 import { HeaderUtils } from '@/lib/utils/header-utils';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { keyword, language, maxVideos, maxResults, minAffiliateScore, includeComments } = body;
+    const {
+      keyword,
+      language,
+      expansionMode,
+      maxVideos,
+      maxResults,
+      minAffiliateScore,
+      includeComments
+    } = body;
 
     // 验证必填参数
     if (!keyword) {
@@ -38,13 +47,73 @@ export async function POST(request: NextRequest) {
     // 创建服务实例
     const service = new InfluencerAffiliateService(language || 'en');
 
-    // 查找 affiliate 博主
-    console.log(`[API] 开始查找 affiliate 博主: ${keyword}, 语种: ${language}`);
-    const influencers = await service.findAffiliateInfluencers(
-      keyword,
-      language || 'en',
-      options
-    );
+    // 根据拓展模式生成关键词列表
+    let keywords: string[] = [keyword];
+
+    if (expansionMode === 'semantic' || expansionMode === 'hybrid') {
+      console.log(`[API] 使用 ${expansionMode} 模式进行关键词拓展`);
+
+      // 使用语义相似度服务生成相关关键词
+      const semanticService = new SemanticExpansionService(language || 'en');
+
+      const semanticResults = await semanticService.expand(keyword, {
+        maxResults: expansionMode === 'semantic' ? 15 : 8,
+        minSearchVolume: 1000,
+        excludeOriginal: true,
+        includeSynonyms: true,
+        includeAntonyms: false,
+        includeRelated: true
+      });
+
+      if (semanticResults.length > 0) {
+        // 添加原始关键词和语义相关关键词
+        keywords = [keyword, ...semanticResults.map(r => r.keyword)];
+
+        console.log(`[API] 生成了 ${semanticResults.length} 个语义相关关键词：${semanticResults.map(r => r.keyword).join(', ')}`);
+      }
+    } else if (expansionMode === 'multi-dimensional') {
+      // 多维度模式：使用原始关键词
+      console.log(`[API] 使用多维度模式进行关键词拓展`);
+    } else {
+      // 默认模式：使用原始关键词
+      console.log(`[API] 使用默认模式（仅原始关键词）`);
+    }
+
+    // 查找 affiliate 博主（使用多个关键词）
+    console.log(`[API] 开始查找 affiliate 博主，关键词列表: ${keywords.join(', ')}`);
+
+    // 对每个关键词进行搜索，然后合并结果
+    const allInfluencers = new Map<string, any>();
+
+    for (const kw of keywords) {
+      const results = await service.findAffiliateInfluencers(
+        kw,
+        language || 'en',
+        options
+      );
+
+      // 合并结果，避免重复
+      for (const influencer of results) {
+        if (!allInfluencers.has(influencer.channelId)) {
+          allInfluencers.set(influencer.channelId, influencer);
+        } else {
+          // 如果已存在，合并视频列表
+          const existing = allInfluencers.get(influencer.channelId);
+          existing.videos = [...existing.videos, ...influencer.videos];
+          // 重新计算分数
+          existing.affiliateScore = Math.max(existing.affiliateScore, influencer.affiliateScore);
+        }
+      }
+
+      // 如果已经找到足够多的结果，可以提前退出
+      if (allInfluencers.size >= options.maxResults) {
+        break;
+      }
+    }
+
+    const influencers = Array.from(allInfluencers.values())
+      .sort((a, b) => b.affiliateScore - a.affiliateScore)
+      .slice(0, options.maxResults);
 
     console.log(`[API] 找到 ${influencers.length} 个 affiliate 博主`);
 
@@ -55,6 +124,8 @@ export async function POST(request: NextRequest) {
       meta: {
         keyword,
         language: language || 'en',
+        expansionMode: expansionMode || 'default',
+        keywordsUsed: keywords,
         totalFound: influencers.length,
         searchOptions: options
       }
