@@ -89,6 +89,26 @@ export default function TestToolsPage() {
     setLoading(false);
   };
 
+  // 诊断 Affiliate 拓展
+  const diagnoseAffiliate = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/influencers/affiliate/diagnose?keyword=${encodeURIComponent(keyword)}`);
+      const result = await response.json();
+      setTestResult({
+        type: 'Affiliate Diagnosis',
+        data: result,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      setTestResult({
+        type: 'Error',
+        error: error.message
+      });
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">API 测试工具</h1>
@@ -147,6 +167,10 @@ export default function TestToolsPage() {
 
               <Button onClick={testAffiliate} disabled={loading}>
                 {loading ? '测试中...' : '测试 Affiliate 拓展'}
+              </Button>
+
+              <Button onClick={diagnoseAffiliate} disabled={loading} variant="outline">
+                {loading ? '诊断中...' : '诊断问题'}
               </Button>
 
               {testResult && (
