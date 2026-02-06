@@ -13,6 +13,53 @@ export class LLMEngine {
   }
 
   /**
+   * 基于关键词特征动态计算竞争度
+   * 考虑因素：关键词长度、关键词类型、相关性等
+   */
+  private calculateDynamicCompetition(
+    keyword: string,
+    originalKeyword: string,
+    relevance: number
+  ): number {
+    let competition = 0.5; // 基础竞争度
+
+    // 1. 基于关键词长度调整：长尾词竞争度更低
+    const keywordLength = keyword.split(/\s+/).length;
+    if (keywordLength >= 4) {
+      competition -= 0.3; // 长尾词降低竞争度
+    } else if (keywordLength >= 3) {
+      competition -= 0.15; // 中等长度略微降低
+    } else if (keywordLength === 1) {
+      competition += 0.2; // 单词竞争度高
+    }
+
+    // 2. 基于相关性调整：相关性高的关键词竞争度可能更高
+    competition += (relevance - 0.5) * 0.3; // 相关性对竞争度的影响范围 -0.15 到 +0.15
+
+    // 3. 基于关键词特征调整
+    const lowerKeyword = keyword.toLowerCase();
+
+    // 品牌词（包含原始词的）竞争度高
+    if (lowerKeyword.includes(originalKeyword.toLowerCase())) {
+      competition += 0.1;
+    }
+
+    // 包含特定修饰词的关键词
+    const highCompetitionPatterns = ['best', 'top', 'best', '推荐', '热门', '最佳'];
+    const lowCompetitionPatterns = ['tutorial', 'how to', 'guide', '教程', '方法', '技巧'];
+
+    if (highCompetitionPatterns.some(pattern => lowerKeyword.includes(pattern))) {
+      competition += 0.1;
+    }
+    if (lowCompetitionPatterns.some(pattern => lowerKeyword.includes(pattern))) {
+      competition -= 0.1;
+    }
+
+    // 4. 限制在 0-1 范围内
+    return Math.max(0, Math.min(1, competition));
+  }
+
+  /**
    * 获取语言特定的关键词格式示例
    */
   private getLanguageKeywordFormats(language: SupportedLanguage): string[] {
@@ -185,18 +232,21 @@ export class LLMEngine {
 
       const keywords = data.keywords || [];
 
-      return keywords.map((k: any) => ({
-        keyword: k.keyword,
-        dimension: 'scenario',
-        source: 'llm',
-        relevance: k.relevance || 0.8,
-        type: k.type || 'broad',
-        intent: k.intent || 'info',
-        estimatedSearchVolume: 0,
-        estimatedCompetition: 0,
-        commercialValue: 0,
-        recommendationScore: 0,
-      }));
+      return keywords.map((k: any) => {
+        const relevance = k.relevance || 0.8;
+        return {
+          keyword: k.keyword,
+          dimension: 'scenario',
+          source: 'llm',
+          relevance,
+          type: k.type || 'broad',
+          intent: k.intent || 'info',
+          estimatedSearchVolume: 0,
+          estimatedCompetition: this.calculateDynamicCompetition(k.keyword, '', relevance),
+          commercialValue: 0,
+          recommendationScore: 0,
+        };
+      });
     } catch (error) {
       console.error('LLM场景生成失败:', error);
       return [];
@@ -359,18 +409,21 @@ ALL keywords must be in ${targetLanguage} language.`;
 
     const keywords = data.keywords || [];
 
-    return keywords.map((k: any) => ({
-      keyword: k.keyword,
-      dimension: 'scenario', // 这里会在外层被替换
-      source: 'llm',
-      relevance: k.relevance || 0.8,
-      type: k.type || 'broad',
-      intent: k.intent || 'info',
-      estimatedSearchVolume: 0,
-      estimatedCompetition: 0,
-      commercialValue: 0,
-      recommendationScore: 0,
-    }));
+    return keywords.map((k: any) => {
+      const relevance = k.relevance || 0.8;
+      return {
+        keyword: k.keyword,
+        dimension: 'scenario', // 这里会在外层被替换
+        source: 'llm',
+        relevance,
+        type: k.type || 'broad',
+        intent: k.intent || 'info',
+        estimatedSearchVolume: 0,
+        estimatedCompetition: this.calculateDynamicCompetition(k.keyword, '', relevance),
+        commercialValue: 0,
+        recommendationScore: 0,
+      };
+    });
   }
 
   // 使用LLM优化关键词

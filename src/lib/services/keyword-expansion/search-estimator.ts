@@ -15,6 +15,42 @@ export class SearchVolumeEstimator {
       auth: process.env.YOUTUBE_API_KEY,
     });
   }
+
+  /**
+   * 基于关键词特征动态计算竞争度
+   * 考虑因素：关键词长度、关键词类型等
+   */
+  private calculateDynamicCompetition(keyword: string): number {
+    let competition = 0.5; // 基础竞争度
+
+    // 1. 基于关键词长度调整：长尾词竞争度更低
+    const keywordLength = keyword.split(/\s+/).length;
+    if (keywordLength >= 4) {
+      competition -= 0.3; // 长尾词降低竞争度
+    } else if (keywordLength >= 3) {
+      competition -= 0.15; // 中等长度略微降低
+    } else if (keywordLength === 1) {
+      competition += 0.2; // 单词竞争度高
+    }
+
+    // 2. 基于关键词特征调整
+    const lowerKeyword = keyword.toLowerCase();
+
+    // 包含特定修饰词的关键词
+    const highCompetitionPatterns = ['best', 'top', 'best', '推荐', '热门', '最佳'];
+    const lowCompetitionPatterns = ['tutorial', 'how to', 'guide', '教程', '方法', '技巧'];
+
+    if (highCompetitionPatterns.some(pattern => lowerKeyword.includes(pattern))) {
+      competition += 0.1;
+    }
+    if (lowCompetitionPatterns.some(pattern => lowerKeyword.includes(pattern))) {
+      competition -= 0.1;
+    }
+
+    // 3. 限制在 0-1 范围内
+    return Math.max(0, Math.min(1, competition));
+  }
+
   /**
    * 估算关键词搜索量
    * 算法：基于相关视频的观看数、评论数、点赞数等多维度指标
@@ -31,7 +67,7 @@ export class SearchVolumeEstimator {
         console.warn('YouTube API search 配额已用完，跳过搜索');
         return {
           estimatedSearchVolume: 0,
-          estimatedCompetition: 0,
+          estimatedCompetition: this.calculateDynamicCompetition(keyword),
           confidence: 0,
         };
       }
@@ -61,7 +97,7 @@ export class SearchVolumeEstimator {
       if (videoIds.length === 0) {
         return {
           estimatedSearchVolume: 0,
-          estimatedCompetition: 0,
+          estimatedCompetition: this.calculateDynamicCompetition(keyword),
           confidence: 0.3,
         };
       }
@@ -72,7 +108,7 @@ export class SearchVolumeEstimator {
         console.warn('YouTube API videos 配额已用完，跳过视频详情获取');
         return {
           estimatedSearchVolume: Math.floor(Math.random() * 5000),
-          estimatedCompetition: 0.5,
+          estimatedCompetition: this.calculateDynamicCompetition(keyword),
           confidence: 0.3,
         };
       }
@@ -142,7 +178,7 @@ export class SearchVolumeEstimator {
       
       return {
         estimatedSearchVolume: 0,
-        estimatedCompetition: 0,
+        estimatedCompetition: this.calculateDynamicCompetition(keyword),
         confidence: 0,
       };
     }
@@ -272,7 +308,7 @@ export class SearchVolumeEstimator {
       const defaultResults = keywordsToEstimate.map(kw => ({
         ...kw,
         estimatedSearchVolume: Math.floor(Math.random() * 5000),
-        estimatedCompetition: 0.5,
+        estimatedCompetition: this.calculateDynamicCompetition(kw.keyword),
         recommendationScore: kw.relevance * 0.5,
       }));
       results.push(...defaultResults);
@@ -282,7 +318,7 @@ export class SearchVolumeEstimator {
     const defaultRemaining = remainingKeywords.map(kw => ({
       ...kw,
       estimatedSearchVolume: Math.floor(Math.random() * 5000),
-      estimatedCompetition: 0.5,
+      estimatedCompetition: this.calculateDynamicCompetition(kw.keyword),
       recommendationScore: kw.relevance * 0.5,
     }));
 

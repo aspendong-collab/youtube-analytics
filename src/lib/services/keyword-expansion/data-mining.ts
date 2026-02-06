@@ -37,6 +37,53 @@ export class DataMiningEngine {
       return null;
     }
   }
+  /**
+   * 基于关键词特征动态计算竞争度
+   * 考虑因素：关键词长度、关键词类型、相关性等
+   */
+  private calculateDynamicCompetition(
+    keyword: string,
+    originalKeyword: string,
+    relevance: number
+  ): number {
+    let competition = 0.5; // 基础竞争度
+
+    // 1. 基于关键词长度调整：长尾词竞争度更低
+    const keywordLength = keyword.split(/\s+/).length;
+    if (keywordLength >= 4) {
+      competition -= 0.3; // 长尾词降低竞争度
+    } else if (keywordLength >= 3) {
+      competition -= 0.15; // 中等长度略微降低
+    } else if (keywordLength === 1) {
+      competition += 0.2; // 单词竞争度高
+    }
+
+    // 2. 基于相关性调整：相关性高的关键词竞争度可能更高
+    competition += (relevance - 0.5) * 0.3; // 相关性对竞争度的影响范围 -0.15 到 +0.15
+
+    // 3. 基于关键词特征调整
+    const lowerKeyword = keyword.toLowerCase();
+    
+    // 品牌词（包含原始词的）竞争度高
+    if (lowerKeyword.includes(originalKeyword.toLowerCase())) {
+      competition += 0.1;
+    }
+
+    // 包含特定修饰词的关键词
+    const highCompetitionPatterns = ['best', 'top', 'best', '推荐', '热门', '最佳'];
+    const lowCompetitionPatterns = ['tutorial', 'how to', 'guide', '教程', '方法', '技巧'];
+
+    if (highCompetitionPatterns.some(pattern => lowerKeyword.includes(pattern))) {
+      competition += 0.1;
+    }
+    if (lowCompetitionPatterns.some(pattern => lowerKeyword.includes(pattern))) {
+      competition -= 0.1;
+    }
+
+    // 4. 限制在 0-1 范围内
+    return Math.max(0, Math.min(1, competition));
+  }
+
   // 从视频标签中提取关键词
   async extractFromTags(keyword: string, maxResults: number = 20): Promise<ExpansionResult[]> {
     try {
@@ -132,15 +179,16 @@ export class DataMiningEngine {
 
           // 为每个标签创建关键词结果
           for (const tag of tags) {
+            const relevance = this.calculateTagRelevance(keyword, tag);
             keywords.push({
               keyword: tag,
               dimension: this.detectDimension(tag),
               source: 'tagMining',
-              relevance: this.calculateTagRelevance(keyword, tag),
+              relevance,
               type: 'broad',
               intent: 'info',
               estimatedSearchVolume: stats?.viewCount ? parseInt(stats.viewCount) / 1000 : 0,
-              estimatedCompetition: 0.5,
+              estimatedCompetition: this.calculateDynamicCompetition(tag, keyword, relevance),
               commercialValue: 0.3,
               recommendationScore: 0,
               sourceVideoIds: [video.id || ''],
@@ -260,15 +308,16 @@ export class DataMiningEngine {
             // 简单的关键词提取（基于常见短语模式）
             const extractedKeywords = this.extractKeywordsFromComment(text, keyword);
             extractedKeywords.forEach(kw => {
+              const relevance = 0.6;
               keywords.push({
                 keyword: kw,
                 dimension: this.detectDimension(kw),
                 source: 'commentMining',
-                relevance: 0.6,
+                relevance,
                 type: this.detectKeywordType(kw),
                 intent: 'info',
                 estimatedSearchVolume: 0,
-                estimatedCompetition: 0.5,
+                estimatedCompetition: this.calculateDynamicCompetition(kw, keyword, relevance),
                 commercialValue: 0.2,
                 recommendationScore: 0,
                 sourceVideoIds: [videoId],
