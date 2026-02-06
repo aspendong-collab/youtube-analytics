@@ -6,11 +6,21 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { navItems, NavItem } from '@/types/navigation';
 import { cn } from '@/lib/utils';
+import { Users, Key } from 'lucide-react';
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, status } = useSession();
+
+  // 统计信息状态
+  const [onlineUsers, setOnlineUsers] = useState<number>(0);
+  const [quotaInfo, setQuotaInfo] = useState({
+    totalAvailable: 0,
+    totalQuota: 0,
+    usageRate: 0
+  });
+
   // 自动展开包含当前路径的菜单项
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
@@ -26,6 +36,54 @@ export function Sidebar() {
       setExpandedItems(autoExpand);
     }
   }, [pathname]);
+
+  // 获取在线人数
+  useEffect(() => {
+    const fetchOnlineUsers = async () => {
+      try {
+        const response = await fetch('/api/stats/online-users');
+        if (response.ok) {
+          const data = await response.json();
+          setOnlineUsers(data.data?.onlineUsers || 0);
+        }
+      } catch (error) {
+        console.error('获取在线人数失败:', error);
+      }
+    };
+
+    fetchOnlineUsers();
+    // 每 30 秒更新一次
+    const interval = setInterval(fetchOnlineUsers, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // 获取 Key 池状态
+  useEffect(() => {
+    const fetchQuotaInfo = async () => {
+      try {
+        const response = await fetch('/api/youtube/key-pool/status');
+        if (response.ok) {
+          const data = await response.json();
+          setQuotaInfo({
+            totalAvailable: data.data?.totalAvailable || 0,
+            totalQuota: data.data?.totalQuota || 0,
+            usageRate: data.data?.totalQuota > 0
+              ? ((data.data?.totalUsed || 0) / data.data.totalQuota * 100).toFixed(1)
+              : 0
+          });
+        }
+      } catch (error) {
+        console.error('获取 Key 池状态失败:', error);
+      }
+    };
+
+    fetchQuotaInfo();
+    // 每 60 秒更新一次
+    const interval = setInterval(fetchQuotaInfo, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const toggleExpand = (id: string) => {
     setExpandedItems(prev =>
@@ -187,6 +245,49 @@ export function Sidebar() {
                 <span className="text-base">🚪</span>
                 <span>退出登录</span>
               </button>
+            </div>
+
+            {/* 统计信息 */}
+            <div className="mt-4 px-2 space-y-2">
+              {/* 在线人数 */}
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 rounded-xl border border-blue-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <Users className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs font-medium text-blue-800">当前在线</span>
+                </div>
+                <div className="text-2xl font-bold text-blue-900">
+                  {onlineUsers}
+                  <span className="text-xs font-normal text-blue-700 ml-1">人</span>
+                </div>
+              </div>
+
+              {/* YouTube Key 余额 */}
+              <div className="bg-gradient-to-r from-green-50 to-green-100 p-3 rounded-xl border border-green-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <Key className="w-4 h-4 text-green-600" />
+                  <span className="text-xs font-medium text-green-800">API 余额</span>
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-green-900">
+                    {quotaInfo.totalAvailable.toLocaleString()}
+                  </span>
+                  <span className="text-xs text-green-700">
+                    / {quotaInfo.totalQuota.toLocaleString()}
+                  </span>
+                </div>
+                <div className="mt-1 h-1.5 bg-green-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-green-600 transition-all duration-500"
+                    style={{
+                      width: `${100 - quotaInfo.usageRate}%`,
+                      minWidth: '10%'
+                    }}
+                  />
+                </div>
+                <div className="mt-1 text-xs text-green-700">
+                  已使用 {quotaInfo.usageRate}%
+                </div>
+              </div>
             </div>
           </>
         ) : (
