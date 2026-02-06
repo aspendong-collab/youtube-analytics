@@ -7,11 +7,15 @@ import { useSession, signOut } from 'next-auth/react';
 import { navItems, NavItem } from '@/types/navigation';
 import { cn } from '@/lib/utils';
 import { Users, Key } from 'lucide-react';
+import { useHeartbeat } from '@/hooks/useHeartbeat';
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, status } = useSession();
+
+  // 启用心跳机制
+  useHeartbeat({ interval: 30 * 1000, enabled: true });
 
   // 统计信息状态
   const [onlineUsers, setOnlineUsers] = useState<number>(0);
