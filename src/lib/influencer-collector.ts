@@ -1,4 +1,5 @@
-import { youtubeClient } from './youtube-client';
+import { google } from 'googleapis';
+import { youtubeApiKeyPool } from './services/youtube-api-key-pool';
 import { emailExtractor, type RankedEmailResult } from './email-extractor';
 import { influencerCacheService } from './influencer-cache';
 import type { InfluencerProfile, InfluencerVideo, InferenceResult } from '@/types/influencer';
@@ -41,6 +42,216 @@ function formatDuration(seconds: number): string {
  */
 class InfluencerCollector {
   /**
+   * 创建 YouTube API 客户端（使用 Key 池）
+   */
+  private createYoutubeClient(): any {
+    const apiKey = youtubeApiKeyPool.getNextKey();
+
+    if (!apiKey) {
+      throw new Error('所有 YouTube API Key 都已用完，请等待明天配额重置或添加更多 Key');
+    }
+
+    return google.youtube({
+      version: 'v3',
+      auth: apiKey,
+    });
+  }
+
+  /**
+   * 搜索达人（使用 Key 池）
+   */
+  private async searchInfluencersWithKeyPool(params: {
+    query: string;
+    maxResults?: number;
+    type?: 'channel' | 'video';
+    order?: 'date' | 'relevance' | 'viewCount';
+    publishedAfter?: string;
+    publishedBefore?: string;
+    relevanceLanguage?: string;
+    regionCode?: string;
+    pageToken?: string;
+  }): Promise<{ items: any[]; nextPageToken?: string | null; totalResults?: number }> {
+    console.log('[InfluencerCollector] 使用 Key Pool 搜索达人');
+
+    try {
+      const youtube = this.createYoutubeClient();
+
+      const searchParams: any = {
+        q: params.query,
+        part: ['snippet', 'id'],
+        maxResults: params.maxResults || 50,
+        type: params.type || 'video',
+        order: params.order || 'relevance',
+      };
+
+      // 添加可选参数
+      if (params.relevanceLanguage) {
+        searchParams.relevanceLanguage = params.relevanceLanguage;
+      }
+
+      if (params.pageToken) {
+        searchParams.pageToken = params.pageToken;
+      }
+
+      if (params.publishedAfter) {
+        searchParams.publishedAfter = params.publishedAfter;
+      }
+
+      if (params.publishedBefore) {
+        searchParams.publishedBefore = params.publishedBefore;
+      }
+
+      if (params.regionCode) {
+        searchParams.regionCode = params.regionCode;
+      }
+
+      const response = await youtube.search.list(searchParams);
+
+      return {
+        items: response.data.items || [],
+        nextPageToken: response.data.nextPageToken || null,
+        totalResults: response.data.pageInfo?.totalResults
+      };
+    } catch (error) {
+      console.error('[InfluencerCollector] 搜索达人失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 批量获取频道详情（使用 Key 池）
+   */
+  private async getChannelsDetailsWithKeyPool(channelIds: string[]): Promise<any[]> {
+    console.log(`[InfluencerCollector] 使用 Key Pool 获取 ${channelIds.length} 个频道详情`);
+
+    try {
+      const youtube = this.createYoutubeClient();
+
+      // 分批处理，每批最多50个
+      const batches: string[][] = [];
+      for (let i = 0; i < channelIds.length; i += 50) {
+        batches.push(channelIds.slice(i, i + 50));
+      }
+
+      const results: any[] = [];
+      for (const batch of batches) {
+        const response = await youtube.channels.list({
+          part: [
+            'snippet',
+            'statistics',
+            'brandingSettings',
+            'contentDetails',
+            'topicDetails',
+          ],
+          id: batch.join(','),
+          maxResults: 50,
+        });
+
+        results.push(...(response.data.items || []));
+      }
+
+      return results;
+    } catch (error) {
+      console.error('[InfluencerCollector] 获取频道详情失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取频道近期视频（使用 Key 池）
+   */
+  private async getChannelRecentVideosWithKeyPool(
+    channelId: string,
+    uploadsPlaylistId: string,
+    maxResults: number = 10
+  ): Promise<any[]> {
+    console.log(`[InfluencerCollector] 使用 Key Pool 获取频道 ${channelId} 的近期视频`);
+
+    try {
+      const youtube = this.createYoutubeClient();
+
+      // 步骤1：获取 playlist items
+      const response = await youtube.playlistItems.list({
+        part: ['snippet', 'contentDetails'],
+        playlistId: uploadsPlaylistId,
+        maxResults: Math.min(maxResults, 50),
+      });
+
+      const playlistItems = response.data.items || [];
+      if (playlistItems.length === 0) {
+        return [];
+      }
+
+      // 步骤2：提取视频ID
+      const videoIds = playlistItems
+        .map((item: any) => item.contentDetails?.videoId)
+        .filter(Boolean);
+
+      // 步骤3：批量获取视频详情
+      if (videoIds.length > 0) {
+        const videoResponse = await youtube.videos.list({
+          part: ['snippet', 'statistics', 'contentDetails', 'topicDetails'],
+          id: videoIds.join(','),
+          maxResults: videoIds.length,
+        });
+
+        return videoResponse.data.items || [];
+      }
+
+      return [];
+    } catch (error) {
+      console.error('[InfluencerCollector] 获取频道近期视频失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 批量获取达人档案（使用 Key 池）
+   */
+  private async getInfluencerProfilesWithKeyPool(
+    channelIds: string[],
+    options: {
+      includeRecentVideos?: boolean;
+      recentVideosCount?: number;
+    } = {}
+  ): Promise<any[]> {
+    console.log(`[InfluencerCollector] 使用 Key Pool 批量获取 ${channelIds.length} 个达人档案`);
+
+    // 去重
+    const uniqueChannelIds = [...new Set(channelIds)];
+
+    // 批量获取频道详情
+    const channels = await this.getChannelsDetailsWithKeyPool(uniqueChannelIds);
+
+    // 批量获取近期视频
+    let videosMap: Map<string, any[]> = new Map();
+    if (options.includeRecentVideos) {
+      const videoPromises = channels.map(channel => {
+        const uploadsPlaylistId = channel.contentDetails?.relatedPlaylists?.uploads;
+        if (uploadsPlaylistId) {
+          return this.getChannelRecentVideosWithKeyPool(
+            channel.id,
+            uploadsPlaylistId,
+            options.recentVideosCount || 10
+          );
+        }
+        return Promise.resolve([]);
+      });
+
+      const videosResults = await Promise.all(videoPromises);
+      channels.forEach((channel, index) => {
+        videosMap.set(channel.id, videosResults[index]);
+      });
+    }
+
+    // 组装数据
+    return channels.map(channel => ({
+      channel,
+      recentVideos: videosMap.get(channel.id) || [],
+    }));
+  }
+
+  /**
    * 通过关键词采集达人
    * @param keyword 关键词
    * @param options 选项
@@ -65,7 +276,7 @@ class InfluencerCollector {
     try {
       // 步骤1：搜索视频（获取频道）
       console.log(`[InfluencerCollector] 步骤1: 搜索视频...`);
-      const searchResults = await youtubeClient.searchInfluencers({
+      const searchResults = await this.searchInfluencersWithKeyPool({
         query: keyword,
         maxResults: options.maxResults || 50,
         type: 'video',
@@ -131,7 +342,7 @@ class InfluencerCollector {
       let profilesData: any[] = [];
 
       if (uncachedChannelIds.length > 0) {
-        profilesData = await youtubeClient.getInfluencerProfiles(uncachedChannelIds, {
+        profilesData = await this.getInfluencerProfilesWithKeyPool(uncachedChannelIds, {
           includeRecentVideos: options.includeRecentVideos !== false,
           recentVideosCount: options.recentVideosCount || 10,
         });

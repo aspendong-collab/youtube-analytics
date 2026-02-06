@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { influencerCollector } from '@/lib/influencer-collector';
-import { youtubeClient } from '@/lib/youtube-client';
+import { youtubeApiKeyPool } from '@/lib/services/youtube-api-key-pool';
 import { influencerCacheService } from '@/lib/influencer-cache';
 import { influencerScorer } from '@/lib/influencer-scorer';
 import type { ScoreConfig } from '@/lib/influencer-scorer';
@@ -47,23 +47,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 检查配额
-    const quotaUsage = youtubeClient.getQuotaUsage();
-    console.log('[API] 配额使用情况:', quotaUsage);
+    // 检查 Key 池状态
+    const poolStatus = youtubeApiKeyPool.getPoolStatus();
+    console.log('[API] Key 池状态:', poolStatus);
 
-    if (quotaUsage.remaining < 200) {
-      console.warn('[API] 配额不足');
+    if (poolStatus.availableKeys === 0) {
+      console.warn('[API] 所有 YouTube API Key 都已用完');
       return NextResponse.json(
-        { error: 'Insufficient quota. Please try again tomorrow.' },
+        { error: 'All YouTube API Keys are exhausted. Please try again tomorrow.' },
         { status: 429 }
       );
     }
 
     console.log('[API] 开始采集达人...');
-
-    // 设置请求超时（60秒）
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
 
     try {
       // 将多个关键词用 OR 连接
@@ -84,7 +80,6 @@ export async function POST(request: NextRequest) {
         recentVideosCount: 10,
       });
 
-      clearTimeout(timeout);
       console.log(`[API] 采集完成，找到 ${result.profiles.length} 个达人`);
       console.log(`[API] 下一页 token: ${result.nextPageToken}`);
       console.log(`[API] 总结果数: ${result.totalResults}`);
