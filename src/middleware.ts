@@ -29,6 +29,7 @@ export function middleware(req: NextRequest) {
     '/api/users/pending',
     '/api/keywords',
     '/api/db',
+    '/api/youtube/key-pool', // YouTube API Key 池监控
   ];
 
   // 组合所有公开路由

@@ -33,31 +33,34 @@ export class YoutubeApiKeyPool {
    * 从环境变量初始化 API Keys
    */
   private initializeKeys(): void {
-    // 从环境变量读取多个 API Key
-    const envKey = process.env.YOUTUBE_API_KEYS || process.env.YOUTUBE_API_KEY || '';
-
-    if (!envKey) {
-      console.warn('[YoutubeApiKeyPool] 未配置 YOUTUBE_API_KEYS');
-      return;
-    }
-
-    // 支持多种格式：
-    // 1. JSON 数组: ["key1", "key2", "key3"]
-    // 2. 逗号分隔: key1,key2,key3
-    // 3. 单个 Key: key1
     let keyList: string[] = [];
 
-    try {
-      // 尝试解析 JSON
-      const parsed = JSON.parse(envKey);
-      keyList = Array.isArray(parsed) ? parsed : [parsed];
-    } catch {
-      // 解析失败，尝试逗号分隔
-      keyList = envKey.split(',').map(k => k.trim()).filter(k => k.length > 0);
+    // 策略 1: 读取 YOUTUBE_API_KEY_N 格式（Vercel 常用）
+    // 例如: YOUTUBE_API_KEY_1, YOUTUBE_API_KEY_2, ...
+    for (let i = 1; i <= 20; i++) {
+      const key = process.env[`YOUTUBE_API_KEY_${i}`];
+      if (key && key.trim().length > 0) {
+        keyList.push(key.trim());
+      }
+    }
+
+    // 策略 2: 读取 YOUTUBE_API_KEYS 或 YOUTUBE_API_KEY（兼容旧格式）
+    if (keyList.length === 0) {
+      const envKey = process.env.YOUTUBE_API_KEYS || process.env.YOUTUBE_API_KEY || '';
+      if (envKey) {
+        try {
+          // 尝试解析 JSON
+          const parsed = JSON.parse(envKey);
+          keyList = Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          // 解析失败，尝试逗号分隔
+          keyList = envKey.split(',').map(k => k.trim()).filter(k => k.length > 0);
+        }
+      }
     }
 
     if (keyList.length === 0) {
-      console.warn('[YoutubeApiKeyPool] 没有有效的 YouTube API Key');
+      console.warn('[YoutubeApiKeyPool] 没有找到有效的 YouTube API Key，请检查环境变量配置（YOUTUBE_API_KEY_1, YOUTUBE_API_KEY_2, ...）');
       return;
     }
 
@@ -76,7 +79,8 @@ export class YoutubeApiKeyPool {
       this.keys.set(keyInfo.id, keyInfo);
     });
 
-    console.log(`[YoutubeApiKeyPool] 已初始化 ${keyList.length} 个 YouTube API Key`);
+    console.log(`[YoutubeApiKeyPool] 已初始化 ${keyList.length} 个 YouTube API Key (格式: YOUTUBE_API_KEY_1, YOUTUBE_API_KEY_2, ...)`);
+    console.log(`[YoutubeApiKeyPool] 总配额: ${keyList.length * 10000}, 每日可用`);
   }
 
   /**
