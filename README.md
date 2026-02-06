@@ -18,18 +18,41 @@
 
 ### 🔧 Bug 修复（2025-02-06）
 
-修复了 LLM SDK 调用失败的问题：
+修复了以下问题：
 
-- **问题**：`GatewayErr (code: 697026704, message: 1213:未正常接收到prompt参数)`
-- **原因**：未正确传递请求头（headers）给 SDK
-- **解决**：在所有 LLM 调用处添加 `HeaderUtils.extractForwardHeaders`
-- **影响**：所有使用 LLM 的功能（关键词拓展、智能分析等）
+1. **LLM SDK 调用失败**
+   - 问题：`GatewayErr (code: 697026704, message: 1213:未正常接收到prompt参数)`
+   - 原因：未正确传递请求头（headers）给 SDK
+   - 解决：在所有 LLM 调用处添加 `HeaderUtils.extractForwardHeaders`
+
+2. **搜索量和竞争度为 0**
+   - 问题：拓展后的关键词的搜索量和竞争度都显示为 0
+   - 原因：模拟数据生成逻辑中，`Math.random()` 可能生成接近 0 的值
+   - 解决：修改 `baseVolume` 为 `0.3 + Math.random() * 0.7`（0.3-1.0）
+
+3. **数据来源统计显示为 0**
+   - 问题：AI生成、标签提取、评论提取都显示为 0，只有规则来源显示
+   - 原因：API 响应中缺少 `sourceStats` 字段
+   - 解决：在返回数据中添加 `sourceStats` 字段
+
+4. **联想词弹窗无法关闭**
+   - 问题：点击弹窗外部区域无法关闭联想词弹窗
+   - 原因：useEffect 依赖项为空，不会重新检查
+   - 解决：修改 useEffect 依赖项，添加 `showSuggestions`，只在弹窗显示时监听点击事件
+
+5. **数据库保存错误**
+   - 问题：`values() must be called with at least one value` 错误
+   - 原因：某些情况下 `results` 数组可能为空
+   - 解决：添加空结果检查
 
 ### ✨ 功能完善
 
 - LLM 引擎正常工作，响应时间约 500ms
 - 数据库保存功能正常
 - 关键词生成测试通过（单次可生成 360+ 个关键词）
+- 数据来源统计正常显示
+- 搜索量和竞争度正常显示（不再是 0）
+- 联想词弹窗交互正常
 
 ## 快速开始
 
