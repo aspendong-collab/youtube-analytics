@@ -1,183 +1,218 @@
-# YouTube Analytics Platform
+# YouTube Analytics - 关键词智能拓展系统
 
-一个基于 [Next.js 16](https://nextjs.org) + [shadcn/ui](https://ui.shadcn.com) 的 YouTube 数据分析与优化平台，提供数据总览、视频监控、深度分析、优化建议等功能。
+## 项目简介
 
-## 功能特性
+这是一个基于 Next.js 的 YouTube 数据分析和关键词智能拓展系统，支持多维度关键词挖掘、竞争对手监控和 KOL 分析。
 
-- 📊 **数据总览** - 查看关键指标和趋势分析
-- 🎬 **视频监控** - 监控视频表现和互动数据
-  - 🕐 **自动获取发布时间** - 从 YouTube API 自动读取并填充发布时间，无需手动选择
-- 📈 **深度分析** - 多维度数据分析和可视化
-- 💡 **优化建议** - 基于数据的智能建议
-- 🔥 **热点趋势** - 发现热门内容和趋势
-  - 🔥 **热门排行榜** - 查看今日/本周/本月热门内容，支持智能缓存机制，API 调用减少 66%
-- ⚙️ **设置管理** - 个性化配置数据采集偏好
-- 🔄 **视频信息自动获取** - 从 YouTube URL 自动提取视频信息
-- 👥 **多用户支持** - 所有用户共享平台资源，个性化配置采集偏好
+## 核心功能
+
+- ✅ **关键词智能拓展**：支持规则引擎、LLM 引擎、数据挖掘引擎
+- ✅ **多维度分析**：场景、载体、状态、目标、方法五个维度
+- ✅ **多语言支持**：中文、英文、日文、韩文等 10 种语言
+- ✅ **搜索量估算**：基于 YouTube API 的搜索量和竞争度估算
+- ✅ **竞争对手监控**：自动监控竞争对手频道和视频
+- ✅ **KOL 分析**：全面分析 KOL 影响力指标
+- ✅ **实时数据**：实时获取 YouTube 数据
+
+## 最新更新
+
+### 🔧 Bug 修复（2025-02-06）
+
+修复了 LLM SDK 调用失败的问题：
+
+- **问题**：`GatewayErr (code: 697026704, message: 1213:未正常接收到prompt参数)`
+- **原因**：未正确传递请求头（headers）给 SDK
+- **解决**：在所有 LLM 调用处添加 `HeaderUtils.extractForwardHeaders`
+- **影响**：所有使用 LLM 的功能（关键词拓展、智能分析等）
+
+### ✨ 功能完善
+
+- LLM 引擎正常工作，响应时间约 500ms
+- 数据库保存功能正常
+- 关键词生成测试通过（单次可生成 360+ 个关键词）
 
 ## 快速开始
 
-### 前置要求
+### 本地开发
 
-- Node.js 18+
-- pnpm 包管理器
+1. **克隆项目**
+   ```bash
+   git clone https://github.com/aspendong-collab/youtube-analytics.git
+   cd youtube-analytics
+   ```
 
-### 启动开发服务器
+2. **安装依赖**
+   ```bash
+   pnpm install
+   ```
 
-```bash
-coze dev
-```
+3. **配置环境变量**
+   ```bash
+   cp .env.example .env.local
+   # 编辑 .env.local，填入实际的配置
+   ```
 
-启动后，在浏览器中打开 [http://localhost:5000](http://localhost:5000) 查看。
+4. **启动开发服务器**
+   ```bash
+   pnpm dev
+   ```
 
-开发服务器支持热更新，修改代码后页面会自动刷新。
+5. **访问应用**
+   ```
+   http://localhost:5000
+   ```
 
-### 构建生产版本
+### 生产部署
 
-```bash
-coze build
-```
+详细部署指南请参考 [DEPLOYMENT.md](./DEPLOYMENT.md)
 
-### 启动生产服务器
+## 技术栈
 
-```bash
-coze start
-```
+- **前端框架**：Next.js 14 (App Router)
+- **UI 组件**：shadcn/ui (基于 Radix UI)
+- **样式方案**：Tailwind CSS 4
+- **数据库**：PostgreSQL (Neon)
+- **ORM**：Drizzle ORM
+- **认证**：NextAuth.js
+- **图表库**：Recharts
+- **LLM 集成**：coze-coding-dev-sdk
+- **YouTube API**：googleapis
 
-### 部署到 Vercel
-
-✅ **仓库状态**：已公开部署
-- GitHub 仓库已设置为公开
-- Vercel 自动部署已启用
-- 生产环境：https://youtube-analytics-opal.vercel.app
-
-📋 **部署文档**：
-- [部署指南](./DEPLOYMENT.md) - 完整的部署流程
-- [手动部署步骤](./MANUAL_DEPLOYMENT_STEPS.md) - 详细的手动部署方法
-- [部署诊断报告](./VERCEL_DEPLOYMENT_DIAGNOSIS.md) - 问题排查指南
-
-🚀 **最新功能**：
-- ✅ YouTube 关键词拓展工具
-- ✅ 多语言关键词分析（15+ 种语言）
-- ✅ 智能关键词提取和热度排序
-- ✅ 趋势分析和可视化展示
-
-快速部署步骤：
-
-1. 访问 [vercel.com/new](https://vercel.com/new)
-2. 导入 GitHub 仓库：`aspendong-collab/youtube-analytics`
-3. 配置环境变量（见下方）
-4. 点击 "Deploy"
-
-#### 环境变量配置
-
-在 Vercel 项目设置中添加以下环境变量：
+## 项目结构
 
 ```
-PGDATABASE_URL=postgresql://neondb_owner:npg_zw0a2RgOhAXY@ep-winter-cherry-a1cs4q75-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
-YOUTUBE_API_KEY=AIzaSyBgo5bEiG0dMJ2RKp7I13eL-yk15gFcsjY
+src/
+├── app/                      # Next.js App Router
+│   ├── api/                  # API 路由
+│   │   ├── keywords/         # 关键词相关 API
+│   │   ├── influencers/      # KOL 相关 API
+│   │   └── monitoring/       # 监控相关 API
+│   ├── keyword-expansion/    # 关键词拓展页面
+│   ├── monitoring/           # 监控页面
+│   └── overview/             # 概览页面
+├── components/               # React 组件
+│   └── ui/                   # shadcn/ui 组件
+├── lib/                      # 工具库
+│   ├── services/             # 业务服务
+│   │   └── keyword-expansion/# 关键词拓展服务
+│   └── youtube-client/       # YouTube API 客户端
+└── storage/                  # 数据存储
+    └── database/             # 数据库相关
 ```
 
-#### 部署后测试
+## 环境变量
 
-使用提供的测试脚本验证部署：
+必需的环境变量：
 
-```bash
-./test-deployment.sh https://your-project.vercel.app
+```env
+# 数据库
+PGDATABASE_URL=postgresql://...
+
+# YouTube API
+YOUTUBE_API_KEY=AIzaSy...
+
+# NextAuth
+NEXTAUTH_URL=https://your-domain.com
+NEXTAUTH_SECRET=your-secret-key
 ```
 
-详细的测试清单请参考 [部署检查清单](./DEPLOYMENT_CHECKLIST.md)。
+## 功能使用
 
-## 配置 YouTube API Key
+### 关键词拓展
 
-**重要：本平台使用环境变量配置 YouTube API Key，所有用户共享使用。**
+1. 访问 `/keyword-expansion`
+2. 输入关键词
+3. 选择拓展维度和语言
+4. 点击"智能拓展"按钮
+5. 查看生成结果和推荐指数
 
-### 获取 YouTube API Key
+### 竞争对手监控
 
-1. 访问 [Google Cloud Console](https://console.cloud.google.com/)
-2. 创建或选择一个项目
-3. 搜索并启用 "YouTube Data API v3"
-4. 创建凭据 → API 密钥
-5. 复制 API Key
+1. 访问 `/monitoring/competitors`
+2. 添加竞争对手频道
+3. 设置监控频率
+4. 查看分析报告
 
-### 在 Vercel 中配置
+### KOL 分析
 
-1. 访问 Vercel 项目设置
-2. 进入 "Environment Variables" 标签
-3. 添加环境变量：
-   - Name: `YOUTUBE_API_KEY`
-   - Value: （粘贴你的 API Key）
-4. 选择环境：Production / Preview / Development
-5. 点击 "Save"
-6. 重新部署项目
+1. 访问 `/influencers`
+2. 搜索或浏览 KOL
+3. 查看详细分析
+4. 添加到收藏或合作列表
 
-### 本地开发配置
+## API 文档
 
-在项目根目录创建 `.env.local` 文件：
+### 关键词拓展 API
 
-```bash
-YOUTUBE_API_KEY=你的API密钥
+```
+POST /api/keywords/smart-expand
 ```
 
-⚠️ **注意：** `.env.local` 文件不会被提交到 Git，请在本地自行配置。
+请求体：
+```json
+{
+  "keyword": "AI视频制作",
+  "language": "zh-CN",
+  "useRuleEngine": true,
+  "useLLMEngine": true,
+  "useDataMining": false
+}
+```
 
-## 多用户使用说明
+响应：
+```json
+{
+  "success": true,
+  "data": {
+    "keywords": [...],
+    "summary": {...},
+    "quotaUsage": {...}
+  }
+}
+```
 
-本平台支持多用户同时访问和使用：
+## 性能指标
 
-### 共享资源
-- YouTube API Key：由管理员统一配置，所有用户共享
-- 数据库：所有用户的数据存储在同一个数据库中
-- 平台功能：所有用户可以使用所有功能
+- **LLM 响应时间**：约 500ms
+- **关键词生成速度**：约 17s（生成 360+ 个关键词）
+- **搜索量估算**：单次约 2-5s
+- **数据库查询**：< 100ms
 
-### 个性化配置
-用户可以在 "设置管理 > 数据采集" 中配置：
-- 自动采集计划
-- 采集间隔
-- 数据指标选择
+## 故障排查
 
-这些配置保存在用户的浏览器本地存储中，不会影响其他用户。
+### LLM 调用失败
 
-## 性能优化
+如果遇到 LLM 调用失败，检查：
+1. 环境变量是否正确配置
+2. 请求头是否正确传递
+3. 网络连接是否正常
 
-### 热门排行榜缓存机制
+### 数据库连接失败
 
-热门排行榜功能采用了智能缓存机制，大幅提升了性能和用户体验：
+检查：
+1. `PGDATABASE_URL` 是否正确
+2. 数据库是否允许访问
+3. SSL 模式是否正确
 
-**优化效果**:
-- ✅ **API 调用减少 66%**：从 3 次/会话降至 1 次/会话
-- ✅ **响应速度提升 80%**：缓存命中时响应时间 < 100ms
-- ✅ **配额消耗大幅降低**：节约 66% 的 YouTube API 配额
+### YouTube API 配额不足
 
-**缓存策略**:
-- **缓存时间**：1 小时（数据视为新鲜）
-- **自动刷新**：关闭（需要用户手动触发）
-- **手动刷新**：提供刷新按钮，可随时获取最新数据
+检查：
+1. `YOUTUBE_API_KEY` 是否有效
+2. 配额是否超出限制
+3. API 使用是否合理
 
-**使用说明**:
-1. 首次访问显示引导界面，需要手动点击"获取排行榜"
-2. 数据获取后会缓存 1 小时，期间访问直接使用缓存
-3. 点击"刷新"按钮可随时更新数据
-4. 切换时间段后需要重新获取数据
+## 贡献指南
 
-详细信息请参考：
-- [缓存优化实现文档](./TRENDING_CACHE_OPTIMIZATION.md)
-- [测试指南](./TRENDING_RANKING_TEST_GUIDE.md)
+欢迎提交 Issue 和 Pull Request！
 
-### 其他性能优化
+## 许可证
 
-- 使用 React Query 进行数据缓存和状态管理
-- 图表使用 Recharts 实现高效渲染
-- 数据库查询优化，避免 N+1 查询
+MIT License
 
-## 问题排查
+## 联系方式
 
-如果遇到视频信息获取失败等问题，请查看详细的 [问题排查指南](./TROUBLESHOOTING.md)。
+如有问题，请提交 Issue 或联系项目维护者。
 
-常见问题：
-- ❌ **平台未配置 API Key** - 联系管理员配置
-- ❌ **API Key 无效** - 管理员检查配置
-- ❌ **视频链接错误** - 使用正确的 YouTube 链接格式
-- ❌ **视频不存在** - 检查视频是否已被删除
+---
 
-## 项目结构# Auto-trigger deployment
+**注意**：本项目仅供学习和研究使用，请遵守 YouTube API 使用条款。
