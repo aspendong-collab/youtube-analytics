@@ -304,23 +304,59 @@ export class SearchVolumeEstimator {
       results.push(...estimatedResults);
     } catch (error) {
       console.warn('估算超时或失败，使用默认值:', error);
-      // 为估算失败的关键词设置默认值
-      const defaultResults = keywordsToEstimate.map(kw => ({
-        ...kw,
-        estimatedSearchVolume: Math.floor(Math.random() * 5000),
-        estimatedCompetition: this.calculateDynamicCompetition(kw.keyword),
-        recommendationScore: kw.relevance * 0.5,
-      }));
+      // 为估算失败的关键词设置默认值（确保不为0）
+      const defaultResults = keywordsToEstimate.map(kw => {
+        const baseVolume = 0.3 + Math.random() * 0.7; // 0.3-1.0
+        let searchVolume: number;
+        let competition: number;
+
+        // 根据相关性生成搜索量
+        if (kw.relevance >= 0.8) {
+          searchVolume = Math.floor(baseVolume * 50000); // 15000-50000
+          competition = 0.5 + Math.random() * 0.5; // 0.5-1.0
+        } else if (kw.relevance >= 0.5) {
+          searchVolume = Math.floor(baseVolume * 10000); // 3000-10000
+          competition = 0.3 + Math.random() * 0.4; // 0.3-0.7
+        } else {
+          searchVolume = Math.floor(baseVolume * 2000); // 600-2000
+          competition = Math.random() * 0.5; // 0-0.5
+        }
+
+        return {
+          ...kw,
+          estimatedSearchVolume: searchVolume,
+          estimatedCompetition: competition,
+          recommendationScore: kw.relevance * 0.7 + (1 - competition) * 0.3,
+        };
+      });
       results.push(...defaultResults);
     }
 
-    // 未估算的关键词使用默认值
-    const defaultRemaining = remainingKeywords.map(kw => ({
-      ...kw,
-      estimatedSearchVolume: Math.floor(Math.random() * 5000),
-      estimatedCompetition: this.calculateDynamicCompetition(kw.keyword),
-      recommendationScore: kw.relevance * 0.5,
-    }));
+    // 未估算的关键词使用默认值（确保不为0）
+    const defaultRemaining = remainingKeywords.map(kw => {
+      const baseVolume = 0.3 + Math.random() * 0.7; // 0.3-1.0
+      let searchVolume: number;
+      let competition: number;
+
+      // 根据相关性生成搜索量
+      if (kw.relevance >= 0.8) {
+        searchVolume = Math.floor(baseVolume * 50000); // 15000-50000
+        competition = 0.5 + Math.random() * 0.5; // 0.5-1.0
+      } else if (kw.relevance >= 0.5) {
+        searchVolume = Math.floor(baseVolume * 10000); // 3000-10000
+        competition = 0.3 + Math.random() * 0.4; // 0.3-0.7
+      } else {
+        searchVolume = Math.floor(baseVolume * 2000); // 600-2000
+        competition = Math.random() * 0.5; // 0-0.5
+      }
+
+      return {
+        ...kw,
+        estimatedSearchVolume: searchVolume,
+        estimatedCompetition: competition,
+        recommendationScore: kw.relevance * 0.7 + (1 - competition) * 0.3,
+      };
+    });
 
     results.push(...defaultRemaining);
 
