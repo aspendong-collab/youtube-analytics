@@ -247,7 +247,7 @@ export class InfluencerAffiliateService {
   }
 
   /**
-   * 搜索 YouTube 视频
+   * 搜索 YouTube 视频（支持分页和多轮搜索）
    */
   private async searchVideos(
     keyword: string,
@@ -263,97 +263,118 @@ export class InfluencerAffiliateService {
       // 使用 Key 池创建客户端
       const youtube = this.createYoutubeClient();
 
-      const searchResponse = await Promise.race([
-        youtube.search.list({
-          q: keyword,
-          part: ['snippet'],
-          maxResults: maxResults,
-          type: ['video'],
+      // YouTube API 单次搜索最大返回 50 个结果
+      // 如果需要更多结果，需要分页搜索
+      let allVideos: YouTubeVideo[] = [];
+      let pageToken: string | undefined = undefined;
+      const maxSearchResults = Math.min(maxResults, 200); // 最多搜索 200 个视频（4 次 API 调用）
+
+      while (allVideos.length < maxSearchResults) {
+        const searchResponse = await Promise.race([
+          youtube.search.list({
+            q: keyword,
+            part: ['snippet'],
+            maxResults: 50, // YouTube API 单次最大值
+            type: ['video'],
+            relevanceLanguage,
+            regionCode,
+            order: 'relevance',
+            pageToken
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('YouTube API search timeout (30s)')), 30000)
+          )
+        ]);
+
+        // 记录 API 调用（成功后才记录）
+        await youtubeApiQuotaService.recordApiCall('search', 'search.list', true, null, {
+          keyword,
+          maxResults: 50,
           relevanceLanguage,
           regionCode,
-          order: 'relevance'
-        }),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('YouTube API search timeout (30s)')), 30000)
-        )
-      ]);
+          purpose: 'affiliateMining'
+        });
 
-      // 记录 API 调用（成功后才记录）
-      await youtubeApiQuotaService.recordApiCall('search', 'search.list', true, null, {
-        keyword,
-        maxResults,
-        relevanceLanguage,
-        regionCode,
-        purpose: 'affiliateMining'
-      });
+        const videoIds: string[] = [];
+        const channelIds: string[] = [];
 
-      const videoIds: string[] = [];
-      const channelIds: string[] = [];
-
-      if (searchResponse.data.items) {
-        console.log(`[AffiliateService] YouTube Search API 返回 ${searchResponse.data.items.length} 个结果`);
-        for (const item of searchResponse.data.items) {
-          if (item.id?.videoId) {
-            videoIds.push(item.id.videoId);
+        if (searchResponse.data.items) {
+          console.log(`[AffiliateService] YouTube Search API 返回 ${searchResponse.data.items.length} 个结果`);
+          for (const item of searchResponse.data.items) {
+            if (item.id?.videoId) {
+              videoIds.push(item.id.videoId);
+            }
+            if (item.snippet?.channelId) {
+              channelIds.push(item.snippet.channelId);
+            }
           }
-          if (item.snippet?.channelId) {
-            channelIds.push(item.snippet.channelId);
+        } else {
+          console.warn('[AffiliateService] YouTube Search API 未返回任何结果');
+          break;
+        }
+
+        if (videoIds.length === 0) {
+          console.log('[AffiliateService] 未找到任何视频 ID');
+          break;
+        }
+
+        // 获取视频详情
+        const youtube2 = this.createYoutubeClient(); // 使用新的客户端
+        const videosResponse = await Promise.race([
+          youtube2.videos.list({
+            id: videoIds,
+            part: ['snippet', 'statistics']
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('YouTube API videos timeout (30s)')), 30000)
+          )
+        ]);
+
+        // 记录 API 调用
+        await youtubeApiQuotaService.recordApiCall('videos', 'videos.list', true, null, {
+          videoIds: videoIds.length,
+          purpose: 'affiliateMining'
+        });
+
+        if (videosResponse.data.items) {
+          console.log(`[AffiliateService] YouTube Videos API 返回 ${videosResponse.data.items.length} 个视频详情`);
+          for (const video of videosResponse.data.items) {
+            allVideos.push({
+              id: video.id,
+              title: video.snippet.title,
+              description: video.snippet.description,
+              thumbnail: video.snippet.thumbnails?.medium?.url,
+              channelId: video.snippet.channelId,
+              channelTitle: video.snippet.channelTitle,
+              channelThumbnail: undefined,
+              publishedAt: video.snippet.publishedAt,
+              viewCount: parseInt(video.statistics.viewCount || '0'),
+              likeCount: parseInt(video.statistics.likeCount || '0'),
+              commentCount: parseInt(video.statistics.commentCount || '0'),
+              subscriberCount: undefined
+            });
           }
+        } else {
+          console.warn('[AffiliateService] YouTube Videos API 未返回任何视频详情');
         }
-      } else {
-        console.warn('[AffiliateService] YouTube Search API 未返回任何结果');
-      }
 
-      if (videoIds.length === 0) {
-        console.log('[AffiliateService] 未找到任何视频 ID');
-        return [];
-      }
-
-      console.log(`[AffiliateService] 准备获取 ${videoIds.length} 个视频的详细信息`);
-
-      // 获取视频详情
-      const youtube2 = this.createYoutubeClient(); // 使用新的客户端
-      const videosResponse = await Promise.race([
-        youtube2.videos.list({
-          id: videoIds,
-          part: ['snippet', 'statistics']
-        }),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('YouTube API videos timeout (30s)')), 30000)
-        )
-      ]);
-
-      // 记录 API 调用
-      await youtubeApiQuotaService.recordApiCall('videos', 'videos.list', true, null, {
-        videoIds: videoIds.length,
-        purpose: 'affiliateMining'
-      });
-
-      const videos: YouTubeVideo[] = [];
-      if (videosResponse.data.items) {
-        console.log(`[AffiliateService] YouTube Videos API 返回 ${videosResponse.data.items.length} 个视频详情`);
-        for (const video of videosResponse.data.items) {
-          videos.push({
-            id: video.id,
-            title: video.snippet.title,
-            description: video.snippet.description,
-            thumbnail: video.snippet.thumbnails?.medium?.url,
-            channelId: video.snippet.channelId,
-            channelTitle: video.snippet.channelTitle,
-            channelThumbnail: undefined, // 需要额外获取
-            publishedAt: video.snippet.publishedAt,
-            viewCount: parseInt(video.statistics.viewCount || '0'),
-            likeCount: parseInt(video.statistics.likeCount || '0'),
-            commentCount: parseInt(video.statistics.commentCount || '0'),
-            subscriberCount: undefined // 需要额外获取
-          });
+        // 检查是否还有下一页
+        if (!searchResponse.data.nextPageToken) {
+          console.log('[AffiliateService] 已到达搜索结果末尾');
+          break;
         }
-      } else {
-        console.warn('[AffiliateService] YouTube Videos API 未返回任何视频详情');
+
+        pageToken = searchResponse.data.nextPageToken;
+
+        // 如果已经收集了足够的视频，停止搜索
+        if (allVideos.length >= maxSearchResults) {
+          console.log(`[AffiliateService] 已收集到足够的视频 (${allVideos.length}/${maxSearchResults})`);
+          break;
+        }
       }
 
-      console.log(`[AffiliateService] 成功获取 ${videos.length} 个视频的完整信息`);
-      return videos;
+      console.log(`[AffiliateService] 成功获取 ${allVideos.length} 个视频的完整信息`);
+      return allVideos;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('[AffiliateService] 搜索视频失败:', errorMessage);

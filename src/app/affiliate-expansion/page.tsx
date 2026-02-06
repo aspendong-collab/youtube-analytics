@@ -71,44 +71,66 @@ export default function AffiliateExpansionPage() {
   const [keyword, setKeyword] = useState('');
   const [language, setLanguage] = useState('en');
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [influencers, setInfluencers] = useState<InfluencerInfo[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalFound, setTotalFound] = useState(0);
   const [error, setError] = useState('');
   const [selectedInfluencer, setSelectedInfluencer] = useState<InfluencerInfo | null>(null);
   const [notes, setNotes] = useState('');
+  const [currentKeyword, setCurrentKeyword] = useState('');
 
-  const handleSearch = async () => {
+  const handleSearch = async (loadMore: boolean = false) => {
     if (!keyword.trim()) {
       setError('请输入关键词');
       return;
     }
 
-    setLoading(true);
-    setError('');
-    setInfluencers([]);
-    setSelectedInfluencer(null);
+    if (loadMore) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+      setError('');
+      setInfluencers([]);
+      setSelectedInfluencer(null);
+      setCurrentKeyword(keyword);
+    }
 
     try {
+      const currentInfluencers = loadMore ? influencers.length : 0;
       const response = await fetch('/api/influencers/affiliate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          keyword,
+          keyword: currentKeyword || keyword,
           language,
-          maxVideos: 50,
-          maxResults: 20,
+          maxVideos: 200, // 增加到 200 个视频
+          maxResults: 100, // 增加到 100 个博主
           minAffiliateScore: 0,
-          includeComments: true,
+          includeComments: false, // 为了更快返回结果，暂时禁用评论分析
+          offset: loadMore ? currentInfluencers : 0,
         }),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        setInfluencers(result.data);
-        if (result.data.length === 0) {
-          setError('未找到符合条件的博主。可能的原因：\n• 该关键词没有相关的 affiliate 博主\n• YouTube API 响应超时或配额限制\n• 请尝试其他更具体的关键词');
+        const newInfluencers = result.data;
+
+        if (loadMore) {
+          setInfluencers([...influencers, ...newInfluencers]);
+        } else {
+          setInfluencers(newInfluencers);
+        }
+
+        // 判断是否还有更多结果
+        setHasMore(newInfluencers.length >= 20);
+        setTotalFound(result.meta?.totalFound || newInfluencers.length);
+
+        if (!loadMore && newInfluencers.length === 0) {
+          setError('未找到符合条件的博主。\n\n可能的原因：\n• 该关键词没有相关的 affiliate 博主\n• YouTube API 响应超时或配额限制\n• 请尝试其他更具体的关键词');
         }
       } else {
         if (result.code === 'TIMEOUT') {
@@ -124,6 +146,7 @@ export default function AffiliateExpansionPage() {
       setError('网络错误，请检查网络连接后重试');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -264,6 +287,11 @@ export default function AffiliateExpansionPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">
               找到 <span className="text-blue-600">{influencers.length}</span> 个符合条件的博主
+              {totalFound > influencers.length && (
+                <span className="text-gray-500 text-sm ml-2">
+                  （共找到 {totalFound} 个，继续加载以查看更多）
+                </span>
+              )}
             </h2>
             <div className="flex gap-2">
               <Badge variant="outline" className="text-sm">
@@ -387,6 +415,30 @@ export default function AffiliateExpansionPage() {
               </Card>
             ))}
           </div>
+
+          {/* 加载更多按钮 */}
+          {hasMore && (
+            <div className="flex justify-center mt-6">
+              <Button
+                onClick={() => handleSearch(true)}
+                disabled={loadingMore}
+                variant="outline"
+                className="px-8"
+              >
+                {loadingMore ? (
+                  <>
+                    <div className="animate-spin mr-2 h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+                    加载中...
+                  </>
+                ) : (
+                  <>
+                    <Search className="mr-2 h-4 w-4" />
+                    加载更多博主
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
