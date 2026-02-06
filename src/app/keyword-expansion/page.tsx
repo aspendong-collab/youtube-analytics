@@ -25,8 +25,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Search, Sparkles, Loader2, TrendingUp, BarChart3, Target, Wrench, Car, Home, Award, Zap } from 'lucide-react';
-import type { ExpansionResponse, ExpansionResult } from '@/lib/services/keyword-expansion/types';
+import { Search, Sparkles, Loader2, TrendingUp, BarChart3, Target, Wrench, Car, Home, Award, Zap, Languages } from 'lucide-react';
+import type { ExpansionResponse, ExpansionResult, SupportedLanguage } from '@/lib/services/keyword-expansion/types';
+import { LANGUAGE_NAMES } from '@/lib/services/keyword-expansion/types';
 
 // 维度图标映射
 const DIMENSION_ICONS: Record<string, any> = {
@@ -49,6 +50,7 @@ const DIMENSION_NAMES: Record<string, string> = {
 export default function KeywordExpansionPage() {
   const [keyword, setKeyword] = useState('');
   const [category, setCategory] = useState('generic');
+  const [language, setLanguage] = useState<SupportedLanguage>('zh-CN');
   const [useRuleEngine, setUseRuleEngine] = useState(true);
   const [useLLMEngine, setUseLLMEngine] = useState(true);
   const [useDataMining, setUseDataMining] = useState(false);
@@ -80,6 +82,7 @@ export default function KeywordExpansionPage() {
           useRuleEngine,
           useLLMEngine,
           useDataMining,
+          language,
         }),
         signal: controller.signal,
       });
@@ -198,6 +201,26 @@ export default function KeywordExpansionPage() {
                       <SelectItem value="generic">通用词</SelectItem>
                       <SelectItem value="brand">品牌词</SelectItem>
                       <SelectItem value="longtail">长尾词</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-48">
+                  <Label htmlFor="language-select">输出语言</Label>
+                  <Select value={language} onValueChange={(value) => setLanguage(value as SupportedLanguage)}>
+                    <SelectTrigger id="language-select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="zh-CN">简体中文</SelectItem>
+                      <SelectItem value="zh-TW">繁体中文</SelectItem>
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="ja">日本語</SelectItem>
+                      <SelectItem value="ko">한국어</SelectItem>
+                      <SelectItem value="fr">Français</SelectItem>
+                      <SelectItem value="de">Deutsch</SelectItem>
+                      <SelectItem value="es">Español</SelectItem>
+                      <SelectItem value="it">Italiano</SelectItem>
+                      <SelectItem value="pt">Português</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

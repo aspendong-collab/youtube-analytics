@@ -7,10 +7,11 @@ import {
   type ExpansionResult,
   KeywordDimension,
   type QuotaInfo,
+  type SupportedLanguage,
 } from './types';
 import { ruleEngine } from './rules';
 import { llmEngine } from './llm-engine';
-import { dataMiningEngine } from './data-mining';
+import { DataMiningEngine } from './data-mining';
 import { searchVolumeEstimator } from './search-estimator';
 import { youtubeApiQuotaService } from '../youtube-api-quota';
 import { nanoid } from 'nanoid';
@@ -30,6 +31,9 @@ export class KeywordExpansionService {
     const expansionId = nanoid();
     const allResults: Map<string, ExpansionResult> = new Map();
     const dimensions: Record<KeywordDimension, ExpansionResult[]> = {} as any;
+
+    // 获取语言设置
+    const language = config.language || 'zh-CN';
 
     // 1. 规则引擎拓展
     if (config.useRuleEngine) {
@@ -51,7 +55,7 @@ export class KeywordExpansionService {
     if (config.useLLMEngine) {
       console.log('启用LLM引擎...');
       try {
-        const llmResults = await llmEngine.generateAllDimensions(inputKeyword);
+        const llmResults = await llmEngine.generateAllDimensions(inputKeyword, language);
 
         for (const [dimension, results] of Object.entries(llmResults)) {
           if (!dimensions[dimension as KeywordDimension]) {
@@ -75,6 +79,9 @@ export class KeywordExpansionService {
     if (config.useDataMining) {
       console.log('启用数据挖掘引擎...');
       try {
+        // 创建数据挖掘引擎实例，传入语言参数
+        const dataMiningEngine = new DataMiningEngine(language);
+
         // 从标签中提取
         const tagKeywords = await dataMiningEngine.extractFromTags(inputKeyword);
         tagKeywords.forEach(result => {

@@ -1,4 +1,4 @@
-import { ExpansionResult, YouTubeVideo } from './types';
+import { ExpansionResult, YouTubeVideo, SupportedLanguage, YOUTUBE_LANGUAGE_CODES, YOUTUBE_REGION_CODES } from './types';
 import { google } from 'googleapis';
 import { youtubeApiQuotaService } from '../youtube-api-quota';
 
@@ -7,12 +7,21 @@ import { youtubeApiQuotaService } from '../youtube-api-quota';
  */
 export class DataMiningEngine {
   private youtube: any;
+  private language: SupportedLanguage;
 
-  constructor() {
+  constructor(language: SupportedLanguage = 'zh-CN') {
+    this.language = language;
     this.youtube = google.youtube({
       version: 'v3',
       auth: process.env.YOUTUBE_API_KEY,
     });
+  }
+
+  /**
+   * 更新语言设置
+   */
+  setLanguage(language: SupportedLanguage): void {
+    this.language = language;
   }
 
   // 包装YouTube API调用，添加超时控制
@@ -38,6 +47,10 @@ export class DataMiningEngine {
         return [];
       }
 
+      // 获取语言特定的参数
+      const relevanceLanguage = YOUTUBE_LANGUAGE_CODES[this.language];
+      const regionCode = YOUTUBE_REGION_CODES[this.language];
+
       // 使用YouTube搜索API查找相关视频
       const searchResponse = await this.callWithTimeout(
         this.youtube.search.list({
@@ -45,6 +58,8 @@ export class DataMiningEngine {
           part: ['snippet'],
           maxResults: maxResults,
           type: ['video'],
+          relevanceLanguage,
+          regionCode,
         }),
         15000 // 15秒超时
       );
@@ -58,6 +73,8 @@ export class DataMiningEngine {
       await youtubeApiQuotaService.recordApiCall('search', 'search.list', true, null, {
         keyword,
         maxResults,
+        relevanceLanguage,
+        regionCode,
         purpose: 'tagMining',
       });
 
@@ -84,6 +101,7 @@ export class DataMiningEngine {
         this.youtube.videos.list({
           id: videoIds,
           part: ['snippet', 'statistics'],
+          relevanceLanguage,
         }),
         15000 // 15秒超时
       );
@@ -96,6 +114,7 @@ export class DataMiningEngine {
       // 记录 API 调用
       await youtubeApiQuotaService.recordApiCall('videos', 'videos.list', true, null, {
         videoIds: videoIds.length,
+        relevanceLanguage,
         purpose: 'tagMining',
       });
 
@@ -158,6 +177,10 @@ export class DataMiningEngine {
         return [];
       }
 
+      // 获取语言特定的参数
+      const relevanceLanguage = YOUTUBE_LANGUAGE_CODES[this.language];
+      const regionCode = YOUTUBE_REGION_CODES[this.language];
+
       // 搜索相关视频
       const searchResponse = await this.callWithTimeout(
         this.youtube.search.list({
@@ -165,6 +188,8 @@ export class DataMiningEngine {
           part: ['snippet'],
           maxResults: 5,
           type: ['video'],
+          relevanceLanguage,
+          regionCode,
         }),
         15000 // 15秒超时
       );
@@ -178,6 +203,8 @@ export class DataMiningEngine {
       await youtubeApiQuotaService.recordApiCall('search', 'search.list', true, null, {
         keyword,
         maxResults: 5,
+        relevanceLanguage,
+        regionCode,
         purpose: 'commentMining',
       });
 
@@ -388,5 +415,3 @@ export class DataMiningEngine {
     return unique;
   }
 }
-
-export const dataMiningEngine = new DataMiningEngine();

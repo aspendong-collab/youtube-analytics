@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { keywordExpansionService } from '@/lib/services/keyword-expansion';
-import type { ExpansionConfig } from '@/lib/services/keyword-expansion/types';
+import type { ExpansionConfig, SupportedLanguage } from '@/lib/services/keyword-expansion/types';
 
 /**
  * POST /api/keywords/smart-expand
@@ -9,7 +9,7 @@ import type { ExpansionConfig } from '@/lib/services/keyword-expansion/types';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { keyword, category, useRuleEngine, useLLMEngine, useDataMining } = body;
+    const { keyword, category, useRuleEngine, useLLMEngine, useDataMining, language } = body;
 
     // 参数验证
     if (!keyword || typeof keyword !== 'string' || keyword.trim().length === 0) {
@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       useLLMEngine: useLLMEngine !== false, // 默认启用
       useDataMining: useDataMining !== false, // 默认启用
       keywordCategory: category || 'generic',
+      language: language || 'zh-CN', // 默认简体中文
     };
 
     // 执行拓展
