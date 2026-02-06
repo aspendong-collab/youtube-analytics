@@ -1,6 +1,296 @@
-import { KeywordRule, KeywordDimension, ExpansionResult } from './types';
+import { KeywordRule, KeywordDimension, ExpansionResult, SupportedLanguage } from './types';
 
-// 规则库：多维度关键词拓展规则
+// 多语言规则模板
+const LANGUAGE_RULE_TEMPLATES: Record<SupportedLanguage, Record<KeywordDimension, string[]>> = {
+  'en': {
+    scenario: [
+      'how to use {keyword}', 'using {keyword} for', '{keyword} tips for', 'best {keyword} for',
+      '{keyword} for beginners', '{keyword} tutorial', '{keyword} guide', '{keyword} tricks',
+      'how to use {keyword} for work', '{keyword} for business', '{keyword} for students',
+      '{keyword} for home', '{keyword} for office', '{keyword} for travel',
+      'beginner {keyword}', 'professional {keyword}', 'daily use {keyword}',
+      '{keyword} for gaming', '{keyword} for design', '{keyword} for development',
+    ],
+    carrier: [
+      '{keyword} for iPhone', '{keyword} for Android', '{keyword} for iPad',
+      '{keyword} for Windows', '{keyword} for Mac', '{keyword} for Linux',
+      '{keyword} for web', '{keyword} for desktop', '{keyword} for mobile',
+      '{keyword} app', '{keyword} software', '{keyword} tool', '{keyword} extension',
+    ],
+    state: [
+      'free {keyword}', 'paid {keyword}', 'best {keyword}', 'top {keyword}',
+      'recommended {keyword}', 'popular {keyword}', 'latest {keyword}', 'new {keyword}',
+      'professional {keyword}', 'basic {keyword}', 'advanced {keyword}', 'premium {keyword}',
+      'online {keyword}', 'offline {keyword}', 'cloud {keyword}', 'local {keyword}',
+    ],
+    goal: [
+      'using {keyword} to learn', 'using {keyword} to make money', '{keyword} for productivity',
+      '{keyword} for business', '{keyword} for education', '{keyword} for solving problems',
+      '{keyword} for organization', '{keyword} for collaboration', '{keyword} for automation',
+    ],
+    method: [
+      'how to {keyword}', '{keyword} tutorial', '{keyword} guide', '{keyword} tips',
+      '{keyword} tricks', '{keyword} hacks', 'best way to {keyword}', '{keyword} tutorial',
+      '{keyword} step by step', '{keyword} for beginners', 'learn {keyword}',
+    ],
+  },
+  'zh-CN': {
+    scenario: [
+      '{keyword}怎么用', '{keyword}使用方法', '{keyword}使用教程', '{keyword}使用技巧',
+      '如何使用{keyword}', '{keyword}怎么用最好', '{keyword}使用指南', '{keyword}使用步骤',
+      '{keyword}使用场景', '{keyword}常见用法', '{keyword}实用技巧', '{keyword}正确使用方法',
+      '{keyword}进阶用法', '{keyword}高级用法', '{keyword}专业用法', '{keyword}初学者怎么用',
+      '{keyword}入门用法', '{keyword}快捷用法', '{keyword}日常用法', '{keyword}特别用法',
+      '{keyword}正确姿势', '{keyword}使用流程', '{keyword}上手指南', '{keyword}实战用法',
+      '新手用{keyword}', '老手用{keyword}', '小白用{keyword}', '专业用{keyword}',
+      '日常用{keyword}', '办公用{keyword}', '家用{keyword}', '学生用{keyword}',
+      '商务用{keyword}', '旅行用{keyword}', '户外用{keyword}', '室内用{keyword}',
+    ],
+    carrier: [
+      '手机{keyword}', '电脑{keyword}', '平板{keyword}', '笔记本{keyword}',
+      '台式机{keyword}', '安卓{keyword}', '苹果{keyword}', 'Windows{keyword}',
+      'Mac{keyword}', 'Linux{keyword}', '网页{keyword}', '桌面{keyword}',
+      '{keyword}软件', '{keyword}应用', '{keyword}工具', '{keyword}插件',
+      '{keyword}APP', '{keyword}小程序', '{keyword}网页版', '{keyword}客户端',
+    ],
+    state: [
+      '免费{keyword}', '付费{keyword}', '推荐{keyword}', '热门{keyword}',
+      '最新{keyword}', '最佳{keyword}', '高级{keyword}', '专业{keyword}',
+      '开源{keyword}', '商业{keyword}', '在线{keyword}', '离线{keyword}',
+      '云{keyword}', '本地{keyword}', '跨平台{keyword}', '多端{keyword}',
+    ],
+    goal: [
+      '赚钱{keyword}', '学习{keyword}', '教程{keyword}', '入门{keyword}',
+      '精通{keyword}', '变现{keyword}', '副业{keyword}', '提升效率{keyword}',
+      '办公{keyword}', '设计{keyword}', '开发{keyword}', '运营{keyword}',
+      '自动化{keyword}', '协作{keyword}', '组织{keyword}', '管理{keyword}',
+    ],
+    method: [
+      '怎么{keyword}', '如何{keyword}', '{keyword}方法', '{keyword}技巧',
+      '{keyword}教程', '{keyword}步骤', '{keyword}流程', '{keyword}指南',
+      '{keyword}学习', '{keyword}使用', '{keyword}配置', '{keyword}安装',
+      '{keyword}优化', '{keyword}设置', '{keyword}操作', '{keyword}实战',
+    ],
+  },
+  'zh-TW': {
+    scenario: [
+      '{keyword}怎麼用', '{keyword}使用方法', '{keyword}使用教學', '{keyword}使用技巧',
+      '如何使用{keyword}', '{keyword}怎麼用最好', '{keyword}使用指南', '{keyword}使用步驟',
+      '{keyword}使用場景', '{keyword}常見用法', '{keyword}實用技巧', '{keyword}正確使用方法',
+      '{keyword}進階用法', '{keyword}高級用法', '{keyword}專業用法', '{keyword}初學者怎麼用',
+    ],
+    carrier: [
+      '手機{keyword}', '電腦{keyword}', '平板{keyword}', '筆記本{keyword}',
+      '桌面機{keyword}', 'Android{keyword}', 'iOS{keyword}', 'Windows{keyword}',
+      'Mac{keyword}', 'Linux{keyword}', '網頁{keyword}', '桌面{keyword}',
+    ],
+    state: [
+      '免費{keyword}', '付費{keyword}', '推薦{keyword}', '熱門{keyword}',
+      '最新{keyword}', '最佳{keyword}', '高級{keyword}', '專業{keyword}',
+      '開源{keyword}', '商業{keyword}', '線上{keyword}', '離線{keyword}',
+    ],
+    goal: [
+      '賺錢{keyword}', '學習{keyword}', '教學{keyword}', '入門{keyword}',
+      '精通{keyword}', '變現{keyword}', '副業{keyword}', '提升效率{keyword}',
+    ],
+    method: [
+      '怎麼{keyword}', '如何{keyword}', '{keyword}方法', '{keyword}技巧',
+      '{keyword}教學', '{keyword}步驟', '{keyword}流程', '{keyword}指南',
+      '{keyword}學習', '{keyword}使用', '{keyword}配置', '{keyword}安裝',
+    ],
+  },
+  'ja': {
+    scenario: [
+      '{keyword}の使い方', '{keyword}使用方法', '{keyword}チュートリアル', '{keyword}使用テクニック',
+      '{keyword}の使い方を学ぶ', '{keyword}のベストな使い方', '{keyword}ガイド', '{keyword}手順',
+      '{keyword}使用シーン', '{keyword}一般的な使い方', '{keyword}実用的なテクニック', '{keyword}正しい使い方',
+      '{keyword}上級編', '{keyword}プロ向け', '{keyword}初心者向けの使い方',
+      '{keyword}入門編', '{keyword}クイックスタート', '{keyword}日常の使い方', '{keyword}特別な使い方',
+      '初心者用{keyword}', 'プロ用{keyword}', '日常{keyword}', 'オフィス{keyword}',
+      '家庭用{keyword}', '学生用{keyword}', 'ビジネス用{keyword}', '旅行用{keyword}',
+    ],
+    carrier: [
+      '{keyword} for iPhone', '{keyword} for Android', '{keyword} for iPad',
+      '{keyword} for Windows', '{keyword} for Mac', '{keyword} for Linux',
+      '{keyword} web', '{keyword} デスクトップ', '{keyword} モバイル',
+      '{keyword} アプリ', '{keyword} ソフトウェア', '{keyword} ツール', '{keyword} 拡張機能',
+    ],
+    state: [
+      '無料{keyword}', '有料{keyword}', 'おすすめ{keyword}', '人気{keyword}',
+      '最新{keyword}', 'ベスト{keyword}', '高度{keyword}', 'プロフェッショナル{keyword}',
+      'オープンソース{keyword}', '商用{keyword}', 'オンライン{keyword}', 'オフライン{keyword}',
+    ],
+    goal: [
+      '{keyword}で稼ぐ', '{keyword}で学ぶ', '{keyword}チュートリアル', '{keyword}入門',
+      '{keyword}マスター', '{keyword}で稼ぐ', '{keyword}副業', '生産性向上{keyword}',
+      'オフィス{keyword}', 'デザイン{keyword}', '開発{keyword}', '運用{keyword}',
+    ],
+    method: [
+      '{keyword}のやり方', '{keyword}の方法', '{keyword}テクニック', '{keyword}チュートリアル',
+      '{keyword}ステップ', '{keyword}プロセス', '{keyword}ガイド', '{keyword}学習',
+      '{keyword}使用', '{keyword}設定', '{keyword}インストール', '{keyword}最適化',
+    ],
+  },
+  'ko': {
+    scenario: [
+      '{keyword} 사용법', '{keyword} 사용 방법', '{keyword} 튜토리얼', '{keyword} 사용 팁',
+      '{keyword} 사용법 배우기', '{keyword} 최적 사용법', '{keyword} 가이드', '{keyword} 단계',
+      '{keyword} 사용 시나리오', '{keyword} 일반 사용법', '{keyword} 실용 팁', '{keyword} 올바른 사용법',
+      '{keyword} 고급 사용법', '{keyword} 전문가용', '{keyword} 초보자 사용법',
+      '{keyword} 입문', '{keyword} 빠른 시작', '{keyword} 일상 사용법', '{keyword} 특별 사용법',
+      '초보자용 {keyword}', '전문가용 {keyword}', '일상용 {keyword}', '사무실용 {keyword}',
+      '가정용 {keyword}', '학생용 {keyword}', '비즈니스용 {keyword}', '여행용 {keyword}',
+    ],
+    carrier: [
+      '{keyword} for iPhone', '{keyword} for Android', '{keyword} for iPad',
+      '{keyword} for Windows', '{keyword} for Mac', '{keyword} for Linux',
+      '{keyword} 웹', '{keyword} 데스크탑', '{keyword} 모바일',
+      '{keyword} 앱', '{keyword} 소프트웨어', '{keyword} 도구', '{keyword} 확장',
+    ],
+    state: [
+      '무료 {keyword}', '유료 {keyword}', '추천 {keyword}', '인기 {keyword}',
+      '최신 {keyword}', '최고 {keyword}', '고급 {keyword}', '전문가용 {keyword}',
+      '오픈소스 {keyword}', '상업용 {keyword}', '온라인 {keyword}', '오프라인 {keyword}',
+    ],
+    goal: [
+      '{keyword}로 돈 버는 법', '{keyword}로 학습하기', '{keyword} 튜토리얼', '{keyword} 입문',
+      '{keyword} 마스터', '{keyword} 수익화', '{keyword} 부업', '생산성 향상 {keyword}',
+      '사무실용 {keyword}', '디자인 {keyword}', '개발 {keyword}', '운영 {keyword}',
+    ],
+    method: [
+      '{keyword} 하는 법', '{keyword} 방법', '{keyword} 팁', '{keyword} 튜토리얼',
+      '{keyword} 단계', '{keyword} 프로세스', '{keyword} 가이드', '{keyword} 학습',
+      '{keyword} 사용', '{keyword} 설정', '{keyword} 설치', '{keyword} 최적화',
+    ],
+  },
+  'fr': {
+    scenario: [
+      'comment utiliser {keyword}', '{keyword} tutoriel', '{keyword} astuces', 'meilleur {keyword} pour',
+      '{keyword} pour débutants', '{keyword} guide', 'utiliser {keyword} pour', '{keyword} pour le travail',
+      '{keyword} pour les affaires', '{keyword} pour les étudiants', '{keyword} pour la maison',
+      '{keyword} pour le bureau', '{keyword} pour les voyages',
+    ],
+    carrier: [
+      '{keyword} pour iPhone', '{keyword} pour Android', '{keyword} pour iPad',
+      '{keyword} pour Windows', '{keyword} pour Mac', '{keyword} pour Linux',
+      '{keyword} web', '{keyword} bureau', '{keyword} mobile', '{keyword} application',
+    ],
+    state: [
+      '{keyword} gratuit', '{keyword} payant', 'meilleur {keyword}', '{keyword} populaire',
+      '{keyword} récent', '{keyword} professionnel', '{keyword} avancé', '{keyword} premium',
+    ],
+    goal: [
+      'utiliser {keyword} pour apprendre', '{keyword} pour gagner de l\'argent', '{keyword} pour la productivité',
+      '{keyword} pour les affaires', '{keyword} pour l\'éducation', '{keyword} pour résoudre des problèmes',
+    ],
+    method: [
+      'comment {keyword}', '{keyword} tutoriel', '{keyword} guide', '{keyword} astuces',
+      '{keyword} étape par étape', '{keyword} pour débutants', 'apprendre {keyword}',
+    ],
+  },
+  'de': {
+    scenario: [
+      'wie man {keyword} verwendet', '{keyword} Tutorial', '{keyword} Tipps', 'bester {keyword} für',
+      '{keyword} für Anfänger', '{keyword} Leitfaden', '{keyword} verwenden für', '{keyword} für die Arbeit',
+      '{keyword} für Unternehmen', '{keyword} für Studenten', '{keyword} für Zuhause',
+      '{keyword} für das Büro', '{keyword} für Reisen',
+    ],
+    carrier: [
+      '{keyword} für iPhone', '{keyword} für Android', '{keyword} für iPad',
+      '{keyword} für Windows', '{keyword} für Mac', '{keyword} für Linux',
+      '{keyword} Web', '{keyword} Desktop', '{keyword} Mobile', '{keyword} App',
+    ],
+    state: [
+      'kostenloser {keyword}', 'bezahlter {keyword}', 'bester {keyword}', '{keyword} beliebt',
+      '{keyword} neu', '{keyword} professionell', '{keyword} fortgeschritten', '{keyword} Premium',
+    ],
+    goal: [
+      '{keyword} zum Lernen verwenden', '{keyword} Geld verdienen', '{keyword} für Produktivität',
+      '{keyword} für Unternehmen', '{keyword} für Bildung', '{keyword} zum Problemlösen',
+    ],
+    method: [
+      'wie man {keyword}', '{keyword} Tutorial', '{keyword} Anleitung', '{keyword} Tipps',
+      '{keyword} Schritt für Schritt', '{keyword} für Anfänger', '{keyword} lernen',
+    ],
+  },
+  'es': {
+    scenario: [
+      'cómo usar {keyword}', '{keyword} tutorial', '{keyword} consejos', 'mejor {keyword} para',
+      '{keyword} para principiantes', '{keyword} guía', 'usar {keyword} para', '{keyword} para trabajo',
+      '{keyword} para negocios', '{keyword} para estudiantes', '{keyword} para casa',
+      '{keyword} para oficina', '{keyword} para viajes',
+    ],
+    carrier: [
+      '{keyword} para iPhone', '{keyword} para Android', '{keyword} para iPad',
+      '{keyword} para Windows', '{keyword} para Mac', '{keyword} para Linux',
+      '{keyword} web', '{keyword} escritorio', '{keyword} móvil', '{keyword} aplicación',
+    ],
+    state: [
+      '{keyword} gratis', '{keyword} de pago', 'mejor {keyword}', '{keyword} popular',
+      '{keyword} nuevo', '{keyword} profesional', '{keyword} avanzado', '{keyword} premium',
+    ],
+    goal: [
+      'usar {keyword} para aprender', '{keyword} para ganar dinero', '{keyword} para productividad',
+      '{keyword} para negocios', '{keyword} para educación', '{keyword} para resolver problemas',
+    ],
+    method: [
+      'cómo {keyword}', '{keyword} tutorial', '{keyword} guía', '{keyword} consejos',
+      '{keyword} paso a paso', '{keyword} para principiantes', 'aprender {keyword}',
+    ],
+  },
+  'it': {
+    scenario: [
+      'come usare {keyword}', '{keyword} tutorial', '{keyword} consigli', 'miglior {keyword} per',
+      '{keyword} per principianti', '{keyword} guida', 'usare {keyword} per', '{keyword} per lavoro',
+      '{keyword} per affari', '{keyword} per studenti', '{keyword} per casa',
+      '{keyword} per ufficio', '{keyword} per viaggi',
+    ],
+    carrier: [
+      '{keyword} per iPhone', '{keyword} per Android', '{keyword} per iPad',
+      '{keyword} per Windows', '{keyword} per Mac', '{keyword} per Linux',
+      '{keyword} web', '{keyword} desktop', '{keyword} mobile', '{keyword} app',
+    ],
+    state: [
+      '{keyword} gratuito', '{keyword} a pagamento', 'miglior {keyword}', '{keyword} popolare',
+      '{keyword} nuovo', '{keyword} professionale', '{keyword} avanzato', '{keyword} premium',
+    ],
+    goal: [
+      'usare {keyword} per imparare', '{keyword} per guadagnare', '{keyword} per produttività',
+      '{keyword} per affari', '{keyword} per istruzione', '{keyword} per risolvere problemi',
+    ],
+    method: [
+      'come {keyword}', '{keyword} tutorial', '{keyword} guida', '{keyword} consigli',
+      '{keyword} passo dopo passo', '{keyword} per principianti', 'imparare {keyword}',
+    ],
+  },
+  'pt': {
+    scenario: [
+      'como usar {keyword}', '{keyword} tutorial', '{keyword} dicas', 'melhor {keyword} para',
+      '{keyword} para iniciantes', '{keyword} guia', 'usar {keyword} para', '{keyword} para trabalho',
+      '{keyword} para negocios', '{keyword} para estudantes', '{keyword} para casa',
+      '{keyword} para escritório', '{keyword} para viagens',
+    ],
+    carrier: [
+      '{keyword} para iPhone', '{keyword} para Android', '{keyword} para iPad',
+      '{keyword} para Windows', '{keyword} para Mac', '{keyword} para Linux',
+      '{keyword} web', '{keyword} desktop', '{keyword} mobile', '{keyword} aplicativo',
+    ],
+    state: [
+      '{keyword} gratuito', '{keyword} pago', 'melhor {keyword}', '{keyword} popular',
+      '{keyword} novo', '{keyword} profissional', '{keyword} avançado', '{keyword} premium',
+    ],
+    goal: [
+      'usar {keyword} para aprender', '{keyword} para ganhar dinheiro', '{keyword} para produtividade',
+      '{keyword} para negocios', '{keyword} para educação', '{keyword} para resolver problemas',
+    ],
+    method: [
+      'como {keyword}', '{keyword} tutorial', '{keyword} guia', '{keyword} dicas',
+      '{keyword} passo a passo', '{keyword} para iniciantes', 'aprender {keyword}',
+    ],
+  },
+};
+
+// 规则库：多维度关键词拓展规则（保留原有结构用于兼容）
 export const EXPANSION_RULES: Record<KeywordDimension, KeywordRule[]> = {
   // 场景维度
   scenario: [
@@ -540,35 +830,54 @@ export const EXPANSION_RULES: Record<KeywordDimension, KeywordRule[]> = {
 export class RuleEngine {
   private rules: Record<KeywordDimension, KeywordRule[]> = EXPANSION_RULES;
 
-  // 应用规则生成关键词
-  applyRules(keyword: string, dimension: KeywordDimension): ExpansionResult[] {
+  // 应用规则生成关键词（支持多语言）
+  applyRules(keyword: string, dimension: KeywordDimension, language: SupportedLanguage = 'zh-CN'): ExpansionResult[] {
     const dimensionRules = this.rules[dimension] || [];
     const results: ExpansionResult[] = [];
 
-    for (const rule of dimensionRules) {
-      for (const template of rule.templates) {
-        const generatedKeyword = template.replace(/{keyword}/g, keyword);
-        results.push({
-          keyword: generatedKeyword,
-          dimension,
-          source: 'rule',
-          relevance: this.calculateRelevance(keyword, generatedKeyword),
-          type: this.detectKeywordType(generatedKeyword),
-          intent: this.detectKeywordIntent(generatedKeyword),
-        });
+    // 使用多语言模板
+    const languageTemplates = LANGUAGE_RULE_TEMPLATES[language]?.[dimension] || LANGUAGE_RULE_TEMPLATES['zh-CN']?.[dimension] || [];
+
+    // 优先使用多语言模板
+    for (const template of languageTemplates) {
+      const generatedKeyword = template.replace(/{keyword}/g, keyword);
+      results.push({
+        keyword: generatedKeyword,
+        dimension,
+        source: 'rule',
+        relevance: this.calculateRelevance(keyword, generatedKeyword),
+        type: this.detectKeywordType(generatedKeyword),
+        intent: this.detectKeywordIntent(generatedKeyword),
+      });
+    }
+
+    // 如果没有多语言模板，使用原有规则（兼容性）
+    if (languageTemplates.length === 0) {
+      for (const rule of dimensionRules) {
+        for (const template of rule.templates) {
+          const generatedKeyword = template.replace(/{keyword}/g, keyword);
+          results.push({
+            keyword: generatedKeyword,
+            dimension,
+            source: 'rule',
+            relevance: this.calculateRelevance(keyword, generatedKeyword),
+            type: this.detectKeywordType(generatedKeyword),
+            intent: this.detectKeywordIntent(generatedKeyword),
+          });
+        }
       }
     }
 
     return results;
   }
 
-  // 应用所有维度的规则
-  applyAllRules(keyword: string): Record<KeywordDimension, ExpansionResult[]> {
+  // 应用所有维度的规则（支持多语言）
+  applyAllRules(keyword: string, language: SupportedLanguage = 'zh-CN'): Record<KeywordDimension, ExpansionResult[]> {
     const dimensions: KeywordDimension[] = ['scenario', 'carrier', 'state', 'goal', 'method'];
     const results: Record<KeywordDimension, ExpansionResult[]> = {} as any;
 
     for (const dimension of dimensions) {
-      results[dimension] = this.applyRules(keyword, dimension);
+      results[dimension] = this.applyRules(keyword, dimension, language);
     }
 
     return results;

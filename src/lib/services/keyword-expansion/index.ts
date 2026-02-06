@@ -38,7 +38,7 @@ export class KeywordExpansionService {
     // 1. 规则引擎拓展
     if (config.useRuleEngine) {
       console.log('启用规则引擎...');
-      const ruleResults = ruleEngine.applyAllRules(inputKeyword);
+      const ruleResults = ruleEngine.applyAllRules(inputKeyword, language);
 
       for (const [dimension, results] of Object.entries(ruleResults)) {
         dimensions[dimension as KeywordDimension] = results;

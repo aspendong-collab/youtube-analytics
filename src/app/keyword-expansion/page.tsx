@@ -77,6 +77,7 @@ export default function KeywordExpansionPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ExpansionResponse | null>(null);
   const [selectedDimension, setSelectedDimension] = useState<string>('all');
+  const [selectedType, setSelectedType] = useState<string>('all'); // 新增：关键词类型选择
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // 搜索推荐相关状态
@@ -202,6 +203,8 @@ export default function KeywordExpansionPage() {
     setErrorMessage(null);
     setResult(null);
     setShowSuggestions(false);
+    setSelectedDimension('all'); // 重置维度选择
+    setSelectedType('all'); // 重置类型选择
 
     // 创建 AbortController 用于超时控制
     const controller = new AbortController();
@@ -255,12 +258,24 @@ export default function KeywordExpansionPage() {
   const getFilteredKeywords = (): ExpansionResult[] => {
     if (!result) return [];
 
+    let filteredKeywords: ExpansionResult[] = [];
+
+    // 先按维度过滤
     if (selectedDimension === 'all') {
-      return result.topKeywords;
+      filteredKeywords = result.topKeywords;
+    } else {
+      const dimensionKeywords = result.dimensions[selectedDimension as keyof typeof result.dimensions];
+      filteredKeywords = dimensionKeywords || [];
     }
 
-    const dimensionKeywords = result.dimensions[selectedDimension as keyof typeof result.dimensions];
-    return dimensionKeywords || [];
+    // 再按类型过滤
+    if (selectedType !== 'all') {
+      filteredKeywords = filteredKeywords.filter(kw =>
+        detectKeywordType(kw.keyword) === selectedType
+      );
+    }
+
+    return filteredKeywords;
   };
 
   const getDimensionStats = () => {
@@ -639,29 +654,56 @@ export default function KeywordExpansionPage() {
             {/* 关键词类型统计 */}
             <Card className="mb-6">
               <CardHeader>
-                <CardTitle>关键词类型分布</CardTitle>
-                <CardDescription>系统自动识别并分类关键词类型</CardDescription>
+                <CardTitle>关键词类型筛选</CardTitle>
+                <CardDescription>点击类型卡片筛选关键词</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-4">
+                  {/* 全部 */}
+                  <div
+                    onClick={() => setSelectedType('all')}
+                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                      selectedType === 'all'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
+                        : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">全部</span>
+                      <Badge variant="secondary">
+                        {Object.values(result.dimensions).flat().length}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      显示所有关键词
+                    </p>
+                  </div>
+
+                  {/* 品牌词 */}
                   {(['brand', 'generic', 'longtail'] as const).map(type => {
                     const typeCount = Object.values(result.dimensions).flat().filter(
                       kw => detectKeywordType(kw.keyword) === type
                     ).length;
                     const Icon = KEYWORD_TYPE_ICONS[type];
                     const typeName = KEYWORD_TYPE_NAMES[type];
+                    const isSelected = selectedType === type;
 
                     return (
                       <div
                         key={type}
-                        className={`p-4 rounded-lg border-2 ${KEYWORD_TYPE_COLORS[type].split(' ').slice(0, 2).join(' ')}`}
+                        onClick={() => setSelectedType(type)}
+                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          isSelected
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
+                            : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                        }`}
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
-                            <Icon className="w-5 h-5" />
+                            <Icon className={`w-5 h-5 ${isSelected ? 'text-blue-600' : 'text-slate-600 dark:text-slate-400'}`} />
                             <span className="text-sm font-medium">{typeName}</span>
                           </div>
-                          <Badge variant="secondary" className={KEYWORD_TYPE_COLORS[type]}>
+                          <Badge className={KEYWORD_TYPE_COLORS[type]}>
                             {typeCount}
                           </Badge>
                         </div>
@@ -674,6 +716,25 @@ export default function KeywordExpansionPage() {
                     );
                   })}
                 </div>
+
+                {/* 筛选提示 */}
+                {selectedDimension !== 'all' && selectedType !== 'all' && (
+                  <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      当前筛选：<strong>{DIMENSION_NAMES[selectedDimension]}</strong>
+                      × <strong>{KEYWORD_TYPE_NAMES[selectedType]}</strong>
+                      <button
+                        onClick={() => {
+                          setSelectedDimension('all');
+                          setSelectedType('all');
+                        }}
+                        className="ml-2 text-xs underline hover:text-blue-900 dark:hover:text-blue-100"
+                      >
+                        清除筛选
+                      </button>
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -682,7 +743,14 @@ export default function KeywordExpansionPage() {
               <CardHeader>
                 <CardTitle>拓展结果</CardTitle>
                 <CardDescription>
-                  {selectedDimension === 'all' ? '推荐指数最高的20个关键词' : `${DIMENSION_NAMES[selectedDimension]}维度的所有关键词`}
+                  {selectedDimension !== 'all' && selectedType !== 'all'
+                    ? `${DIMENSION_NAMES[selectedDimension]} × ${KEYWORD_TYPE_NAMES[selectedType]}：${getFilteredKeywords().length} 个关键词`
+                    : selectedDimension !== 'all'
+                    ? `${DIMENSION_NAMES[selectedDimension]}维度的所有关键词`
+                    : selectedType !== 'all'
+                    ? `${KEYWORD_TYPE_NAMES[selectedType]}的所有关键词`
+                    : '推荐指数最高的20个关键词'
+                  }
                 </CardDescription>
               </CardHeader>
               <CardContent>
