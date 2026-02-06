@@ -23,68 +23,203 @@ async function fetchGoogleSuggestions(query: string, language: string = 'zh-CN')
 
 /**
  * 生成本地搜索建议（当 Google API 不可用时使用）
+ * 支持智能语言适配和热度推荐
  */
 function generateLocalSuggestions(query: string, language: string = 'zh-CN'): string[] {
   const q = query.trim();
   const suggestions: string[] = [];
 
-  // 根据语言生成不同的建议模式
-  if (language === 'zh-CN' || language === 'zh-TW') {
-    // 中文建议
-    const prefixes = ['如何使用', '怎么用', '使用教程', '使用方法', '使用技巧', '最佳', '推荐', '免费', '付费'];
-    const suffixes = ['教程', '指南', '入门', '精通', '下载', '安装', '使用方法', '技巧', '评测', '对比'];
-    const combos = [' vs ', ' 和 ', ' 或 ', ' 替代品', ' 类似工具'];
+  // 检测输入是否包含非ASCII字符（中文、日文、韩文等）
+  const hasNonAscii = /[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]/.test(q);
 
-    prefixes.forEach(p => suggestions.push(`${p}${q}`));
-    suffixes.forEach(s => suggestions.push(`${q}${s}`));
-    combos.forEach(c => {
-      if (!q.includes(c)) {
-        suggestions.push(`${q}${c}`);
+  // 如果输入包含非ASCII字符，但语言是英文等非亚洲语言，则翻译输入
+  let workingQuery = q;
+  if (hasNonAscii && (language === 'en' || language === 'fr' || language === 'de' || language === 'it' || language === 'es' || language === 'pt')) {
+    // 如果输入是中文但选择英语，提供英文相关建议
+    // 简单映射：如果是"周"这样的中文，可以联想到"week"等英文词
+    const commonMappings: Record<string, string> = {
+      '周': 'week',
+      '月': 'month',
+      '年': 'year',
+      '天': 'day',
+      '时': 'hour',
+      '分': 'minute',
+      '秒': 'second',
+      '学习': 'study',
+      '工作': 'work',
+      '生活': 'life',
+      'PDF': 'PDF',
+      'Excel': 'Excel',
+      'Word': 'Word',
+    };
+
+    // 检查是否有映射
+    for (const [zh, en] of Object.entries(commonMappings)) {
+      if (q.includes(zh)) {
+        workingQuery = q.replace(zh, en);
+        break;
       }
-    });
-  } else if (language === 'en') {
-    // 英文建议
-    const prefixes = ['how to use', 'best', 'top', 'free', 'paid'];
-    const suffixes = ['tutorial', 'guide', 'tips', 'tricks', 'review', 'alternatives', 'vs', 'for beginners', 'for professionals'];
-    const combos = [' vs ', ' vs ', ' alternatives', ' for ', ' review'];
+    }
 
-    prefixes.forEach(p => suggestions.push(`${p} ${q}`));
-    suffixes.forEach(s => suggestions.push(`${q} ${s}`));
-    combos.forEach(c => {
-      if (!q.toLowerCase().includes(c)) {
-        suggestions.push(`${q}${c}`);
-      }
-    });
-  } else if (language === 'ja') {
-    // 日语建议
-    const prefixes = ['使い方', '使い方ガイド', '使い方のコツ', '初心者向け', '無料', '有料'];
-    const suffixes = ['の使い方', 'チュートリアル', 'ガイド', '使い方', 'の使い方'];
-    const combos = [' 対比', ' 代替', ' 類似'];
-
-    prefixes.forEach(p => suggestions.push(`${q}${p}`));
-    suffixes.forEach(s => suggestions.push(`${q}${s}`));
-    combos.forEach(c => {
-      if (!q.includes(c)) {
-        suggestions.push(`${q}${c}`);
-      }
-    });
-  } else {
-    // 其他语言使用通用英文模式
-    const prefixes = ['how to use', 'best', 'tutorial'];
-    const suffixes = ['guide', 'tips', 'review', 'alternatives'];
-
-    prefixes.forEach(p => suggestions.push(`${p} ${q}`));
-    suffixes.forEach(s => suggestions.push(`${q} ${s}`));
+    // 如果没有映射，保留原始输入（可能是专有名词如PDF）
+    if (workingQuery === q && /[a-zA-Z]/.test(q)) {
+      workingQuery = q;
+    }
   }
 
-  // 去重并限制数量
-  return [...new Set(suggestions)].slice(0, 10);
+  // 根据目标语言生成建议模式
+  const patterns = getLanguagePatterns(language);
+
+  // 生成建议
+  for (const pattern of patterns.prefixes) {
+    if (language === 'zh-CN' || language === 'zh-TW') {
+      suggestions.push(`${pattern}${workingQuery}`);
+    } else if (language === 'ja' || language === 'ko') {
+      suggestions.push(`${workingQuery}${pattern}`);
+    } else {
+      suggestions.push(`${pattern} ${workingQuery}`);
+    }
+  }
+
+  for (const pattern of patterns.suffixes) {
+    if (language === 'zh-CN' || language === 'zh-TW') {
+      suggestions.push(`${workingQuery}${pattern}`);
+    } else if (language === 'ja' || language === 'ko') {
+      suggestions.push(`${workingQuery}${pattern}`);
+    } else {
+      suggestions.push(`${workingQuery} ${pattern}`);
+    }
+  }
+
+  for (const pattern of patterns.combos) {
+    const comboSuggestion = pattern.replace('{keyword}', workingQuery);
+    if (!suggestions.includes(comboSuggestion)) {
+      suggestions.push(comboSuggestion);
+    }
+  }
+
+  // 添加热门相关词（模拟热度）
+  if (patterns.hotPatterns) {
+    for (const pattern of patterns.hotPatterns) {
+      const hotSuggestion = pattern.replace('{keyword}', workingQuery);
+      if (!suggestions.includes(hotSuggestion)) {
+        suggestions.push(hotSuggestion);
+      }
+    }
+  }
+
+  // 去重并限制数量（增加到15个）
+  return [...new Set(suggestions)].slice(0, 15);
+}
+
+/**
+ * 获取语言特定的关键词模式
+ */
+function getLanguagePatterns(language: string): {
+  prefixes: string[];
+  suffixes: string[];
+  combos: string[];
+  hotPatterns?: string[];
+} {
+  const patterns: Record<string, any> = {
+    'zh-CN': {
+      prefixes: ['如何使用', '怎么用', '使用教程', '使用方法', '使用技巧', '最佳', '推荐', '免费', '付费', '最新', '好用', '专业', '入门', '进阶'],
+      suffixes: ['教程', '指南', '入门', '精通', '下载', '安装', '使用方法', '技巧', '评测', '对比', '推荐', '排行榜', '哪个好', '怎么样'],
+      combos: ['{keyword} vs ', '{keyword}和', '{keyword}替代品', '{keyword}类似工具'],
+      hotPatterns: ['{keyword}视频教程', '{keyword}实战教程', '{keyword}新手教程', '{keyword}必看'],
+    },
+    'zh-TW': {
+      prefixes: ['如何使用', '怎麼用', '使用教學', '使用方法', '使用技巧', '最佳', '推薦', '免費', '付費', '最新', '好用', '專業', '入門', '進階'],
+      suffixes: ['教學', '指南', '入門', '精通', '下載', '安裝', '使用方法', '技巧', '評測', '對比', '推薦', '排行榜', '哪個好', '怎麼樣'],
+      combos: ['{keyword} vs ', '{keyword}和', '{keyword}替代品', '{keyword}類似工具'],
+      hotPatterns: ['{keyword}視頻教學', '{keyword}實戰教學', '{keyword}新手教學', '{keyword}必看'],
+    },
+    'en': {
+      prefixes: ['how to use', 'best', 'top', 'free', 'paid', 'latest', 'popular', 'recommended', 'ultimate', 'complete'],
+      suffixes: ['tutorial', 'guide', 'tips', 'tricks', 'review', 'alternatives', 'vs', 'for beginners', 'for professionals', 'step by step', '2024', '2025'],
+      combos: ['{keyword} vs ', '{keyword} alternatives', '{keyword} for ', '{keyword} review', '{keyword} comparison'],
+      hotPatterns: ['{keyword} video tutorial', '{keyword} crash course', '{keyword} full course', '{keyword} masterclass'],
+    },
+    'ja': {
+      prefixes: ['使い方', '使い方ガイド', '使い方のコツ', '初心者向け', '無料', '有料', '最新', '人気', 'おすすめ', 'プロ向け', '上級'],
+      suffixes: ['の使い方', 'チュートリアル', 'ガイド', '使い方', '入門', '完全版', '徹底解説', '使いこなす', 'マスター'],
+      combos: ['{keyword} vs ', '{keyword} 代替', '{keyword} 類似'],
+      hotPatterns: ['{keyword} 動画チュートリアル', '{keyword} 完全ガイド', '{keyword} 実践編', '{keyword} 入門編'],
+    },
+    'ko': {
+      prefixes: ['사용법', '사용법 가이드', '사용법 팁', '초보자용', '무료', '유료', '최신', '인기', '추천', '전문가용', '고급'],
+      suffixes: [' 사용법', '튜토리얼', '가이드', '사용법', '입문', '완전판', '완벽 해설', '활용법', '마스터'],
+      combos: ['{keyword} vs ', '{keyword} 대체', '{keyword} 유사'],
+      hotPatterns: ['{keyword} 비디오 튜토리얼', '{keyword} 완벽 가이드', '{keyword} 실전 편', '{keyword} 입문 편'],
+    },
+    'fr': {
+      prefixes: ['comment utiliser', 'meilleur', 'top', 'gratuit', 'payant', 'dernier', 'populaire', 'recommandé', 'ultime', 'complet'],
+      suffixes: ['tutoriel', 'guide', 'astuces', 'conseils', 'review', 'alternatives', 'vs', 'pour débutants', 'étape par étape'],
+      combos: ['{keyword} vs ', '{keyword} alternatives', '{keyword} pour ', '{keyword} comparaison'],
+      hotPatterns: ['{keyword} vidéo tutoriel', '{keyword} cours complet', '{keyword} guide complet'],
+    },
+    'de': {
+      prefixes: ['wie man verwendet', 'bester', 'top', 'kostenlos', 'kostenpflichtig', 'neueste', 'beliebt', 'empfohlen', 'ultimativ', 'vollständig'],
+      suffixes: ['Tutorial', 'Leitfaden', 'Tipps', 'Tricks', 'Review', 'Alternativen', 'vs', 'für Anfänger', 'Schritt für Schritt'],
+      combos: ['{keyword} vs ', '{keyword} Alternativen', '{keyword} für ', '{keyword} Vergleich'],
+      hotPatterns: ['{keyword} Video Tutorial', '{keyword} Vollkurs', '{keyword} Vollständiger Leitfaden'],
+    },
+    'it': {
+      prefixes: ['come usare', 'migliore', 'top', 'gratuito', 'a pagamento', 'ultimo', 'popolare', 'raccomandato', 'ultimativo', 'completo'],
+      suffixes: ['tutorial', 'guida', 'consigli', 'trucchetti', 'recensione', 'alternative', 'vs', 'per principianti', 'passo dopo passo'],
+      combos: ['{keyword} vs ', '{keyword} alternative', '{keyword} per ', '{keyword} confronto'],
+      hotPatterns: ['{keyword} video tutorial', '{keyword} corso completo', '{keyword} guida completa'],
+    },
+    'es': {
+      prefixes: ['cómo usar', 'mejor', 'top', 'gratis', 'de pago', 'último', 'popular', 'recomendado', 'último', 'completo'],
+      suffixes: ['tutorial', 'guía', 'consejos', 'trucos', 'reseña', 'alternativas', 'vs', 'para principiantes', 'paso a paso'],
+      combos: ['{keyword} vs ', '{keyword} alternativas', '{keyword} para ', '{keyword} comparación'],
+      hotPatterns: ['{keyword} video tutorial', '{keyword} curso completo', '{keyword} guía completa'],
+    },
+    'pt': {
+      prefixes: ['como usar', 'melhor', 'top', 'gratuito', 'pago', 'último', 'popular', 'recomendado', 'último', 'completo'],
+      suffixes: ['tutorial', 'guia', 'dicas', 'truques', 'review', 'alternativas', 'vs', 'para iniciantes', 'passo a passo'],
+      combos: ['{keyword} vs ', '{keyword} alternativas', '{keyword} para ', '{keyword} comparação'],
+      hotPatterns: ['{keyword} video tutorial', '{keyword} curso completo', '{keyword} guia completa'],
+    },
+  };
+
+  return patterns[language] || patterns['en'];
 }
 
 /**
  * 从缓存获取或获取新的建议
  */
 export async function getSuggestions(query: string, language: string = 'zh-CN'): Promise<string[]> {
+  if (!query || query.trim().length < 1) {
+    return [];
+  }
+
+  // 如果输入是中文但选择英语等非亚洲语言，检查是否有映射
+  const hasNonAscii = /[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]/.test(query.trim());
+  if (hasNonAscii && (language === 'en' || language === 'fr' || language === 'de' || language === 'it' || language === 'es' || language === 'pt')) {
+    const commonMappings: Record<string, string> = {
+      '周': 'week',
+      '月': 'month',
+      '年': 'year',
+      '天': 'day',
+      '时': 'hour',
+      '分': 'minute',
+      '秒': 'second',
+      '学习': 'study',
+      '工作': 'work',
+      '生活': 'life',
+    };
+
+    for (const [zh, en] of Object.entries(commonMappings)) {
+      if (query.includes(zh)) {
+        query = query.replace(zh, en);
+        break;
+      }
+    }
+  }
+
+  // 映射后检查长度
   if (!query || query.trim().length < 2) {
     return [];
   }

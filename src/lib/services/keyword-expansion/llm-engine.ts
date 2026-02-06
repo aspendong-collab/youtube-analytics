@@ -305,7 +305,7 @@ export class LLMEngine {
     const examples = languageExamples[language] || languageExamples['en'];
 
     // 构建提示词
-    const prompt = `Generate 15-20 YouTube keywords in ${targetLanguage} for "${keyword}".
+    const prompt = `Generate 30-40 YouTube keywords in ${targetLanguage} for "${keyword}".
 
 Dimension: ${dimensionDesc}
 

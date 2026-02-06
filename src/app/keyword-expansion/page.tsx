@@ -194,7 +194,7 @@ export default function KeywordExpansionPage() {
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [showSuggestions]);
 
   const handleExpand = async () => {
     if (!keyword.trim()) return;
@@ -262,7 +262,8 @@ export default function KeywordExpansionPage() {
 
     // 先按维度过滤
     if (selectedDimension === 'all') {
-      filteredKeywords = result.topKeywords;
+      // 使用所有维度的关键词，而不是只使用topKeywords
+      filteredKeywords = Object.values(result.dimensions).flat();
     } else {
       const dimensionKeywords = result.dimensions[selectedDimension as keyof typeof result.dimensions];
       filteredKeywords = dimensionKeywords || [];

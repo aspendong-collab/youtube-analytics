@@ -119,13 +119,32 @@ export class KeywordExpansionService {
     console.log('估算搜索量和竞争度...');
     const enhancedResults = config.useDataMining
       ? await searchVolumeEstimator.estimateBatch(allResultsArray)
-      : allResultsArray.map(kw => ({
-          ...kw,
-          estimatedSearchVolume: Math.floor(Math.random() * 5000),
-          estimatedCompetition: 0.5,
-          commercialValue: kw.relevance * 0.4,
-          recommendationScore: kw.relevance * 0.6,
-        }));
+      : allResultsArray.map(kw => {
+          // 生成更合理的模拟数据
+          const baseVolume = Math.random();
+          let searchVolume: number;
+          let competition: number;
+
+          // 根据相关性生成搜索量
+          if (kw.relevance >= 0.8) {
+            searchVolume = Math.floor(baseVolume * 50000); // 高相关性：0-50000
+            competition = 0.6 + Math.random() * 0.4; // 0.6-1.0
+          } else if (kw.relevance >= 0.5) {
+            searchVolume = Math.floor(baseVolume * 10000); // 中等相关性：0-10000
+            competition = 0.3 + Math.random() * 0.4; // 0.3-0.7
+          } else {
+            searchVolume = Math.floor(baseVolume * 2000); // 低相关性：0-2000
+            competition = Math.random() * 0.5; // 0-0.5
+          }
+
+          return {
+            ...kw,
+            estimatedSearchVolume: searchVolume,
+            estimatedCompetition: competition,
+            commercialValue: kw.relevance * 0.5,
+            recommendationScore: kw.relevance * 0.7 + (1 - competition) * 0.3,
+          };
+        });
 
     // 更新维度数据
     for (const dimension of Object.keys(dimensions)) {
@@ -141,7 +160,7 @@ export class KeywordExpansionService {
     // 6. 生成响应
     const topKeywords = enhancedResults
       .sort((a, b) => (b.recommendationScore || 0) - (a.recommendationScore || 0))
-      .slice(0, 20);
+      .slice(0, 100);
 
     // 7. 获取配额信息
     let quota: QuotaInfo | undefined;
