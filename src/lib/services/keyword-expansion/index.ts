@@ -146,19 +146,19 @@ export class KeywordExpansionService {
       ? await searchVolumeEstimator.estimateBatch(allResultsArray)
       : allResultsArray.map(kw => {
           // 生成更合理的模拟数据
-          const baseVolume = Math.random();
+          const baseVolume = 0.3 + Math.random() * 0.7; // 0.3-1.0，避免过小
           let searchVolume: number;
           let competition: number;
 
           // 根据相关性生成搜索量
           if (kw.relevance >= 0.8) {
-            searchVolume = Math.floor(baseVolume * 50000); // 高相关性：0-50000
-            competition = 0.6 + Math.random() * 0.4; // 0.6-1.0
+            searchVolume = Math.floor(baseVolume * 50000); // 高相关性：15000-50000
+            competition = 0.5 + Math.random() * 0.5; // 0.5-1.0
           } else if (kw.relevance >= 0.5) {
-            searchVolume = Math.floor(baseVolume * 10000); // 中等相关性：0-10000
+            searchVolume = Math.floor(baseVolume * 10000); // 中等相关性：3000-10000
             competition = 0.3 + Math.random() * 0.4; // 0.3-0.7
           } else {
-            searchVolume = Math.floor(baseVolume * 2000); // 低相关性：0-2000
+            searchVolume = Math.floor(baseVolume * 2000); // 低相关性：600-2000
             competition = Math.random() * 0.5; // 0-0.5
           }
 
@@ -227,6 +227,12 @@ export class KeywordExpansionService {
     results: ExpansionResult[]
   ): Promise<void> {
     try {
+      // 检查结果是否为空
+      if (!results || results.length === 0) {
+        console.warn('[saveToDatabase] 结果为空，跳过保存');
+        return;
+      }
+
       // 保存拓展记录
       await db.insert(keywordExpansions).values({
         id: expansionId,
