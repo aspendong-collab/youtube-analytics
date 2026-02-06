@@ -154,12 +154,11 @@ export async function POST(request: NextRequest) {
           nextPageToken: result.nextPageToken, // 下一页 token
           totalResults: result.totalResults, // 总结果数
           hasMore: !!result.nextPageToken, // 是否有更多
-          quotaUsage: youtubeClient.getQuotaUsage(),
+          quotaUsage: youtubeApiKeyPool.getPoolStatus(), // 使用 Key Pool 配额
           scoringEnabled: enableScoring || false, // 是否启用评分
         },
       });
     } catch (error) {
-      clearTimeout(timeout);
       throw error;
     }
   } catch (error) {
@@ -212,8 +211,7 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const quotaUsage = youtubeClient.getQuotaUsage();
-    const cacheStats = youtubeClient.getCacheStats();
+    const poolStatus = youtubeApiKeyPool.getPoolStatus();
     
     // 获取数据库缓存统计
     const dbCacheStats = await influencerCacheService.getStats();
@@ -221,9 +219,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        quotaUsage,
+        quotaUsage: poolStatus,
         cacheStats: {
-          memory: cacheStats,
           database: dbCacheStats,
         },
       },
