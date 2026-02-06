@@ -215,6 +215,18 @@ export default function KeywordExpansionPage() {
     setSelectedDimension('all'); // 重置维度选择
     setSelectedType('all'); // 重置类型选择
 
+    console.log('========================================');
+    console.log('开始关键词拓展');
+    console.log('关键词:', keyword.trim());
+    console.log('语言:', language);
+    console.log('配置:', {
+      useRuleEngine,
+      useLLMEngine,
+      useDataMining,
+      category: 'generic'
+    });
+    console.log('========================================');
+
     // 创建 AbortController 用于超时控制
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
@@ -222,6 +234,7 @@ export default function KeywordExpansionPage() {
     }, 60000); // 60秒超时
 
     try {
+      console.log('发送请求到 /api/keywords/smart-expand');
       const response = await fetch('/api/keywords/smart-expand', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -238,17 +251,45 @@ export default function KeywordExpansionPage() {
 
       clearTimeout(timeoutId);
 
+      console.log('收到响应，状态码:', response.status);
       const data = await response.json();
+      console.log('响应数据:', data);
 
       if (data.success) {
+        console.log('✅ 拓展成功');
+        console.log('总关键词数:', data.data.totalKeywords);
+        console.log('唯一关键词数:', data.data.uniqueKeywords);
+
+        // 统计各来源数量
+        const allKeywords = Object.values(data.data.dimensions || {}).flat();
+        const sourceStats = {
+          rule: allKeywords.filter((k: any) => k.source === 'rule').length,
+          llm: allKeywords.filter((k: any) => k.source === 'llm').length,
+          tagMining: allKeywords.filter((k: any) => k.source === 'tagMining').length,
+          commentMining: allKeywords.filter((k: any) => k.source === 'commentMining').length,
+        };
+        console.log('各来源统计:', sourceStats);
+
+        if (sourceStats.llm === 0) {
+          console.warn('⚠️ LLM 生成了 0 个关键词！');
+        }
+        if (sourceStats.tagMining === 0 && useDataMining) {
+          console.warn('⚠️ 标签提取生成了 0 个关键词！');
+        }
+        if (sourceStats.commentMining === 0 && useDataMining) {
+          console.warn('⚠️ 评论提取生成了 0 个关键词！');
+        }
+
         setResult(data.data);
       } else {
         const errorMsg = data.error || data.details || '拓展失败，请重试';
+        console.error('❌ 拓展失败:', errorMsg);
         setErrorMessage(errorMsg);
-        console.error('拓展失败:', errorMsg);
       }
     } catch (error: any) {
       clearTimeout(timeoutId);
+
+      console.error('❌ 请求异常:', error);
 
       let errorMsg = '拓展失败，请重试';
       if (error.name === 'AbortError') {
