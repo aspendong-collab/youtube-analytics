@@ -7,6 +7,7 @@ import { google } from 'googleapis';
 import { AffiliateDetector, type AffiliateDetection } from './affiliate-detection';
 import { DataMiningEngine, type YouTubeVideo } from './keyword-expansion/data-mining';
 import { youtubeApiQuotaService } from './youtube-api-quota';
+import { youtubeApiKeyPool } from './youtube-api-key-pool';
 import type { SupportedLanguage } from './keyword-expansion/types';
 
 export interface FindOptions {
@@ -64,7 +65,6 @@ export interface AffiliateLink {
  * Influencer Affiliate 服务
  */
 export class InfluencerAffiliateService {
-  private youtube: any;
   private affiliateDetector: AffiliateDetector;
   private dataMiningEngine: DataMiningEngine;
 
@@ -93,13 +93,25 @@ export class InfluencerAffiliateService {
   };
 
   constructor(language: SupportedLanguage = 'en') {
-    this.youtube = google.youtube({
-      version: 'v3',
-      auth: process.env.YOUTUBE_API_KEY,
-    });
-
+    // 不在这里初始化 youtube，而是在每次调用时动态获取 API Key
     this.affiliateDetector = new AffiliateDetector();
     this.dataMiningEngine = new DataMiningEngine(language);
+  }
+
+  /**
+   * 创建 YouTube API 客户端（使用 Key 池）
+   */
+  private createYoutubeClient(): any {
+    const apiKey = youtubeApiKeyPool.getNextKey();
+
+    if (!apiKey) {
+      throw new Error('所有 YouTube API Key 都已用完，请等待明天配额重置或添加更多 Key');
+    }
+
+    return google.youtube({
+      version: 'v3',
+      auth: apiKey,
+    });
   }
 
   /**
@@ -248,8 +260,11 @@ export class InfluencerAffiliateService {
 
       console.log(`[AffiliateService] 调用 YouTube Search API: keyword="${keyword}", lang=${relevanceLanguage}, region=${regionCode}, maxResults=${maxResults}`);
 
+      // 使用 Key 池创建客户端
+      const youtube = this.createYoutubeClient();
+
       const searchResponse = await Promise.race([
-        this.youtube.search.list({
+        youtube.search.list({
           q: keyword,
           part: ['snippet'],
           maxResults: maxResults,
@@ -297,8 +312,9 @@ export class InfluencerAffiliateService {
       console.log(`[AffiliateService] 准备获取 ${videoIds.length} 个视频的详细信息`);
 
       // 获取视频详情
+      const youtube2 = this.createYoutubeClient(); // 使用新的客户端
       const videosResponse = await Promise.race([
-        this.youtube.videos.list({
+        youtube2.videos.list({
           id: videoIds,
           part: ['snippet', 'statistics']
         }),
@@ -360,8 +376,10 @@ export class InfluencerAffiliateService {
    */
   private async fetchVideoComments(videoId: string, maxResults: number = 10): Promise<Array<{ textDisplay: string }>> {
     try {
+      const youtube = this.createYoutubeClient(); // 使用 Key 池创建客户端
+
       const commentsResponse = await Promise.race([
-        this.youtube.commentThreads.list({
+        youtube.commentThreads.list({
           videoId,
           part: ['snippet'],
           maxResults,
