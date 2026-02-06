@@ -131,3 +131,55 @@ export interface YouTubeVideo {
 export interface VideoWithComments extends YouTubeVideo {
   comments: string[];
 }
+
+// 常见品牌词列表（可以根据需要扩展）
+export const BRAND_KEYWORDS = [
+  'Notion', 'ChatGPT', 'Midjourney', 'Claude', 'Figma', 'Canva', 'Slack',
+  'Zoom', 'Dropbox', 'Google', 'Microsoft', 'Apple', 'Adobe', 'Photoshop',
+  'Premiere', 'Final Cut', '剪映', '剪映专业版', '微信', 'QQ', '抖音',
+  '小红书', 'B站', '哔哩哔哩', 'Instagram', 'TikTok', 'YouTube',
+  'OpenAI', 'Anthropic', 'Meta', 'Facebook', 'Twitter', 'X', 'LinkedIn',
+  'Airbnb', 'Uber', 'DoorDash', 'Shopify', 'WordPress', 'Webflow',
+];
+
+// 判断关键词类型
+export function detectKeywordType(keyword: string): 'brand' | 'generic' | 'longtail' {
+  const normalizedKeyword = keyword.trim().toLowerCase();
+
+  // 1. 判断是否为品牌词
+  for (const brand of BRAND_KEYWORDS) {
+    if (normalizedKeyword === brand.toLowerCase() ||
+        normalizedKeyword.includes(brand.toLowerCase())) {
+      return 'brand';
+    }
+  }
+
+  // 2. 判断是否为长尾词
+  const wordCount = keyword.trim().split(/\s+/).length;
+  const charCount = keyword.trim().length;
+
+  // 长尾词特征：词汇量多、字符数多、包含特定修饰词
+  const longtailIndicators = [
+    '如何', '怎么', '怎么样', '什么', '哪个', '最好的', '推荐', '教程',
+    '指南', '入门', '进阶', '高级', '免费', '付费', 'vs', '对比', '评测',
+    '技巧', '方法', '步骤', '流程', '详细', '完整', '从零开始',
+    'how to', 'how do i', 'what is', 'best', 'top', 'tutorial', 'guide',
+    'vs', 'comparison', 'review', 'tips', 'methods', 'steps', 'complete',
+  ];
+
+  const hasLongtailIndicator = longtailIndicators.some(indicator =>
+    normalizedKeyword.includes(indicator.toLowerCase())
+  );
+
+  if (wordCount >= 3 || charCount >= 15 || hasLongtailIndicator) {
+    return 'longtail';
+  }
+
+  // 3. 默认为通用词
+  return 'generic';
+}
+
+// 判断关键词类型（中英文兼容）
+export function getKeywordCategory(keyword: string): 'brand' | 'generic' | 'longtail' {
+  return detectKeywordType(keyword);
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,9 +25,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Search, Sparkles, Loader2, TrendingUp, BarChart3, Target, Wrench, Car, Home, Award, Zap, Languages } from 'lucide-react';
+import { Search, Sparkles, Loader2, TrendingUp, BarChart3, Target, Wrench, Car, Home, Award, Zap, Languages, ChevronDown, X, Flame } from 'lucide-react';
 import type { ExpansionResponse, ExpansionResult, SupportedLanguage } from '@/lib/services/keyword-expansion/types';
-import { LANGUAGE_NAMES } from '@/lib/services/keyword-expansion/types';
+import { LANGUAGE_NAMES, detectKeywordType } from '@/lib/services/keyword-expansion/types';
 
 // 维度图标映射
 const DIMENSION_ICONS: Record<string, any> = {
@@ -47,9 +47,29 @@ const DIMENSION_NAMES: Record<string, string> = {
   method: '方法步骤',
 };
 
+// 关键词类型名称映射
+const KEYWORD_TYPE_NAMES: Record<string, string> = {
+  brand: '品牌词',
+  generic: '通用词',
+  longtail: '长尾词',
+};
+
+// 关键词类型图标映射
+const KEYWORD_TYPE_ICONS: Record<string, any> = {
+  brand: Zap,
+  generic: Sparkles,
+  longtail: Flame,
+};
+
+// 关键词类型颜色映射
+const KEYWORD_TYPE_COLORS: Record<string, string> = {
+  brand: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
+  generic: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+  longtail: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
+};
+
 export default function KeywordExpansionPage() {
   const [keyword, setKeyword] = useState('');
-  const [category, setCategory] = useState('generic');
   const [language, setLanguage] = useState<SupportedLanguage>('zh-CN');
   const [useRuleEngine, setUseRuleEngine] = useState(true);
   const [useLLMEngine, setUseLLMEngine] = useState(true);
@@ -59,12 +79,129 @@ export default function KeywordExpansionPage() {
   const [selectedDimension, setSelectedDimension] = useState<string>('all');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // 搜索推荐相关状态
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // 防抖函数
+  const debounce = <T extends (...args: any[]) => any>(
+    func: T,
+    wait: number
+  ): ((...args: Parameters<T>) => void) => {
+    let timeout: NodeJS.Timeout;
+    return (...args: Parameters<T>) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+  };
+
+  // 获取搜索推荐
+  const fetchSuggestions = useCallback(
+    debounce(async (query: string) => {
+      if (query.trim().length < 2) {
+        setSuggestions([]);
+        setShowSuggestions(false);
+        return;
+      }
+
+      setLoadingSuggestions(true);
+      try {
+        const response = await fetch(
+          `/api/keywords/suggest?q=${encodeURIComponent(query)}&language=${language}`
+        );
+        const data = await response.json();
+
+        if (data.success && data.data.keywords) {
+          setSuggestions(data.data.keywords);
+          setShowSuggestions(true);
+          setSelectedSuggestionIndex(-1);
+        }
+      } catch (error) {
+        console.error('获取搜索推荐失败:', error);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    }, 300),
+    [language]
+  );
+
+  // 处理关键词输入
+  const handleKeywordChange = (value: string) => {
+    setKeyword(value);
+    if (value.trim()) {
+      fetchSuggestions(value);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  // 选择搜索推荐
+  const handleSelectSuggestion = (suggestion: string) => {
+    setKeyword(suggestion);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    inputRef.current?.focus();
+  };
+
+  // 键盘导航
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev =>
+          prev < suggestions.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => (prev > 0 ? prev - 1 : -1));
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (selectedSuggestionIndex >= 0) {
+          handleSelectSuggestion(suggestions[selectedSuggestionIndex]);
+        } else {
+          handleExpand();
+        }
+        break;
+      case 'Escape':
+        setShowSuggestions(false);
+        setSelectedSuggestionIndex(-1);
+        break;
+    }
+  };
+
+  // 点击外部关闭推荐
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleExpand = async () => {
     if (!keyword.trim()) return;
 
     setLoading(true);
     setErrorMessage(null);
     setResult(null);
+    setShowSuggestions(false);
 
     // 创建 AbortController 用于超时控制
     const controller = new AbortController();
@@ -78,7 +215,7 @@ export default function KeywordExpansionPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           keyword: keyword.trim(),
-          category,
+          category: 'generic', // 自动判断，默认为 generic
           useRuleEngine,
           useLLMEngine,
           useDataMining,
@@ -180,30 +317,64 @@ export default function KeywordExpansionPage() {
             <div className="space-y-6">
               {/* 关键词输入 */}
               <div className="flex gap-4">
-                <div className="flex-1">
+                <div className="flex-1 relative">
                   <Label htmlFor="keyword-input">关键词</Label>
                   <Input
                     id="keyword-input"
+                    ref={inputRef}
                     placeholder="例如：剪映、Notion、ChatGPT"
                     value={keyword}
-                    onChange={(e) => setKeyword(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleExpand()}
-                    className="text-lg h-12"
+                    onChange={(e) => handleKeywordChange(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => keyword.trim() && showSuggestions && setShowSuggestions(true)}
+                    className="text-lg h-12 pr-10"
                   />
+                  {keyword && (
+                    <button
+                      onClick={() => {
+                        setKeyword('');
+                        setSuggestions([]);
+                        setShowSuggestions(false);
+                        inputRef.current?.focus();
+                      }}
+                      className="absolute right-3 top-[38px] text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+
+                  {/* 搜索推荐下拉框 */}
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div
+                      ref={suggestionsRef}
+                      className="absolute top-[70px] left-0 right-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto"
+                    >
+                      {suggestions.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          onClick={() => handleSelectSuggestion(suggestion)}
+                          onMouseEnter={() => setSelectedSuggestionIndex(index)}
+                          className={`px-4 py-3 cursor-pointer transition-colors ${
+                            index === selectedSuggestionIndex
+                              ? 'bg-blue-50 dark:bg-blue-900/30'
+                              : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Search className="w-4 h-4 text-slate-400" />
+                            <span className="text-sm">{suggestion}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {loadingSuggestions && (
+                        <div className="px-4 py-3 text-center text-slate-500 dark:text-slate-400">
+                          <Loader2 className="w-4 h-4 mx-auto animate-spin" />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="w-40">
-                  <Label htmlFor="category-select">关键词类型</Label>
-                  <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger id="category-select">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="generic">通用词</SelectItem>
-                      <SelectItem value="brand">品牌词</SelectItem>
-                      <SelectItem value="longtail">长尾词</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+
                 <div className="w-48">
                   <Label htmlFor="language-select">输出语言</Label>
                   <Select value={language} onValueChange={(value) => setLanguage(value as SupportedLanguage)}>
@@ -224,6 +395,7 @@ export default function KeywordExpansionPage() {
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div className="flex items-end">
                   <Button
                     size="lg"
@@ -464,6 +636,47 @@ export default function KeywordExpansionPage() {
               </CardContent>
             </Card>
 
+            {/* 关键词类型统计 */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>关键词类型分布</CardTitle>
+                <CardDescription>系统自动识别并分类关键词类型</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-4">
+                  {(['brand', 'generic', 'longtail'] as const).map(type => {
+                    const typeCount = Object.values(result.dimensions).flat().filter(
+                      kw => detectKeywordType(kw.keyword) === type
+                    ).length;
+                    const Icon = KEYWORD_TYPE_ICONS[type];
+                    const typeName = KEYWORD_TYPE_NAMES[type];
+
+                    return (
+                      <div
+                        key={type}
+                        className={`p-4 rounded-lg border-2 ${KEYWORD_TYPE_COLORS[type].split(' ').slice(0, 2).join(' ')}`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Icon className="w-5 h-5" />
+                            <span className="text-sm font-medium">{typeName}</span>
+                          </div>
+                          <Badge variant="secondary" className={KEYWORD_TYPE_COLORS[type]}>
+                            {typeCount}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          {type === 'brand' && '特定品牌或产品名称'}
+                          {type === 'generic' && '通用的搜索词汇'}
+                          {type === 'longtail' && '具体、长尾的搜索短语'}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* 关键词列表 */}
             <Card>
               <CardHeader>
@@ -531,7 +744,9 @@ export default function KeywordExpansionPage() {
                           {(kw.recommendationScore || 0).toFixed(2)}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{kw.type}</Badge>
+                          <Badge className={KEYWORD_TYPE_COLORS[detectKeywordType(kw.keyword)]}>
+                            {KEYWORD_TYPE_NAMES[detectKeywordType(kw.keyword)]}
+                          </Badge>
                         </TableCell>
                       </TableRow>
                     ))}
