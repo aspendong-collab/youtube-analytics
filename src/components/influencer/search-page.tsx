@@ -34,6 +34,7 @@ const LANGUAGE_OPTIONS = [
   { value: 'it', label: 'Italiano', flag: '🇮🇹' },
   { value: 'th', label: 'ไทย', flag: '🇹🇭' },
   { value: 'ar', label: 'العربية', flag: '🇸🇦' },
+  { value: 'zh-TW', label: '繁體中文', flag: '🇹🇼' },
 ];
 
 // 排序选项

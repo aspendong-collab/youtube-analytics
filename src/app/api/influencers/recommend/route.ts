@@ -9,7 +9,7 @@ import type { RecommendationRequest } from '@/types/influencer';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { keyword, product, targetCount, filters } = body;
+    const { keyword, product, targetCount, filters, language } = body;
 
     if (!keyword) {
       return NextResponse.json(
@@ -25,13 +25,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`开始一键推荐: ${keyword}`);
+    console.log(`开始一键推荐: ${keyword}, 语言: ${language || 'all'}`);
 
-    // 步骤1：采集达人
+    // 步骤1：采集达人（支持语言参数）
     const influencers = await influencerCollector.collectByKeyword(keyword, {
       maxResults: 50,
       includeRecentVideos: true,
       recentVideosCount: 10,
+      relevanceLanguage: language !== 'all' ? language : undefined,
     });
 
     if (influencers.length === 0) {
