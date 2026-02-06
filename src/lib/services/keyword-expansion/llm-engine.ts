@@ -219,6 +219,8 @@ export class LLMEngine {
 请只返回JSON数组，不要包含其他内容。`;
 
     try {
+      console.log(`[LLM] 开始调用 LLM，关键词: ${keyword}，维度: ${dimension}，语言: ${language}`);
+
       // 添加10秒超时控制
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('LLM timeout')), 10000);
@@ -228,13 +230,19 @@ export class LLMEngine {
 
       const response = await Promise.race([llmPromise, timeoutPromise]) as any;
 
-      console.log('LLM 响应:', response.substring(0, 100)); // 打印前100个字符
+      if (!response) {
+        console.error('[LLM] LLM 返回空响应');
+        return [];
+      }
+
+      console.log(`[LLM] LLM 响应成功，长度: ${response.length}，前100字符:`, response.substring(0, 100));
+
       const data = JSON.parse(response);
 
       const keywords = data.keywords || [];
-      console.log(`LLM 生成 ${keywords.length} 个关键词`);
+      console.log(`[LLM] 解析成功，生成 ${keywords.length} 个关键词`);
       if (keywords.length === 0) {
-        console.warn('LLM 返回空数组，响应:', response);
+        console.warn('[LLM] LLM 返回空数组，完整响应:', response);
       }
 
       return keywords.map((k: any) => {
@@ -253,9 +261,9 @@ export class LLMEngine {
         };
       });
     } catch (error) {
-      console.error('LLM场景生成失败:', error);
-      console.error('错误详情:', error instanceof Error ? error.message : String(error));
-      console.error('错误堆栈:', error instanceof Error ? error.stack : 'No stack');
+      console.error(`[LLM] ${dimension}维度生成失败:`, error);
+      console.error('[LLM] 错误详情:', error instanceof Error ? error.message : String(error));
+      console.error('[LLM] 错误堆栈:', error instanceof Error ? error.stack : 'No stack');
       return [];
     }
   }

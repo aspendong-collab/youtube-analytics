@@ -55,11 +55,15 @@ export class KeywordExpansionService {
 
     // 2. LLM引擎拓展
     if (config.useLLMEngine) {
-      console.log('启用LLM引擎...');
+      console.log('[主流程] 启用LLM引擎...');
       try {
         const llmResults = await llmEngine.generateAllDimensions(inputKeyword, language);
         const llmCount = Object.values(llmResults).flat().length;
-        console.log(`LLM引擎生成 ${llmCount} 个关键词`);
+        console.log(`[主流程] LLM引擎生成 ${llmCount} 个关键词`);
+
+        if (llmCount === 0) {
+          console.warn('[主流程] LLM引擎未生成任何关键词，可能是超时或API调用失败');
+        }
 
         for (const [dimension, results] of Object.entries(llmResults)) {
           if (!dimensions[dimension as KeywordDimension]) {
@@ -81,14 +85,15 @@ export class KeywordExpansionService {
 
     // 3. 数据挖掘引擎
     if (config.useDataMining) {
-      console.log('启用数据挖掘引擎...');
+      console.log('[主流程] 启用数据挖掘引擎...');
       try {
         // 创建数据挖掘引擎实例，传入语言参数
         const dataMiningEngine = new DataMiningEngine(language);
 
         // 从标签中提取
+        console.log('[主流程] 开始标签提取...');
         const tagKeywords = await dataMiningEngine.extractFromTags(inputKeyword);
-        console.log(`数据挖掘-标签提取：生成 ${tagKeywords.length} 个关键词`);
+        console.log(`[主流程] 数据挖掘-标签提取：生成 ${tagKeywords.length} 个关键词`);
         tagKeywords.forEach(result => {
           const key = `${result.dimension}-${result.keyword}`;
           if (!allResults.has(key)) {
@@ -101,8 +106,9 @@ export class KeywordExpansionService {
         });
 
         // 从评论中提取
+        console.log('[主流程] 开始评论提取...');
         const commentKeywords = await dataMiningEngine.extractFromComments(inputKeyword);
-        console.log(`数据挖掘-评论提取：生成 ${commentKeywords.length} 个关键词`);
+        console.log(`[主流程] 数据挖掘-评论提取：生成 ${commentKeywords.length} 个关键词`);
         commentKeywords.forEach(result => {
           const key = `${result.dimension}-${result.keyword}`;
           if (!allResults.has(key)) {
@@ -113,9 +119,16 @@ export class KeywordExpansionService {
             dimensions[result.dimension].push(result);
           }
         });
+
+        if (tagKeywords.length === 0 && commentKeywords.length === 0) {
+          console.warn('[主流程] 数据挖掘未生成任何关键词，可能是API配额不足或超时');
+        }
       } catch (error) {
-        console.error('数据挖掘引擎失败:', error);
+        console.error('[主流程] 数据挖掘引擎失败:', error);
+        console.error('[主流程] 错误详情:', error instanceof Error ? error.message : String(error));
       }
+    } else {
+      console.log('[主流程] 数据挖掘引擎未启用');
     }
 
     // 转换为数组
