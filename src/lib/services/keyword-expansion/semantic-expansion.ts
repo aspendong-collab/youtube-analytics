@@ -276,7 +276,6 @@ Please return in the following JSON format (do NOT include any other text):
     console.log(`[语义拓展] 模拟生成了 ${keywords.length} 个关键词`);
     return keywords;
   }
-  }
 
   /**
    * 验证关键词的热度（通过 YouTube API 查询相关视频数量）
