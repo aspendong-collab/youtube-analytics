@@ -61,9 +61,12 @@ export class SemanticExpansionService {
     try {
       console.log(`[语义拓展] 使用 LLM 生成关键词: ${originalKeyword}`);
 
-      // 这里使用 LLM 生成关键词
-      // 注意：实际使用时需要集成大语言模型服务
-      // 这里提供模拟实现，实际应调用 LLM API
+      // 检查 DeepSeek API Key
+      const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
+      if (!deepseekApiKey) {
+        console.warn('[语义拓展] 未找到 DEEPSEEK_API_KEY 环境变量，使用模拟数据');
+        return this.generateMockKeywords(originalKeyword, options);
+      }
 
       const prompt = `请为关键词"${originalKeyword}"生成以下类型的词语（不要包含原词"${originalKeyword}"）：
 
@@ -73,26 +76,64 @@ export class SemanticExpansionService {
 4. 相关词（8-10个）：高度相关的词语，用户可能也会搜索
 
 要求：
-- 只返回词语列表，不要解释
-- 每个词必须是英文
-- 词语长度在 1-4 个单词之间
+- 只返回英文词语，不要包含原始词
+- 每个词语长度在 1-4 个单词之间
 - 确保词语有实际搜索价值
 - 排除品牌名称、人名、地名
 
-格式：
-近义词：词1, 词2, 词3, ...
-同义词：词1, 词2, 词3, ...
-反义词：词1, 词2, 词3, ...
-相关词：词1, 词2, 词3, ...`;
+请严格按照以下 JSON 格式返回（不要包含任何其他文字）：
+{
+  "synonyms": ["词1", "词2", "词3", ...],
+  "ants": ["词1", "词2", "词3", ...],
+  "related": ["词1", "词2", "词3", ...]
+}`;
 
-      // 模拟 LLM 响应（实际应调用 LLM API）
-      const mockResponse = await this.mockLLMResponse(originalKeyword, options);
+      // 调用 DeepSeek API
+      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${deepseekApiKey}`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            {
+              role: 'system',
+              content: '你是一个专业的关键词分析专家，擅长生成语义相关的关键词。'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 1000
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[语义拓展] DeepSeek API 调用失败:', response.status, errorText);
+        return this.generateMockKeywords(originalKeyword, options);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+
+      if (!content) {
+        console.warn('[语义拓展] DeepSeek API 返回空响应，使用模拟数据');
+        return this.generateMockKeywords(originalKeyword, options);
+      }
+
+      // 解析 JSON 响应
+      const llmResponse = JSON.parse(content);
 
       // 解析响应
       const keywords: SemanticKeyword[] = [];
 
-      if (mockResponse.synonyms && options.includeSynonyms !== false) {
-        mockResponse.synonyms.forEach((kw: string) => {
+      if (llmResponse.synonyms && options.includeSynonyms !== false) {
+        llmResponse.synonyms.forEach((kw: string) => {
           keywords.push({
             keyword: kw.trim(),
             type: 'synonym',
@@ -102,8 +143,8 @@ export class SemanticExpansionService {
         });
       }
 
-      if (mockResponse.ants && options.includeAntonyms) {
-        mockResponse.ants.forEach((kw: string) => {
+      if (llmResponse.ants && options.includeAntonyms) {
+        llmResponse.ants.forEach((kw: string) => {
           keywords.push({
             keyword: kw.trim(),
             type: 'antonym',
@@ -113,8 +154,8 @@ export class SemanticExpansionService {
         });
       }
 
-      if (mockResponse.related && options.includeRelated !== false) {
-        mockResponse.related.forEach((kw: string) => {
+      if (llmResponse.related && options.includeRelated !== false) {
+        llmResponse.related.forEach((kw: string) => {
           keywords.push({
             keyword: kw.trim(),
             type: 'related',
@@ -124,28 +165,28 @@ export class SemanticExpansionService {
         });
       }
 
-      console.log(`[语义拓展] LLM 生成了 ${keywords.length} 个关键词`);
+      console.log(`[语义拓展] DeepSeek LLM 生成了 ${keywords.length} 个关键词`);
       return keywords;
     } catch (error) {
       console.error('[语义拓展] LLM 生成关键词失败:', error);
-      return [];
+      return this.generateMockKeywords(originalKeyword, options);
     }
   }
 
   /**
-   * 模拟 LLM 响应（实际应替换为真实的 LLM API 调用）
+   * 生成模拟关键词（当 LLM API 不可用时使用）
    */
-  private async mockLLMResponse(
+  private generateMockKeywords(
     keyword: string,
     options: SemanticExpansionOptions
-  ): Promise<{
-    synonyms: string[];
-    ants: string[];
-    related: string[];
-  }> {
-    // 这里是一个简单的模拟实现
-    // 实际应该调用 LLM API（如 OpenAI、DeepSeek 等）
-
+  ): SemanticKeyword[] {
+  /**
+   * 生成模拟关键词（当 LLM API 不可用时使用）
+   */
+  private generateMockKeywords(
+    keyword: string,
+    options: SemanticExpansionOptions
+  ): SemanticKeyword[] {
     const lowerKeyword = keyword.toLowerCase();
     let response: { synonyms: string[]; ants: string[]; related: string[] };
 
@@ -204,7 +245,45 @@ export class SemanticExpansionService {
       );
     }
 
-    return response;
+    // 构建关键词列表
+    const keywords: SemanticKeyword[] = [];
+
+    if (response.synonyms && options.includeSynonyms !== false) {
+      response.synonyms.forEach((kw: string) => {
+        keywords.push({
+          keyword: kw.trim(),
+          type: 'synonym',
+          reason: '近义词',
+          confidence: 0.85
+        });
+      });
+    }
+
+    if (response.ants && options.includeAntonyms) {
+      response.ants.forEach((kw: string) => {
+        keywords.push({
+          keyword: kw.trim(),
+          type: 'antonym',
+          reason: '反义词',
+          confidence: 0.7
+        });
+      });
+    }
+
+    if (response.related && options.includeRelated !== false) {
+      response.related.forEach((kw: string) => {
+        keywords.push({
+          keyword: kw.trim(),
+          type: 'related',
+          reason: '相关词',
+          confidence: 0.8
+        });
+      });
+    }
+
+    console.log(`[语义拓展] 模拟生成了 ${keywords.length} 个关键词`);
+    return keywords;
+  }
   }
 
   /**
