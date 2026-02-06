@@ -248,34 +248,34 @@ export function Sidebar() {
             </div>
 
             {/* 统计信息 */}
-            <div className="mt-4 px-2 space-y-2">
+            <div className="mt-3 px-2 space-y-1.5">
               {/* 在线人数 */}
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 rounded-xl border border-blue-200">
-                <div className="flex items-center gap-2 mb-1">
-                  <Users className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs font-medium text-blue-800">当前在线</span>
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-2 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <Users className="w-3 h-3 text-blue-600" />
+                  <span className="text-[10px] font-medium text-blue-800">当前在线</span>
                 </div>
-                <div className="text-2xl font-bold text-blue-900">
+                <div className="text-lg font-bold text-blue-900">
                   {onlineUsers}
-                  <span className="text-xs font-normal text-blue-700 ml-1">人</span>
+                  <span className="text-[10px] font-normal text-blue-700 ml-0.5">人</span>
                 </div>
               </div>
 
               {/* YouTube Key 余额 */}
-              <div className="bg-gradient-to-r from-green-50 to-green-100 p-3 rounded-xl border border-green-200">
-                <div className="flex items-center gap-2 mb-1">
-                  <Key className="w-4 h-4 text-green-600" />
-                  <span className="text-xs font-medium text-green-800">API 余额</span>
+              <div className="bg-gradient-to-r from-green-50 to-green-100 p-2 rounded-lg border border-green-200">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <Key className="w-3 h-3 text-green-600" />
+                  <span className="text-[10px] font-medium text-green-800">API 余额</span>
                 </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-bold text-green-900">
+                <div className="flex items-baseline gap-0.5">
+                  <span className="text-lg font-bold text-green-900">
                     {quotaInfo.totalAvailable.toLocaleString()}
                   </span>
-                  <span className="text-xs text-green-700">
+                  <span className="text-[10px] text-green-700">
                     / {quotaInfo.totalQuota.toLocaleString()}
                   </span>
                 </div>
-                <div className="mt-1 h-1.5 bg-green-200 rounded-full overflow-hidden">
+                <div className="mt-0.5 h-1 bg-green-200 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-green-600 transition-all duration-500"
                     style={{
@@ -284,7 +284,7 @@ export function Sidebar() {
                     }}
                   />
                 </div>
-                <div className="mt-1 text-xs text-green-700">
+                <div className="mt-0.5 text-[10px] text-green-700">
                   已使用 {quotaInfo.usageRate}%
                 </div>
               </div>
