@@ -179,13 +179,6 @@ Please return in the following JSON format (do NOT include any other text):
     keyword: string,
     options: SemanticExpansionOptions
   ): SemanticKeyword[] {
-  /**
-   * 生成模拟关键词（当 LLM API 不可用时使用）
-   */
-  private generateMockKeywords(
-    keyword: string,
-    options: SemanticExpansionOptions
-  ): SemanticKeyword[] {
     const lowerKeyword = keyword.toLowerCase();
     let response: { synonyms: string[]; ants: string[]; related: string[] };
 
