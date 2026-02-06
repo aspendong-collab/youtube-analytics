@@ -1,15 +1,24 @@
 import { ExpansionResult, KeywordDimension, SupportedLanguage, LANGUAGE_NAMES, YOUTUBE_LANGUAGE_CODES } from './types';
-import { LLMClient, Config } from 'coze-coding-dev-sdk';
+import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
 
 /**
  * LLM引擎：使用大语言模型进行智能关键词拓展
  */
 export class LLMEngine {
   private client: LLMClient;
+  private customHeaders: Record<string, string> | undefined;
 
-  constructor() {
+  constructor(customHeaders?: Record<string, string>) {
     const config = new Config();
     this.client = new LLMClient(config);
+    this.customHeaders = customHeaders;
+  }
+
+  /**
+   * 更新自定义 headers
+   */
+  public setHeaders(headers: Record<string, string>): void {
+    this.customHeaders = headers;
   }
 
   /**
@@ -274,10 +283,15 @@ export class LLMEngine {
       { role: 'user', content: prompt }
     ];
 
-    const response = await this.client.invoke(messages, {
-      model: 'doubao-seed-1-6-flash-250615',
-      temperature: 0.8,
-    });
+    const response = await this.client.invoke(
+      messages,
+      {
+        model: 'doubao-seed-1-6-flash-250615',
+        temperature: 0.8,
+      },
+      undefined,
+      this.customHeaders
+    );
 
     return response.content;
   }
@@ -416,10 +430,15 @@ ALL keywords must be in ${targetLanguage} language.`;
 
     console.log('调用 LLM API，prompt 长度:', prompt.length);
 
-    const response = await this.client.invoke(messages, {
-      model: 'doubao-seed-1-6-flash-250615',
-      temperature: 0.8,
-    });
+    const response = await this.client.invoke(
+      messages,
+      {
+        model: 'doubao-seed-1-6-flash-250615',
+        temperature: 0.8,
+      },
+      undefined,
+      this.customHeaders
+    );
 
     const content = response.content;
     console.log('LLM 响应内容:', content.substring(0, 200)); // 打印前200个字符
@@ -520,10 +539,15 @@ ALL keywords must be in ${targetLanguage} language.`;
       { role: 'user', content: prompt }
     ];
 
-    const response = await this.client.invoke(messages, {
-      model: 'doubao-seed-1-6-flash-250615',
-      temperature: 0.5,
-    });
+    const response = await this.client.invoke(
+      messages,
+      {
+        model: 'doubao-seed-1-6-flash-250615',
+        temperature: 0.5,
+      },
+      undefined,
+      this.customHeaders
+    );
 
     const content = response.content;
     const data = JSON.parse(content);

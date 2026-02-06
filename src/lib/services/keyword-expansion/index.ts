@@ -26,7 +26,8 @@ export class KeywordExpansionService {
    */
   async expandKeywords(
     inputKeyword: string,
-    config: ExpansionConfig
+    config: ExpansionConfig,
+    headers?: Record<string, string>
   ): Promise<ExpansionResponse> {
     const expansionId = nanoid();
     const allResults: Map<string, ExpansionResult> = new Map();
@@ -57,6 +58,11 @@ export class KeywordExpansionService {
     if (config.useLLMEngine) {
       console.log('[主流程] 启用LLM引擎...');
       try {
+        // 设置自定义 headers
+        if (headers) {
+          llmEngine.setHeaders(headers);
+        }
+
         const llmResults = await llmEngine.generateAllDimensions(inputKeyword, language);
         const llmCount = Object.values(llmResults).flat().length;
         console.log(`[主流程] LLM引擎生成 ${llmCount} 个关键词`);

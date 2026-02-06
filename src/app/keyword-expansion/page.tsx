@@ -79,6 +79,46 @@ export default function KeywordExpansionPage() {
   const [selectedDimension, setSelectedDimension] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all'); // 新增：关键词类型选择
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [llmTestResult, setLlmTestResult] = useState<string | null>(null);
+  const [llmTestLoading, setLlmTestLoading] = useState(false);
+
+  // 测试 LLM 功能
+  const testLLM = async () => {
+    if (!keyword.trim()) {
+      alert('请先输入关键词');
+      return;
+    }
+
+    setLlmTestLoading(true);
+    setLlmTestResult(null);
+
+    try {
+      console.log('========================================');
+      console.log('开始测试 LLM');
+      console.log('========================================');
+
+      const response = await fetch('/api/test/llm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyword: keyword.trim() }),
+      });
+
+      const data = await response.json();
+
+      console.log('LLM 测试响应:', data);
+
+      if (data.success) {
+        setLlmTestResult(`✅ LLM 测试成功\n\n响应: ${data.data.response}\n\n耗时: ${data.data.duration}ms`);
+      } else {
+        setLlmTestResult(`❌ LLM 测试失败\n\n错误: ${data.error}\n\n详情: ${data.details}\n\n堆栈: ${data.stack}`);
+      }
+    } catch (error) {
+      console.error('LLM 测试异常:', error);
+      setLlmTestResult(`❌ LLM 测试异常\n\n${error}`);
+    } finally {
+      setLlmTestLoading(false);
+    }
+  };
 
   // 排序状态
   const [sortBy, setSortBy] = useState<'volume' | 'competition' | 'recommendation' | null>(null);

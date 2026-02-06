@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { keywordExpansionService } from '@/lib/services/keyword-expansion';
+import { HeaderUtils } from 'coze-coding-dev-sdk';
 import type { ExpansionConfig, SupportedLanguage } from '@/lib/services/keyword-expansion/types';
 
 /**
@@ -19,6 +20,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 提取自定义 headers
+    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
+
     // 构建配置
     const config: ExpansionConfig = {
       useRuleEngine: useRuleEngine !== false, // 默认启用
@@ -28,10 +32,11 @@ export async function POST(request: NextRequest) {
       language: language || 'zh-CN', // 默认简体中文
     };
 
-    // 执行拓展
+    // 执行拓展，传递 headers
     const result = await keywordExpansionService.expandKeywords(
       keyword.trim(),
-      config
+      config,
+      customHeaders
     );
 
     return NextResponse.json({
