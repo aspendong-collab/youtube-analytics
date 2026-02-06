@@ -226,24 +226,28 @@ export default function KeywordExpansionPage() {
   // 点击外部关闭推荐
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        suggestionsRef.current &&
-        !suggestionsRef.current.contains(event.target as Node) &&
-        inputRef.current &&
-        !inputRef.current.contains(event.target as Node)
-      ) {
-        setShowSuggestions(false);
+      if (showSuggestions) {
+        if (
+          suggestionsRef.current &&
+          !suggestionsRef.current.contains(event.target as Node) &&
+          inputRef.current &&
+          !inputRef.current.contains(event.target as Node)
+        ) {
+          setShowSuggestions(false);
+        }
       }
     };
 
     // 添加事件监听
-    document.addEventListener('click', handleClickOutside);
+    if (showSuggestions) {
+      document.addEventListener('click', handleClickOutside);
+    }
 
     // 清理函数
     return () => {
       document.removeEventListener('click', handleClickOutside);
     };
-  }, []);
+  }, [showSuggestions]);
 
   const handleExpand = async () => {
     if (!keyword.trim()) return;

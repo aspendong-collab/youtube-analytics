@@ -214,6 +214,7 @@ export class KeywordExpansionService {
       dimensions,
       topKeywords,
       quota, // 返回配额信息
+      sourceStats, // 返回来源统计
     };
   }
 
