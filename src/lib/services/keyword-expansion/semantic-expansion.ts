@@ -68,24 +68,23 @@ export class SemanticExpansionService {
         return this.generateMockKeywords(originalKeyword, options);
       }
 
-      const prompt = `请为关键词"${originalKeyword}"生成以下类型的词语（不要包含原词"${originalKeyword}"）：
+      const prompt = `Please generate the following types of words for the keyword "${originalKeyword}" (do NOT include the original word "${originalKeyword}"):
 
-1. 近义词（5-8个）：意思相近的词
-2. 同义词（5-8个）：完全相同或几乎相同的词
-3. 反义词（3-5个）：意思相反的词（适用于产品对比场景）
-4. 相关词（8-10个）：高度相关的词语，用户可能也会搜索
+1. Synonyms (5-8 words): words with similar meanings
+2. Antonyms (3-5 words): words with opposite meanings (for product comparison scenarios)
+3. Related words (8-10 words): highly relevant words users might also search for
 
-要求：
-- 只返回英文词语，不要包含原始词
-- 每个词语长度在 1-4 个单词之间
-- 确保词语有实际搜索价值
-- 排除品牌名称、人名、地名
+Requirements:
+- Return ONLY English words, do NOT include the original word
+- Each word should be 1-4 words long
+- Ensure words have actual search value
+- Exclude brand names, proper names, place names
 
-请严格按照以下 JSON 格式返回（不要包含任何其他文字）：
+Please return in the following JSON format (do NOT include any other text):
 {
-  "synonyms": ["词1", "词2", "词3", ...],
-  "ants": ["词1", "词2", "词3", ...],
-  "related": ["词1", "词2", "词3", ...]
+  "synonyms": ["word1", "word2", "word3", ...],
+  "ants": ["word1", "word2", "word3", ...],
+  "related": ["word1", "word2", "word3", ...]
 }`;
 
       // 调用 DeepSeek API
