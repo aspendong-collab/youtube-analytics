@@ -192,9 +192,14 @@ export default function KeywordExpansionPage() {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showSuggestions]);
+    // 添加事件监听
+    document.addEventListener('click', handleClickOutside);
+
+    // 清理函数
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
 
   const handleExpand = async () => {
     if (!keyword.trim()) return;
@@ -347,7 +352,8 @@ export default function KeywordExpansionPage() {
                   />
                   {keyword && (
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setKeyword('');
                         setSuggestions([]);
                         setShowSuggestions(false);
@@ -368,7 +374,10 @@ export default function KeywordExpansionPage() {
                       {suggestions.map((suggestion, index) => (
                         <div
                           key={index}
-                          onClick={() => handleSelectSuggestion(suggestion)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectSuggestion(suggestion);
+                          }}
                           onMouseEnter={() => setSelectedSuggestionIndex(index)}
                           className={`px-4 py-3 cursor-pointer transition-colors ${
                             index === selectedSuggestionIndex
