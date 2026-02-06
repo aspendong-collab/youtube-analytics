@@ -253,7 +253,7 @@ export default function KeywordExpansionPage() {
 
       console.log('收到响应，状态码:', response.status);
       const data = await response.json();
-      console.log('响应数据:', data);
+      console.log('完整响应数据:', JSON.stringify(data, null, 2));
 
       if (data.success) {
         console.log('✅ 拓展成功');
@@ -269,15 +269,22 @@ export default function KeywordExpansionPage() {
           commentMining: allKeywords.filter((k: any) => k.source === 'commentMining').length,
         };
         console.log('各来源统计:', sourceStats);
+        console.log('所有维度关键词数量:', Object.keys(data.data.dimensions || {}).reduce((acc, dim) => {
+          acc[dim] = (data.data.dimensions[dim] || []).length;
+          return acc;
+        }, {} as any));
 
         if (sourceStats.llm === 0) {
           console.warn('⚠️ LLM 生成了 0 个关键词！');
+          console.warn('可能原因: LLM API 调用失败、超时、或环境变量未配置');
         }
         if (sourceStats.tagMining === 0 && useDataMining) {
           console.warn('⚠️ 标签提取生成了 0 个关键词！');
+          console.warn('可能原因: YouTube API 配额不足、网络问题、或环境变量未配置');
         }
         if (sourceStats.commentMining === 0 && useDataMining) {
           console.warn('⚠️ 评论提取生成了 0 个关键词！');
+          console.warn('可能原因: YouTube API 配额不足、网络问题、或环境变量未配置');
         }
 
         setResult(data.data);
