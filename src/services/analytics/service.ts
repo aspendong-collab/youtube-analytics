@@ -3,7 +3,7 @@
  */
 
 import { dbInstance as db } from '@/lib/db';
-import { influencers, youtubeVideos, campaignParticipations, campaigns } from '@/storage/database/shared/schema';
+import { influencers, videos, campaignParticipations, campaigns } from '@/storage/database/shared/schema';
 import { logger } from '@/core/logger';
 import { cache, statsKeys } from '@/core/cache';
 import { sum, avg, and, sql, gte, lte, desc } from 'drizzle-orm';
@@ -42,7 +42,7 @@ export class AnalyticsService {
     // 并行获取各种统计数据
     const [influencersCount, videosCount, campaignsCount, participationsCount, onlineUsers] = await Promise.all([
       db.select({ count: sql<number>`count(*)` }).from(influencers).then(rows => Number(rows[0].count)),
-      db.select({ count: sql<number>`count(*)` }).from(youtubeVideos).then(rows => Number(rows[0].count)),
+      db.select({ count: sql<number>`count(*)` }).from(videos).then(rows => Number(rows[0].count)),
       db.select({ count: sql<number>`count(*)` }).from(campaigns).then(rows => Number(rows[0].count)),
       db.select({ count: sql<number>`count(*)` }).from(campaignParticipations).then(rows => Number(rows[0].count)),
       this.getOnlineUsersCount(),
@@ -299,10 +299,10 @@ export class AnalyticsService {
       publishedAt: Date;
     }>;
   }> {
-    let query = db.select().from(youtubeVideos);
+    let query = db.select().from(videos);
 
     if (channelId) {
-      query = query.where(sql`${youtubeVideos.channelId} = ${channelId}`);
+      query = query.where(sql`${videos.channelId} = ${channelId}`);
     }
 
     const allVideos = await query;
