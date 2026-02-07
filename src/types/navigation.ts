@@ -55,7 +55,7 @@ export const navItems: NavItem[] = [
     path: '/research-tools',
     children: [
       { id: 'trending', label: '热门趋势', path: '/trending/ranking' },
-      { id: 'keyword-research', label: '关键词挖掘', path: '/discovery/keywords' },
+      { id: 'keyword-research', label: 'YouTube SEO拓展', path: '/discovery/keywords' },
       { id: 'keyword-expansion', label: '关键词拓展', path: '/keyword-expansion' },
       { id: 'affiliate-search', label: 'Affiliate 搜索', path: '/affiliate-expansion' },
     ],
