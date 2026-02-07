@@ -7,6 +7,10 @@ import { logger } from '@/core/logger';
 import { HeaderUtils } from 'coze-coding-dev-sdk';
 import { apiSuccess, apiErrors, parseQueryParams, validatePagination, withPagination } from './response';
 
+// 检查是否在构建时
+const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' ||
+                    process.env.NODE_ENV === undefined;
+
 /**
  * 请求日志中间件
  */
@@ -14,6 +18,11 @@ export async function withLogging(
   request: NextRequest,
   handler: (request: NextRequest) => Promise<NextResponse>
 ) {
+  // 构建时直接返回空响应
+  if (isBuildTime) {
+    return NextResponse.json({ success: true, data: [] });
+  }
+
   const startTime = Date.now();
   const url = request.url;
   const method = request.method;
@@ -55,6 +64,11 @@ export async function withErrorHandler(
   request: NextRequest,
   handler: (request: NextRequest) => Promise<NextResponse>
 ) {
+  // 构建时直接返回空响应
+  if (isBuildTime) {
+    return NextResponse.json({ success: true, data: [] });
+  }
+
   try {
     return await handler(request);
   } catch (error: any) {
@@ -96,6 +110,11 @@ export async function withErrorHandler(
  */
 export function withCors(handler: (request: NextRequest) => Promise<NextResponse>) {
   return async (request: NextRequest): Promise<NextResponse> => {
+    // 构建时直接返回空响应
+    if (isBuildTime) {
+      return NextResponse.json({ success: true, data: [] });
+    }
+
     // 处理 OPTIONS 预检请求
     if (request.method === 'OPTIONS') {
       return new NextResponse(null, {
@@ -124,6 +143,11 @@ export function withCors(handler: (request: NextRequest) => Promise<NextResponse
  */
 export function withRequestId(handler: (request: NextRequest) => Promise<NextResponse>) {
   return async (request: NextRequest): Promise<NextResponse> => {
+    // 构建时直接返回空响应
+    if (isBuildTime) {
+      return NextResponse.json({ success: true, data: [] });
+    }
+
     const requestId = request.headers.get('x-request-id') || 
                      `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -156,6 +180,11 @@ export function composeMiddleware(
   ...middlewares: Array<(handler: any) => any>
 ) {
   return (handler: (request: NextRequest) => Promise<NextResponse>) => {
+    // 构建时返回一个直接返回空响应的处理器
+    if (isBuildTime) {
+      return () => NextResponse.json({ success: true, data: [] });
+    }
+
     return middlewares.reduceRight(
       (acc, middleware) => middleware(acc),
       handler
