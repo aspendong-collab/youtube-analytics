@@ -9,126 +9,93 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   {
     id: 'overview',
-    label: '数据总览',
+    label: '运营总览',
     icon: '🏠',
     path: '/overview',
   },
   {
-    id: 'discovery',
-    label: '发现',
-    icon: '🔎',
-    path: '/discovery',
+    id: 'influencer-operations',
+    label: '达人运营',
+    icon: '📊',
+    path: '/influencer-operations',
     children: [
-      { id: 'trending', label: '热门排行榜', path: '/trending/ranking' },
-      { id: 'ai-influencer', label: 'AI达人推荐', path: '/influencers/cover' },
-      { id: 'keyword-discovery', label: '关键词挖掘', path: '/discovery/keywords' },
+      {
+        id: 'discovery-management',
+        label: '发现与管理',
+        path: '/influencer-operations/discovery',
+        children: [
+          { id: 'my-influencers', label: '我的达人库', path: '/my-influencers' },
+          { id: 'influencer-list', label: '达人搜索', path: '/influencers' },
+          { id: 'ai-influencer', label: 'AI 达人推荐', path: '/influencers/cover' },
+        ]
+      },
+      {
+        id: 'contact-negotiation',
+        label: '联系与谈判',
+        path: '/influencer-operations/contact',
+        children: [
+          { id: 'ai-assistant', label: '智能沟通助手', path: '/ai-assistant' },
+          { id: 'negotiation', label: '自动谈判助手', path: '/negotiation' },
+        ]
+      },
+      {
+        id: 'campaign-management',
+        label: '营销活动',
+        path: '/influencer-operations/campaigns',
+        children: [
+          { id: 'campaigns', label: '活动管理', path: '/campaigns' },
+          { id: 'campaign-data', label: '活动数据', path: '/dashboard' },
+        ]
+      },
     ],
   },
   {
-    id: 'keyword-expansion',
-    label: '关键词拓展',
-    icon: '🔑',
-    path: '/keyword-expansion',
-  },
-  {
-    id: 'affiliate-expansion',
-    label: 'Affiliate 拓展',
-    icon: '🤝',
-    path: '/affiliate-expansion',
-  },
-  {
-    id: 'monitoring',
-    label: '视频监控',
-    icon: '📹',
-    path: '/monitoring',
+    id: 'research-tools',
+    label: '研究工具',
+    icon: '🔬',
+    path: '/research-tools',
     children: [
-      { id: 'video-list', label: '视频列表', path: '/monitoring' },
+      { id: 'trending', label: '热门趋势', path: '/trending/ranking' },
+      { id: 'keyword-research', label: '关键词挖掘', path: '/discovery/keywords' },
+      { id: 'keyword-expansion', label: '关键词拓展', path: '/keyword-expansion' },
+      { id: 'affiliate-search', label: 'Affiliate 搜索', path: '/affiliate-expansion' },
+    ],
+  },
+  {
+    id: 'content-operations',
+    label: '内容运营',
+    icon: '🎬',
+    path: '/content-operations',
+    children: [
+      { id: 'performance', label: '内容表现', path: '/content-analysis/performance' },
+      { id: 'title-optimization', label: '标题与封面优化', path: '/content-analysis/title-optimization' },
+      { id: 'publish-timing', label: '发布时机优化', path: '/content-analysis/publish-time' },
+      { id: 'content-diagnosis', label: '内容诊断', path: '/content-analysis/diagnosis' },
+      { id: 'keyword-research', label: '关键词研究', path: '/content-analysis/keyword-research' },
+    ],
+  },
+  {
+    id: 'monitoring-center',
+    label: '监控中心',
+    icon: '📹',
+    path: '/monitoring-center',
+    children: [
+      { id: 'video-list', label: '视频监控', path: '/monitoring' },
       { id: 'channel-analysis', label: '博主分析', path: '/monitoring/channels' },
-      { id: 'owner-performance', label: '排行榜', path: '/monitoring/owners' },
       { id: 'competitor-tracking', label: '竞品追踪', path: '/monitoring/competitors' },
       { id: 'comments-analysis', label: '评论分析', path: '/analysis/comments' },
-    ],
-  },
-  {
-    id: 'competitor-monitoring',
-    label: '竞品监控',
-    icon: '📈',
-    path: '/competitor-monitoring',
-    children: [
-      { id: 'pdf-software', label: 'PDF软件', path: '/competitor-monitoring/pdf' },
-    ],
-  },
-  {
-    id: 'influencers',
-    label: '达人管理',
-    icon: '👥',
-    path: '/influencers',
-    children: [
-      { id: 'my-influencers', label: '我的达人', path: '/my-influencers' },
-      { id: 'influencer-list', label: '达人列表', path: '/influencers' },
-    ],
-  },
-  {
-    id: 'influencer-marketing',
-    label: '达人营销',
-    icon: '📢',
-    path: '/campaigns',
-    children: [
-      { id: 'campaigns', label: '营销活动', path: '/campaigns' },
-      { id: 'dashboard', label: '数据分析', path: '/dashboard' },
-      { id: 'ai-assistant', label: '智能沟通助手', path: '/ai-assistant' },
-      { id: 'negotiation', label: '自动谈判助手', path: '/negotiation' },
-    ],
-  },
-  {
-    id: 'content-analysis',
-    label: '内容分析',
-    icon: '📊',
-    path: '/content-analysis',
-    children: [
-      // Phase 1: 快速见效
-      {
-        id: 'performance-analysis',
-        label: '内容表现分析',
-        path: '/content-analysis/performance',
-        icon: '📈'
-      },
-      {
-        id: 'title-optimization',
-        label: '标题与封面优化',
-        path: '/content-analysis/title-optimization',
-        icon: '🎯'
-      },
-      {
-        id: 'content-diagnosis',
-        label: '内容诊断',
-        path: '/content-analysis/diagnosis',
-        icon: '🩺'
-      },
-      // Phase 2: 深度优化
-      {
-        id: 'keyword-research',
-        label: '关键词研究',
-        path: '/content-analysis/keyword-research',
-        icon: '🔑'
-      },
-      {
-        id: 'publish-timing',
-        label: '发布时机优化',
-        path: '/content-analysis/publish-time',
-        icon: '⏰'
-      },
+      { id: 'owner-performance', label: '排行榜', path: '/monitoring/owners' },
     ],
   },
   {
     id: 'owners',
-    label: '负责人管理',
+    label: '团队管理',
     icon: '👥',
     path: '/owners',
   },
   {
     id: 'settings',
-    label: '设置管理',
+    label: '系统设置',
     icon: '⚙️',
     path: '/settings',
     children: [
