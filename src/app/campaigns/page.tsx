@@ -934,5 +934,6 @@ export default function CampaignsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  </div>
   );
 }
