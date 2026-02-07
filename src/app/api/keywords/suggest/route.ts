@@ -5,6 +5,10 @@ import { getSuggestions, getPopularKeywords } from '@/lib/services/keyword-sugge
  * GET /api/keywords/suggest?q=keyword&language=zh-CN
  * 获取关键词推荐
  */
+
+// 强制动态路由
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;

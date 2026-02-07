@@ -81,6 +81,14 @@ export const dbInstance = new Proxy({}, {
       };
     }
 
+    // 特殊处理 raw 和 sql 方法
+    if (prop === 'raw' || prop === 'sql') {
+      return (strings: TemplateStringsArray, ...values: any[]) => {
+        const { sql } = require('drizzle-orm');
+        return sql(strings, ...values);
+      };
+    }
+
     // 如果数据库未初始化，返回一个空对象
     if (!_db && !_isInitialized) {
       console.warn('[DB] Database not initialized yet, calling initializeDatabase()');

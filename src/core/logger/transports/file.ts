@@ -9,27 +9,40 @@ import { join } from 'path';
 
 const LOG_DIR = '/app/work/logs/bypass';
 
+// 检查是否在 Vercel 环境
+const isVercel = process.env.VERCEL || process.env.VERCEL_ENV;
+
 export class FileTransport {
   private buffers: Map<string, string[]> = new Map();
   private flushInterval: NodeJS.Timeout | null = null;
   private bufferSize: number = 100;
+  private enabled: boolean;
 
   constructor() {
-    this.startFlushInterval();
+    // 在 Vercel 环境中禁用文件日志
+    this.enabled = !isVercel;
+    if (this.enabled) {
+      this.startFlushInterval();
+    }
   }
 
   /**
    * 传输日志到文件
    */
   async transport(entry: LogEntry): Promise<void> {
+    // 在 Vercel 环境中，只输出到控制台
+    if (!this.enabled) {
+      return;
+    }
+
     const logType = this.getLogType(entry.level);
     const buffer = this.buffers.get(logType) || [];
-    
+
     const formatted = formatLogText(entry) + '\n';
     buffer.push(formatted);
-    
+
     this.buffers.set(logType, buffer);
-    
+
     // 缓冲区满了就刷新
     if (buffer.length >= this.bufferSize) {
       await this.flush(logType);

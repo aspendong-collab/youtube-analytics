@@ -261,6 +261,25 @@ export class YoutubeApiKeyPool {
     this.strategy = strategy;
     console.log(`[YoutubeApiKeyPool] 切换策略为: ${strategy.type}`);
   }
+
+  /**
+   * 创建 YouTube 客户端（使用下一个可用的 Key）
+   */
+  createClient(): any {
+    const apiKey = this.getNextKey();
+
+    if (!apiKey) {
+      throw new Error('所有 YouTube API Key 都已用完，请等待明天配额重置或添加更多 Key');
+    }
+
+    // 动态导入 googleapis，避免构建时问题
+    const { google } = require('googleapis');
+
+    return google.youtube({
+      version: 'v3',
+      auth: apiKey,
+    });
+  }
 }
 
 // 导出单例

@@ -49,9 +49,10 @@ export async function POST(request: NextRequest) {
 
     // 检查 Key 池状态
     const poolStatus = youtubeApiKeyPool.getPoolStatus();
+    const availableKeyCount = youtubeApiKeyPool.getAvailableKeyCount();
     console.log('[API] Key 池状态:', poolStatus);
 
-    if (poolStatus.availableKeys === 0) {
+    if (availableKeyCount === 0) {
       console.warn('[API] 所有 YouTube API Key 都已用完');
       return NextResponse.json(
         { error: 'All YouTube API Keys are exhausted. Please try again tomorrow.' },
