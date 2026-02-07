@@ -1,0 +1,430 @@
+/**
+ * 自动匹配服务
+ * 根据推广项目的筛选条件自动匹配达人
+ */
+
+import { dbInstance as db } from '@/lib/db';
+import { influencers, campaignAutoMatches } from '@/storage/database/shared/schema';
+import { logger } from '@/core/logger';
+import { cache } from '@/core/cache';
+import { 
+  and, 
+  or, 
+  gte, 
+  lte, 
+  sql, 
+  desc, 
+  inArray, 
+  isNull,
+  between 
+} from 'drizzle-orm';
+import {
+  AutoMatchRequest,
+  AutoMatchResult,
+  MatchedInfluencer,
+  InfluencerMatch,
+  TargetingCriteria
+} from './types';
+import { generateId } from '@/shared/utils/string';
+
+export class AutoMatchingService {
+  private static instance: AutoMatchingService;
+
+  private constructor() {}
+
+  static getInstance(): AutoMatchingService {
+    if (!AutoMatchingService.instance) {
+      AutoMatchingService.instance = new AutoMatchingService();
+    }
+    return AutoMatchingService.instance;
+  }
+
+  /**
+   * 根据筛选条件自动匹配达人
+   */
+  async match(request: AutoMatchRequest): Promise<AutoMatchResult> {
+    const startTime = Date.now();
+
+    logger.info('Starting auto matching', {
+      campaignId: request.campaignId,
+      criteria: request.criteria,
+      targetCount: request.targetCount,
+    });
+
+    try {
+      // 1. 构建查询条件
+      const conditions = this.buildQueryConditions(request.criteria);
+
+      // 2. 查询符合条件的达人
+      const candidates = await db
+        .select()
+        .from(influencers)
+        .where(
+          and(
+            ...conditions,
+            sql`${influencers.status} = 'available'`, // 只匹配可合作的达人
+            sql`${influencers.isActive} = true`,
+            sql`${influencers.email} IS NOT NULL`, // 必须有邮箱
+          )
+        )
+        .orderBy(
+          desc(influencers.averagePrice), // 价格优先
+          desc(influencers.qualityScore), // 质量次之
+          desc(influencers.engagementRate), // 互动率再次
+        )
+        .limit(request.targetCount * 2); // 获取更多候选人用于评分
+
+      logger.info(`Found ${candidates.length} candidate influencers`, {
+        campaignId: request.campaignId,
+      });
+
+      // 3. 计算匹配度评分并排序
+      const scoredCandidates = candidates.map(candidate => {
+        const score = this.calculateMatchScore(candidate, request.criteria, request.budgetPerInfluencer);
+        const reasons = this.getMatchReasons(candidate, request.criteria, score);
+        return {
+          influencer: candidate,
+          matchScore: score,
+          matchReason: reasons,
+        };
+      }).filter(item => item.matchScore > 50) // 过滤掉匹配度过低的
+        .sort((a, b) => b.matchScore - a.matchScore) // 按匹配度降序
+        .slice(0, request.targetCount); // 取前 N 个
+
+      logger.info(`Scored and filtered to ${scoredCandidates.length} matches`, {
+        campaignId: request.campaignId,
+      });
+
+      // 4. 保存匹配结果到数据库
+      const matchedInfluencers: MatchedInfluencer[] = [];
+
+      for (const scored of scoredCandidates) {
+        const estimatedPrice = this.estimatePrice(scored.influencer, request.budgetPerInfluencer);
+
+        const [match] = await db
+          .insert(campaignAutoMatches)
+          .values({
+            id: generateId(),
+            campaignId: request.campaignId,
+            influencerId: scored.influencer.id,
+            estimatedPrice: estimatedPrice,
+            matchScore: scored.matchScore,
+            matchReason: JSON.stringify(scored.matchReason),
+            status: 'pending',
+          })
+          .returning();
+
+        matchedInfluencers.push({
+          influencerId: match.influencerId,
+          influencer: this.mapToMatchedInfluencer(scored.influencer),
+          estimatedPrice: match.estimatedPrice,
+          matchScore: scored.matchScore,
+          matchReason: scored.matchReason,
+        });
+      }
+
+      // 5. 计算统计数据
+      const totalMatched = matchedInfluencers.length;
+      const estimatedTotalCost = matchedInfluencers.reduce(
+        (sum, match) => sum + match.estimatedPrice,
+        0
+      );
+      const matchDuration = Date.now() - startTime;
+
+      logger.info('Auto matching completed', {
+        campaignId: request.campaignId,
+        totalMatched,
+        estimatedTotalCost,
+        matchDuration,
+      });
+
+      return {
+        campaignId: request.campaignId,
+        matchedInfluencers,
+        totalMatched,
+        estimatedTotalCost,
+        matchDuration,
+      };
+
+    } catch (error) {
+      logger.error('Auto matching failed', error as Error, {
+        campaignId: request.campaignId,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * 构建查询条件
+   */
+  private buildQueryConditions(criteria: TargetingCriteria) {
+    const conditions: any[] = [];
+
+    // 订阅数范围
+    conditions.push(
+      and(
+        gte(influencers.subscriberCount, criteria.minSubscriberCount),
+        lte(influencers.subscriberCount, criteria.maxSubscriberCount)
+      )
+    );
+
+    // 最低互动率
+    conditions.push(gte(influencers.engagementRate, criteria.minEngagementRate));
+
+    // 分类筛选
+    if (criteria.categories && criteria.categories.length > 0) {
+      conditions.push(inArray(influencers.category, criteria.categories));
+    }
+
+    // 价格上限（如果设置了）
+    if (criteria.maxPrice) {
+      conditions.push(lte(influencers.averagePrice, criteria.maxPrice));
+    }
+
+    // 最低质量评分
+    if (criteria.minQualityScore) {
+      conditions.push(gte(influencers.qualityScore, criteria.minQualityScore));
+    }
+
+    // 等级筛选
+    if (criteria.level && criteria.level.length > 0) {
+      conditions.push(inArray(influencers.level, criteria.level));
+    }
+
+    return conditions;
+  }
+
+  /**
+   * 计算匹配度评分（0-100）
+   */
+  private calculateMatchScore(
+    influencer: InfluencerMatch,
+    criteria: TargetingCriteria,
+    budgetPerInfluencer?: number
+  ): number {
+    let score = 0;
+
+    // 1. 订阅数得分（20分）
+    const subscriberScore = this.calculateSubscriberScore(
+      influencer.subscriberCount,
+      criteria.minSubscriberCount,
+      criteria.maxSubscriberCount
+    );
+    score += subscriberScore * 0.2;
+
+    // 2. 互动率得分（25分）
+    const engagementScore = this.calculateEngagementScore(
+      influencer.engagementRate || 0,
+      criteria.minEngagementRate
+    );
+    score += engagementScore * 0.25;
+
+    // 3. 价格得分（30分）
+    if (budgetPerInfluencer && influencer.averagePrice) {
+      const priceScore = this.calculatePriceScore(
+        influencer.averagePrice,
+        budgetPerInfluencer
+      );
+      score += priceScore * 0.3;
+    }
+
+    // 4. 质量评分（15分）
+    if (influencer.qualityScore) {
+      score += (influencer.qualityScore / 100) * 15;
+    }
+
+    // 5. 合作评分（10分）
+    if (influencer.cooperationScore) {
+      score += (influencer.cooperationScore / 100) * 10;
+    }
+
+    return Math.min(100, Math.round(score));
+  }
+
+  /**
+   * 计算订阅数得分
+   */
+  private calculateSubscriberScore(
+    current: number,
+    min: number,
+    max: number
+  ): number {
+    if (max === min) return 50;
+    return ((current - min) / (max - min)) * 100;
+  }
+
+  /**
+   * 计算互动率得分
+   */
+  private calculateEngagementScore(current: number, min: number): number {
+    if (min === 0) return 50;
+    const ratio = current / min;
+    return Math.min(100, ratio * 50); // 互动率达到最小要求的2倍即满分
+  }
+
+  /**
+   * 计算价格得分（价格越低得分越高）
+   */
+  private calculatePriceScore(price: number, budget: number): number {
+    if (budget <= 0) return 50;
+    if (price > budget) return 0;
+    const discount = 1 - (price / budget);
+    return discount * 100;
+  }
+
+  /**
+   * 获取匹配原因
+   */
+  private getMatchReasons(
+    influencer: InfluencerMatch,
+    criteria: TargetingCriteria,
+    score: number
+  ): string[] {
+    const reasons: string[] = [];
+
+    if (score >= 80) reasons.push('匹配度极高');
+    else if (score >= 60) reasons.push('匹配度高');
+    else reasons.push('匹配度良好');
+
+    if (influencer.subscriberCount >= criteria.minSubscriberCount * 2) {
+      reasons.push(`粉丝数超过最低要求 ${Math.floor(influencer.subscriberCount / criteria.minSubscriberCount * 100 - 100)}%`);
+    }
+
+    if (influencer.engagementRate && influencer.engagementRate >= criteria.minEngagementRate * 2) {
+      reasons.push(`互动率是最低要求的 ${Math.floor(influencer.engagementRate / criteria.minEngagementRate * 100 - 100)}%`);
+    }
+
+    if (influencer.qualityScore && influencer.qualityScore >= 80) {
+      reasons.push('内容质量优秀');
+    }
+
+    if (influencer.cooperationCount > 0) {
+      reasons.push(`有过 ${influencer.cooperationCount} 次成功合作`);
+    }
+
+    return reasons;
+  }
+
+  /**
+   * 估算价格
+   */
+  private estimatePrice(influencer: InfluencerMatch, budget?: number): number {
+    if (influencer.averagePrice) {
+      return Number(influencer.averagePrice);
+    }
+
+    // 根据粉丝数和互动率估算
+    const estimatedPrice = (influencer.subscriberCount / 10000) * 
+                          (influencer.engagementRate || 1) * 50;
+
+    return Math.round(estimatedPrice);
+  }
+
+  /**
+   * 获取匹配的达人列表
+   */
+  async getMatchedInfluencers(campaignId: string): Promise<MatchedInfluencer[]> {
+    const matches = await db
+      .select()
+      .from(campaignAutoMatches)
+      .where(sql`${campaignAutoMatches.campaignId} = ${campaignId}`);
+
+    const matchedInfluencers: MatchedInfluencer[] = [];
+
+    for (const match of matches) {
+      const [influencer] = await db
+        .select()
+        .from(influencers)
+        .where(sql`${influencers.id} = ${match.influencerId}`)
+        .limit(1);
+
+      if (influencer) {
+        matchedInfluencers.push({
+          influencerId: match.influencerId,
+          influencer: this.mapToMatchedInfluencer(influencer),
+          estimatedPrice: match.estimatedPrice,
+          matchScore: match.matchScore,
+          matchReason: JSON.parse(match.matchReason || '[]'),
+        });
+      }
+    }
+
+    return matchedInfluencers;
+  }
+
+  /**
+   * 更新匹配状态
+   */
+  async updateMatchStatus(
+    matchId: string,
+    status: string,
+    data?: Record<string, any>
+  ): Promise<void> {
+    const updateData: Record<string, any> = {
+      status,
+      updatedAt: new Date(),
+    };
+
+    if (status === 'sent' && !updateData.invitedAt) {
+      updateData.invitedAt = new Date();
+    }
+
+    if (status === 'responded' && !updateData.respondedAt) {
+      updateData.respondedAt = new Date();
+    }
+
+    if (data) {
+      Object.assign(updateData, data);
+    }
+
+    await db
+      .update(campaignAutoMatches)
+      .set(updateData)
+      .where(sql`${campaignAutoMatches.id} = ${matchId}`);
+
+    logger.info('Match status updated', { matchId, status });
+  }
+
+  /**
+   * 删除所有匹配记录
+   */
+  async clearMatches(campaignId: string): Promise<void> {
+    await db
+      .delete(campaignAutoMatches)
+      .where(sql`${campaignAutoMatches.campaignId} = ${campaignId}`);
+
+    logger.info('All matches cleared', { campaignId });
+  }
+
+  /**
+   * 映射到 InfluencerMatch
+   */
+  private mapToMatchedInfluencer(influencer: any): InfluencerMatch {
+    return {
+      id: influencer.id,
+      channelId: influencer.channelId,
+      channelTitle: influencer.channelTitle,
+      thumbnail: influencer.thumbnail,
+      subscriberCount: influencer.subscriberCount,
+      totalVideos: influencer.totalVideos,
+      totalViews: influencer.totalViews,
+      email: influencer.email,
+      phone: influencer.phone,
+      wechat: influencer.wechat,
+      category: influencer.category,
+      niche: influencer.niche,
+      level: influencer.level,
+      priceRange: influencer.priceRange,
+      averagePrice: influencer.averagePrice,
+      qualityScore: influencer.qualityScore,
+      cooperationScore: influencer.cooperationScore,
+      engagementRate: influencer.engagementRate,
+      status: influencer.status,
+      isFavorite: influencer.isFavorite,
+      cooperationCount: influencer.cooperationCount,
+    };
+  }
+}
+
+// 导出单例
+export const autoMatchingService = AutoMatchingService.getInstance();
