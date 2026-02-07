@@ -17,7 +17,13 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Import campaigns and campaignParticipations from campaigns-schema
-export { campaigns, campaignParticipations } from "./campaigns-schema";
+export { 
+  campaigns, 
+  campaignParticipations,
+  campaignAutoMatches,
+  campaignEmailQueue,
+  campaignNegotiationLogs
+} from "./campaigns-schema";
 
 // Import communication tables
 export { 
