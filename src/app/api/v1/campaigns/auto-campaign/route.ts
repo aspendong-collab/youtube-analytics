@@ -160,11 +160,17 @@ export async function POST(request: NextRequest) {
     const { sql } = await import('drizzle-orm');
 
     // 依次创建所有表
-    await dbInstance.execute(sql.raw(CREATE_CAMPAIGNS_TABLE_SQL));
-    await dbInstance.execute(sql.raw(CREATE_CAMPAIGN_PARTICIPATIONS_TABLE_SQL));
-    await dbInstance.execute(sql.raw(CREATE_CAMPAIGN_AUTO_MATCHES_TABLE_SQL));
-    await dbInstance.execute(sql.raw(CREATE_CAMPAIGN_EMAIL_QUEUE_TABLE_SQL));
-    await dbInstance.execute(sql.raw(CREATE_CAMPAIGN_NEGOTIATION_LOGS_TABLE_SQL));
+    const tables = [
+      CREATE_CAMPAIGNS_TABLE_SQL,
+      CREATE_CAMPAIGN_PARTICIPATIONS_TABLE_SQL,
+      CREATE_CAMPAIGN_AUTO_MATCHES_TABLE_SQL,
+      CREATE_CAMPAIGN_EMAIL_QUEUE_TABLE_SQL,
+      CREATE_CAMPAIGN_NEGOTIATION_LOGS_TABLE_SQL,
+    ];
+
+    for (const tableSQL of tables) {
+      await dbInstance.execute(sql`${sql.raw(tableSQL)}`);
+    }
     const body = await request.json();
     
     const {
