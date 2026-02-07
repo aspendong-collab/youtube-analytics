@@ -31,6 +31,8 @@ export const keywordKeys = {
   analysis: (keyword: string, type: string) => 
     buildCacheKey('keyword', 'analysis', keyword, type),
   suggestions: (keyword: string) => buildCacheKey('keyword', 'suggestions', keyword),
+  expansion: (keyword: string, language: string, types: string) => 
+    buildCacheKey('keyword', 'expansion', keyword, language, types),
 };
 
 /**
@@ -61,4 +63,5 @@ export const statsKeys = {
   videoCount: (channelId?: string) => 
     buildCacheKey('stats', 'videoCount', channelId || 'all'),
   channelCount: () => buildCacheKey('stats', 'channelCount'),
+  systemOverview: () => buildCacheKey('stats', 'systemOverview'),
 };
