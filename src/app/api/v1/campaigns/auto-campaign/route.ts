@@ -9,7 +9,7 @@ import { emailQueueService } from '@/services/email/queue-service';
 const CREATE_INFLUENCERS_TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS influencers (
   id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
-  channel_id VARCHAR(50) NOT NULL UNIQUE,
+  channel_id VARCHAR(50) NOT NULL,
   channel_title VARCHAR(200) NOT NULL,
   thumbnail TEXT,
   subscriber_count INTEGER DEFAULT 0,
@@ -34,12 +34,13 @@ CREATE TABLE IF NOT EXISTS influencers (
   is_active BOOLEAN DEFAULT TRUE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE,
-  last_cooperation_at TIMESTAMP WITH TIME ZONE
+  last_cooperation_at TIMESTAMP WITH TIME ZONE,
+  CONSTRAINT influencers_channel_id_idx UNIQUE (channel_id)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS influencers_channel_id_idx ON influencers(channel_id);
 CREATE INDEX IF NOT EXISTS influencers_status_idx ON influencers(status);
 CREATE INDEX IF NOT EXISTS influencers_level_idx ON influencers(level);
+-- influencers_channel_id_idx 已被 UNIQUE 约束替代，不需要再创建
 CREATE INDEX IF NOT EXISTS influencers_category_idx ON influencers(category);
 CREATE INDEX IF NOT EXISTS influencers_is_favorite_idx ON influencers(is_favorite);
 CREATE INDEX IF NOT EXISTS influencers_created_at_idx ON influencers(created_at);
