@@ -6,6 +6,45 @@ import { campaignsService } from '@/services/campaigns';
 import { autoMatchingService } from '@/services/auto-campaign';
 import { emailQueueService } from '@/services/email/queue-service';
 
+const CREATE_INFLUENCERS_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS influencers (
+  id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+  channel_id VARCHAR(50) NOT NULL UNIQUE,
+  channel_title VARCHAR(200) NOT NULL,
+  thumbnail TEXT,
+  subscriber_count INTEGER DEFAULT 0,
+  total_videos INTEGER DEFAULT 0,
+  total_views INTEGER DEFAULT 0,
+  email VARCHAR(255),
+  phone VARCHAR(20),
+  wechat VARCHAR(50),
+  description TEXT,
+  tags JSONB,
+  category VARCHAR(50),
+  niche VARCHAR(100),
+  level VARCHAR(20) DEFAULT 'C',
+  price_range VARCHAR(50),
+  average_price DECIMAL(10, 2) DEFAULT 0,
+  quality_score DECIMAL(5, 2) DEFAULT 0,
+  cooperation_score DECIMAL(5, 2) DEFAULT 0,
+  engagement_rate DECIMAL(5, 2) DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'available',
+  is_favorite BOOLEAN DEFAULT FALSE,
+  cooperation_count INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE,
+  last_cooperation_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS influencers_channel_id_idx ON influencers(channel_id);
+CREATE INDEX IF NOT EXISTS influencers_status_idx ON influencers(status);
+CREATE INDEX IF NOT EXISTS influencers_level_idx ON influencers(level);
+CREATE INDEX IF NOT EXISTS influencers_category_idx ON influencers(category);
+CREATE INDEX IF NOT EXISTS influencers_is_favorite_idx ON influencers(is_favorite);
+CREATE INDEX IF NOT EXISTS influencers_created_at_idx ON influencers(created_at);
+`;
+
 // 自动创建表的 SQL
 const CREATE_CAMPAIGNS_TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS campaigns (
@@ -160,6 +199,7 @@ export async function POST(request: NextRequest) {
     const { sql } = await import('drizzle-orm');
 
     // 依次创建所有表
+    await dbInstance.execute(sql`${sql.raw(CREATE_INFLUENCERS_TABLE_SQL)}`);
     await dbInstance.execute(sql`${sql.raw(CREATE_CAMPAIGNS_TABLE_SQL)}`);
     await dbInstance.execute(sql`${sql.raw(CREATE_CAMPAIGN_PARTICIPATIONS_TABLE_SQL)}`);
     await dbInstance.execute(sql`${sql.raw(CREATE_CAMPAIGN_AUTO_MATCHES_TABLE_SQL)}`);
