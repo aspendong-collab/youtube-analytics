@@ -171,9 +171,14 @@ export class AutoMatchingService {
     // 最低互动率
     conditions.push(gte(influencers.engagementRate, criteria.minEngagementRate));
 
-    // 分类筛选
+    // YouTube 标准分类筛选
     if (criteria.categories && criteria.categories.length > 0) {
-      conditions.push(inArray(influencers.category, criteria.categories));
+      conditions.push(inArray(influencers.categoryId, criteria.categories));
+    }
+
+    // 语言筛选
+    if (criteria.languages && criteria.languages.length > 0) {
+      conditions.push(inArray(influencers.defaultLanguage, criteria.languages));
     }
 
     // 价格上限（如果设置了）

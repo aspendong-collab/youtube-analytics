@@ -14,8 +14,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { toast } from "sonner";
-import { ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Loader2, CheckCircle2, ChevronDown } from "lucide-react";
 
 export default function CreateAutoCampaignPage() {
   const [formData, setFormData] = useState({
@@ -41,28 +46,36 @@ export default function CreateAutoCampaignPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [preview, setPreview] = useState<any>(null);
 
+  // YouTube 标准分类
   const categoryOptions = [
-    { value: "tech", label: "科技" },
-    { value: "gaming", label: "游戏" },
-    { value: "beauty", label: "美妆" },
-    { value: "lifestyle", label: "生活" },
-    { value: "education", label: "教育" },
-    { value: "entertainment", label: "娱乐" },
+    { value: "1", label: "Film & Animation（影视与动画）" },
+    { value: "2", label: "Autos & Vehicles（汽车与交通）" },
+    { value: "10", label: "Music（音乐）" },
+    { value: "15", label: "Pets & Animals（宠物与动物）" },
+    { value: "17", label: "Sports（体育）" },
+    { value: "19", label: "Travel & Events（旅行与活动）" },
+    { value: "20", label: "Gaming（游戏）" },
+    { value: "22", label: "People & Blogs（人物与博客）" },
+    { value: "23", label: "Comedy（喜剧）" },
+    { value: "24", label: "Entertainment（娱乐）" },
+    { value: "25", label: "News & Politics（新闻与政治）" },
+    { value: "26", label: "Howto & Style（教程与时尚）" },
+    { value: "27", label: "Education（教育）" },
+    { value: "28", label: "Science & Technology（科学与技术）" },
+    { value: "29", label: "Nonprofits & Activism（非营利与活动）" },
   ];
 
-  const regionOptions = [
-    { value: "US", label: "美国" },
-    { value: "CA", label: "加拿大" },
-    { value: "UK", label: "英国" },
-    { value: "AU", label: "澳大利亚" },
-    { value: "DE", label: "德国" },
-  ];
-
+  // 语言选项
   const languageOptions = [
+    { value: "zh-CN", label: "简体中文" },
+    { value: "zh-TW", label: "繁体中文" },
     { value: "en", label: "英语" },
-    { value: "es", label: "西班牙语" },
     { value: "fr", label: "法语" },
     { value: "de", label: "德语" },
+    { value: "ja", label: "日语" },
+    { value: "it", label: "意大利语" },
+    { value: "es", label: "西班牙语" },
+    { value: "pt", label: "葡萄牙语" },
   ];
 
   const handleCheckboxChange = (field: string, value: string) => {
@@ -71,6 +84,14 @@ export default function CreateAutoCampaignPage() {
       ? current.filter((v) => v !== value)
       : [...current, value];
     setFormData({ ...formData, [field]: updated });
+  };
+
+  const getSelectedLabels = (field: string, options: { value: string; label: string }[]) => {
+    const selected = formData[field as keyof typeof formData] as string[];
+    return options
+      .filter((opt) => selected.includes(opt.value))
+      .map((opt) => opt.label.split("（")[0])
+      .join("、");
   };
 
   const calculatePreview = () => {
@@ -237,22 +258,90 @@ export default function CreateAutoCampaignPage() {
         {/* 筛选条件 */}
         <Card className="p-6">
           <h2 className="text-lg font-semibold mb-4">达人筛选条件</h2>
-          
+
           <div className="space-y-6">
+            {/* 博主分类 - 多选下拉框 */}
             <div>
-              <Label>博主分类</Label>
-              <div className="grid grid-cols-3 gap-2 mt-2">
-                {categoryOptions.map((opt) => (
-                  <div key={opt.value} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`cat-${opt.value}`}
-                      checked={formData.categories.includes(opt.value)}
-                      onCheckedChange={() => handleCheckboxChange("categories", opt.value)}
-                    />
-                    <Label htmlFor={`cat-${opt.value}`}>{opt.label}</Label>
+              <Label>博主分类（YouTube标准分类）</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between mt-2"
+                  >
+                    <span className="truncate">
+                      {formData.categories.length > 0
+                        ? getSelectedLabels("categories", categoryOptions)
+                        : "请选择分类（可多选）"}
+                    </span>
+                    <ChevronDown className="w-4 h-4 ml-2 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-4">
+                  <div className="max-h-80 overflow-y-auto space-y-2">
+                    {categoryOptions.map((opt) => (
+                      <div key={opt.value} className="flex items-start space-x-2">
+                        <Checkbox
+                          id={`cat-${opt.value}`}
+                          checked={formData.categories.includes(opt.value)}
+                          onCheckedChange={() => handleCheckboxChange("categories", opt.value)}
+                        />
+                        <Label
+                          htmlFor={`cat-${opt.value}`}
+                          className="text-sm cursor-pointer flex-1"
+                        >
+                          {opt.label}
+                        </Label>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                  <div className="mt-4 pt-4 border-t text-sm text-[#86868B]">
+                    已选择 {formData.categories.length} 个分类
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* 语言 - 多选下拉框 */}
+            <div>
+              <Label>视频语言</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between mt-2"
+                  >
+                    <span className="truncate">
+                      {formData.languages.length > 0
+                        ? getSelectedLabels("languages", languageOptions)
+                        : "请选择语言（可多选）"}
+                    </span>
+                    <ChevronDown className="w-4 h-4 ml-2 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-4">
+                  <div className="space-y-2">
+                    {languageOptions.map((opt) => (
+                      <div key={opt.value} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`lang-${opt.value}`}
+                          checked={formData.languages.includes(opt.value)}
+                          onCheckedChange={() => handleCheckboxChange("languages", opt.value)}
+                        />
+                        <Label
+                          htmlFor={`lang-${opt.value}`}
+                          className="text-sm cursor-pointer flex-1"
+                        >
+                          {opt.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 pt-4 border-t text-sm text-[#86868B]">
+                    已选择 {formData.languages.length} 种语言
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="grid grid-cols-2 gap-6">

@@ -198,7 +198,9 @@ export const influencers = pgTable(
     description: text("description"), // 达人简介
     // 达人标签
     tags: jsonb("tags").$type<string[]>(), // 标签：科技、美妆、游戏等
-    category: varchar("category", { length: 50 }), // 分类
+    category: varchar("category", { length: 50 }), // 分类（自定义）
+    categoryId: varchar("category_id", { length: 10 }), // YouTube 标准分类 ID
+    defaultLanguage: varchar("default_language", { length: 10 }), // 视频默认语言
     niche: varchar("niche", { length: 100 }), // 细分领域
     // 达人等级
     level: varchar("level", { length: 20 }).default('C'), // 等级：S, A, B, C, D
