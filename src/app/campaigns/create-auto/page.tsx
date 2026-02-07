@@ -32,7 +32,6 @@ export default function CreateAutoCampaignPage() {
     startDate: "",
     endDate: "",
     categories: [] as string[],
-    regions: [] as string[],
     languages: [] as string[],
     minSubscriberCount: "10000",
     maxSubscriberCount: "100000",
@@ -41,6 +40,11 @@ export default function CreateAutoCampaignPage() {
     negotiationStrategy: "moderate",
     autoMatching: true,
     autoNegotiation: true,
+    // 邮件配置
+    senderName: "",
+    senderEmail: "",
+    companyName: "",
+    websiteUrl: "",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -115,6 +119,11 @@ export default function CreateAutoCampaignPage() {
       return;
     }
 
+    if (!formData.senderName || !formData.senderEmail || !formData.companyName) {
+      toast.error("请填写邮件配置信息");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -125,7 +134,6 @@ export default function CreateAutoCampaignPage() {
           ...formData,
           criteria: {
             categories: formData.categories,
-            regions: formData.regions,
             languages: formData.languages,
             minSubscriberCount: parseInt(formData.minSubscriberCount),
             maxSubscriberCount: parseInt(formData.maxSubscriberCount),
@@ -252,6 +260,73 @@ export default function CreateAutoCampaignPage() {
                 />
               </div>
             </div>
+          </div>
+        </Card>
+
+        {/* 邮件配置 */}
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4">邮件配置</h2>
+          <p className="text-sm text-[#86868B] mb-4">
+            配置邀请邮件的发送者信息，专业可信的邮件内容能显著提高邀约成功率
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="senderName">发件人姓名 *</Label>
+              <Input
+                id="senderName"
+                placeholder="例如：张三 / Marketing Team"
+                value={formData.senderName}
+                onChange={(e) => setFormData({ ...formData, senderName: e.target.value })}
+              />
+              <p className="text-xs text-[#86868B] mt-1">建议使用真实姓名或团队名称，增加可信度</p>
+            </div>
+
+            <div>
+              <Label htmlFor="senderEmail">发件人邮箱 *</Label>
+              <Input
+                id="senderEmail"
+                type="email"
+                placeholder="例如：marketing@yourcompany.com"
+                value={formData.senderEmail}
+                onChange={(e) => setFormData({ ...formData, senderEmail: e.target.value })}
+              />
+              <p className="text-xs text-[#86868B] mt-1">建议使用公司域名的邮箱，避免使用免费邮箱</p>
+            </div>
+
+            <div>
+              <Label htmlFor="companyName">公司/品牌名称 *</Label>
+              <Input
+                id="companyName"
+                placeholder="例如：您的品牌名称"
+                value={formData.companyName}
+                onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="websiteUrl">官网地址</Label>
+              <Input
+                id="websiteUrl"
+                type="url"
+                placeholder="https://yourwebsite.com"
+                value={formData.websiteUrl}
+                onChange={(e) => setFormData({ ...formData, websiteUrl: e.target.value })}
+              />
+              <p className="text-xs text-[#86868B] mt-1">添加官网可以增加博主对您的信任度</p>
+            </div>
+          </div>
+
+          {/* 提高邀约成功率的提示 */}
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h3 className="font-medium text-blue-900 mb-2">💡 提高邀约成功率的小技巧</h3>
+            <ul className="text-sm text-blue-800 space-y-1">
+              <li>✓ <strong>个性化称呼</strong>：系统会自动使用博主的频道名称</li>
+              <li>✓ <strong>展示诚意</strong>：提供合理的预算范围，展示了解博主的内容</li>
+              <li>✓ <strong>专业形象</strong>：使用公司邮箱和真实姓名，避免免费邮箱</li>
+              <li>✓ <strong>清晰诉求</strong>：详细说明项目目标和合作内容</li>
+              <li>✓ <strong>及时响应</strong>：系统会自动处理邮件发送和后续跟进</li>
+            </ul>
           </div>
         </Card>
 

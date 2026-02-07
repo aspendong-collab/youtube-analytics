@@ -63,6 +63,9 @@ export class EmailTemplateService {
                 • 项目名称：{{campaignName}}<br>
                 • 项目描述：{{campaignDescription}}<br>
                 • 预算范围：{{budgetRange}}
+                {{#if websiteUrl}}
+                <br>• 官网地址：<a href="{{websiteUrl}}" target="_blank">{{websiteUrl}}</a>
+                {{/if}}
               </div>
               
               <p>我们对您的内容质量非常认可，相信这次合作能够为双方带来巨大的价值。如果您有兴趣，请回复确认我们是否可以进一步沟通合作细节。</p>
@@ -82,7 +85,7 @@ export class EmailTemplateService {
         </body>
         </html>
       `,
-      variables: ['influencerName', 'influencerChannel', 'influencerCategory', 'campaignName', 'campaignDescription', 'budgetRange', 'senderName', 'senderEmail', 'companyName'],
+      variables: ['influencerName', 'influencerChannel', 'influencerCategory', 'campaignName', 'campaignDescription', 'budgetRange', 'senderName', 'senderEmail', 'companyName', 'websiteUrl'],
     };
   }
 

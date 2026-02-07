@@ -23,12 +23,23 @@ export async function POST(request: NextRequest) {
       negotiationStrategy,
       autoMatching,
       autoNegotiation,
+      senderName,
+      senderEmail,
+      companyName,
+      websiteUrl,
     } = body;
 
     if (!name || !budget || !budgetPerInfluencer || !targetInfluencerCount) {
       return NextResponse.json({
         success: false,
         error: 'Missing required fields: name, budget, budgetPerInfluencer, targetInfluencerCount',
+      }, { status: 400 });
+    }
+
+    if (!senderName || !senderEmail || !companyName) {
+      return NextResponse.json({
+        success: false,
+        error: 'Missing email configuration: senderName, senderEmail, companyName',
       }, { status: 400 });
     }
 
@@ -71,9 +82,10 @@ export async function POST(request: NextRequest) {
           description,
           minPrice: budgetPerInfluencer * 0.7,
           maxPrice: budgetPerInfluencer,
-          senderName: 'Marketing Team',
-          senderEmail: 'noreply@yourdomain.com',
-          companyName: '',
+          senderName: senderName || 'Marketing Team',
+          senderEmail: senderEmail || 'noreply@yourdomain.com',
+          companyName: companyName || '',
+          websiteUrl: websiteUrl || '',
         }
       );
 

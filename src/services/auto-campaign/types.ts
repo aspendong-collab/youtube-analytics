@@ -268,6 +268,7 @@ export interface InvitationTemplateContext {
   senderName: string;
   senderEmail: string;
   companyName?: string;
+  websiteUrl?: string;
 }
 
 export interface NegotiationTemplateContext {
