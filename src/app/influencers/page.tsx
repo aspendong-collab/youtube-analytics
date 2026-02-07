@@ -49,6 +49,21 @@ interface Influencer {
   cooperationCount: number;
 }
 
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+  error?: string;
+}
+
+interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export default function InfluencersPage() {
   const [influencers, setInfluencers] = useState<Influencer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,23 +103,30 @@ export default function InfluencersPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
+      params.append("page", "1");
+      params.append("pageSize", "100");
       if (statusFilter !== "all") params.append("status", statusFilter);
       if (levelFilter !== "all") params.append("level", levelFilter);
       if (categoryFilter !== "all") params.append("category", categoryFilter);
       if (favoriteFilter === "true") params.append("favorite", "true");
       if (search) params.append("search", search);
 
-      const response = await fetch(`/api/influencers?${params.toString()}`);
+      const response = await fetch(`/api/v1/influencers?${params.toString()}`);
 
       if (!response.ok) {
         throw new Error("获取达人列表失败");
       }
 
-      const data = await response.json();
-      setInfluencers(data.influencers);
+      const result: ApiResponse<PaginatedResponse<Influencer>> = await response.json();
+
+      if (result.success && result.data) {
+        setInfluencers(result.data.items);
+      } else {
+        throw new Error(result.error || "获取达人列表失败");
+      }
     } catch (error) {
       console.error("加载达人列表失败:", error);
-      toast.error("加载达人列表失败");
+      toast.error(error instanceof Error ? error.message : "加载达人列表失败");
     } finally {
       setLoading(false);
     }
@@ -117,15 +139,32 @@ export default function InfluencersPage() {
     }
 
     try {
-      const response = await fetch("/api/influencers", {
+      const response = await fetch("/api/v1/influencers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...formData,
-          averagePrice: formData.averagePrice ? parseFloat(formData.averagePrice) : 0,
-          qualityScore: formData.qualityScore ? parseFloat(formData.qualityScore) : 0,
-          cooperationScore: formData.cooperationScore ? parseFloat(formData.cooperationScore) : 0,
+          channelId: formData.channelId,
+          channelTitle: formData.channelTitle,
+          thumbnail: null,
+          subscriberCount: 0,
+          totalVideos: 0,
+          totalViews: 0,
+          email: formData.email || null,
+          phone: formData.phone || null,
+          wechat: formData.wechat || null,
+          description: formData.description || null,
           tags: formData.tags ? formData.tags.split(",").map(tag => tag.trim()) : [],
+          category: formData.category || null,
+          niche: formData.niche || null,
+          level: formData.level,
+          priceRange: formData.priceRange || null,
+          averagePrice: formData.averagePrice ? parseFloat(formData.averagePrice) : null,
+          qualityScore: formData.qualityScore ? parseFloat(formData.qualityScore) : null,
+          cooperationScore: formData.cooperationScore ? parseFloat(formData.cooperationScore) : null,
+          engagementRate: null,
+          status: formData.status,
+          isFavorite: false,
+          cooperationCount: 0,
         }),
       });
 
@@ -134,10 +173,16 @@ export default function InfluencersPage() {
         throw new Error(error.error || "添加达人失败");
       }
 
-      toast.success("达人添加成功");
-      setIsAddDialogOpen(false);
-      resetForm();
-      loadInfluencers();
+      const result: ApiResponse<Influencer> = await response.json();
+
+      if (result.success) {
+        toast.success("达人添加成功");
+        setIsAddDialogOpen(false);
+        resetForm();
+        loadInfluencers();
+      } else {
+        throw new Error(result.error || "添加达人失败");
+      }
     } catch (error) {
       console.error("添加达人失败:", error);
       toast.error(error instanceof Error ? error.message : "添加达人失败");
@@ -148,29 +193,45 @@ export default function InfluencersPage() {
     if (!selectedInfluencer) return;
 
     try {
-      const response = await fetch(`/api/influencers/${selectedInfluencer.id}`, {
-        method: "PUT",
+      const response = await fetch(`/api/v1/influencers/${selectedInfluencer.id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...formData,
-          averagePrice: formData.averagePrice ? parseFloat(formData.averagePrice) : 0,
-          qualityScore: formData.qualityScore ? parseFloat(formData.qualityScore) : 0,
-          cooperationScore: formData.cooperationScore ? parseFloat(formData.cooperationScore) : 0,
+          channelTitle: formData.channelTitle,
+          email: formData.email || null,
+          phone: formData.phone || null,
+          wechat: formData.wechat || null,
+          description: formData.description || null,
           tags: formData.tags ? formData.tags.split(",").map(tag => tag.trim()) : [],
+          category: formData.category || null,
+          niche: formData.niche || null,
+          level: formData.level,
+          priceRange: formData.priceRange || null,
+          averagePrice: formData.averagePrice ? parseFloat(formData.averagePrice) : null,
+          qualityScore: formData.qualityScore ? parseFloat(formData.qualityScore) : null,
+          cooperationScore: formData.cooperationScore ? parseFloat(formData.cooperationScore) : null,
+          status: formData.status,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("更新达人失败");
+        const error = await response.json();
+        throw new Error(error.error || "更新达人失败");
       }
 
-      toast.success("达人更新成功");
-      setIsEditDialogOpen(false);
-      resetForm();
-      loadInfluencers();
+      const result: ApiResponse<Influencer> = await response.json();
+
+      if (result.success) {
+        toast.success("达人更新成功");
+        setIsEditDialogOpen(false);
+        resetForm();
+        loadInfluencers();
+      } else {
+        throw new Error(result.error || "更新达人失败");
+      }
     } catch (error) {
       console.error("更新达人失败:", error);
-      toast.error("更新达人失败");
+      toast.error(error instanceof Error ? error.message : "更新达人失败");
     }
   };
 
@@ -180,38 +241,55 @@ export default function InfluencersPage() {
     }
 
     try {
-      const response = await fetch(`/api/influencers/${id}`, {
+      const response = await fetch(`/api/v1/influencers/${id}`, {
         method: "DELETE",
       });
 
       if (!response.ok) {
-        throw new Error("删除达人失败");
+        const error = await response.json();
+        throw new Error(error.error || "删除达人失败");
       }
 
-      toast.success("达人删除成功");
-      loadInfluencers();
+      const result: ApiResponse<{ id: string }> = await response.json();
+
+      if (result.success) {
+        toast.success("达人删除成功");
+        loadInfluencers();
+      } else {
+        throw new Error(result.error || "删除达人失败");
+      }
     } catch (error) {
       console.error("删除达人失败:", error);
-      toast.error("删除达人失败");
+      toast.error(error instanceof Error ? error.message : "删除达人失败");
     }
   };
 
-  const handleToggleFavorite = async (id: string) => {
+  const handleToggleFavorite = async (id: string, currentState: boolean) => {
     try {
-      const response = await fetch(`/api/influencers/${id}/favorite`, {
-        method: "POST",
+      const response = await fetch(`/api/v1/influencers/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          isFavorite: !currentState,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error("操作失败");
+        const error = await response.json();
+        throw new Error(error.error || "操作失败");
       }
 
-      const data = await response.json();
-      toast.success(data.message);
-      loadInfluencers();
+      const result: ApiResponse<Influencer> = await response.json();
+
+      if (result.success) {
+        toast.success(result.data.isFavorite ? "已收藏" : "已取消收藏");
+        loadInfluencers();
+      } else {
+        throw new Error(result.error || "操作失败");
+      }
     } catch (error) {
       console.error("操作失败:", error);
-      toast.error("操作失败");
+      toast.error(error instanceof Error ? error.message : "操作失败");
     }
   };
 
@@ -630,7 +708,7 @@ export default function InfluencersPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleToggleFavorite(influencer.id)}
+                      onClick={() => handleToggleFavorite(influencer.id, influencer.isFavorite)}
                     >
                       {influencer.isFavorite ? "⭐ 已收藏" : "☆ 收藏"}
                     </Button>
