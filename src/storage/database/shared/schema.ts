@@ -16,6 +16,23 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Import campaigns and campaignParticipations from campaigns-schema
+export { campaigns, campaignParticipations } from "./campaigns-schema";
+
+// Import communication tables
+export { 
+  communicationThreads, 
+  communicationMessages, 
+  communicationTemplates 
+} from "../../core/database/schema/domain/communications";
+
+// Import negotiation tables
+export { 
+  negotiations, 
+  negotiationProposals, 
+  negotiationHistory 
+} from "../../core/database/schema/domain/negotiations";
+
 // Users 表 - 存储用户信息
 export const users = pgTable(
   "users",

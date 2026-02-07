@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, integer, timestamp, jsonb, boolean, decimal } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, integer, timestamp, jsonb, boolean, decimal, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // Campaigns 表 - 存储营销活动
