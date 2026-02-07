@@ -19,6 +19,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowRight, Loader2, CheckCircle2, ChevronDown } from "lucide-react";
 
@@ -340,11 +345,12 @@ export default function CreateAutoCampaignPage() {
             {/* 博主分类 - 多选下拉框 */}
             <div>
               <Label>博主分类（YouTube标准分类）</Label>
-              <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
-                <PopoverTrigger asChild>
+              <Dialog open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+                <DialogTrigger asChild>
                   <Button
                     variant="outline"
                     className="w-full justify-between mt-2"
+                    type="button"
                   >
                     <span className="truncate">
                       {formData.categories.length > 0
@@ -353,8 +359,9 @@ export default function CreateAutoCampaignPage() {
                     </span>
                     <ChevronDown className="w-4 h-4 ml-2 opacity-50" />
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-4">
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <h3 className="text-lg font-semibold mb-4">选择博主分类</h3>
                   <div className="max-h-80 overflow-y-auto space-y-2">
                     {categoryOptions.map((opt) => (
                       <div key={opt.value} className="flex items-start space-x-2">
@@ -372,21 +379,29 @@ export default function CreateAutoCampaignPage() {
                       </div>
                     ))}
                   </div>
-                  <div className="mt-4 pt-4 border-t text-sm text-[#86868B]">
-                    已选择 {formData.categories.length} 个分类
+                  <div className="mt-4 pt-4 border-t text-sm text-[#86868B] flex justify-between items-center">
+                    <span>已选择 {formData.categories.length} 个分类</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setCategoryPopoverOpen(false)}
+                    >
+                      确定
+                    </Button>
                   </div>
-                </PopoverContent>
-              </Popover>
+                </DialogContent>
+              </Dialog>
             </div>
 
             {/* 语言 - 多选下拉框 */}
             <div>
               <Label>视频语言</Label>
-              <Popover open={languagePopoverOpen} onOpenChange={setLanguagePopoverOpen}>
-                <PopoverTrigger asChild>
+              <Dialog open={languagePopoverOpen} onOpenChange={setLanguagePopoverOpen}>
+                <DialogTrigger asChild>
                   <Button
                     variant="outline"
                     className="w-full justify-between mt-2"
+                    type="button"
                   >
                     <span className="truncate">
                       {formData.languages.length > 0
@@ -395,8 +410,9 @@ export default function CreateAutoCampaignPage() {
                     </span>
                     <ChevronDown className="w-4 h-4 ml-2 opacity-50" />
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64 p-4">
+                </DialogTrigger>
+                <DialogContent className="max-w-sm">
+                  <h3 className="text-lg font-semibold mb-4">选择视频语言</h3>
                   <div className="space-y-2">
                     {languageOptions.map((opt) => (
                       <div key={opt.value} className="flex items-center space-x-2">
@@ -414,11 +430,18 @@ export default function CreateAutoCampaignPage() {
                       </div>
                     ))}
                   </div>
-                  <div className="mt-4 pt-4 border-t text-sm text-[#86868B]">
-                    已选择 {formData.languages.length} 种语言
+                  <div className="mt-4 pt-4 border-t text-sm text-[#86868B] flex justify-between items-center">
+                    <span>已选择 {formData.languages.length} 种语言</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setLanguagePopoverOpen(false)}
+                    >
+                      确定
+                    </Button>
                   </div>
-                </PopoverContent>
-              </Popover>
+                </DialogContent>
+              </Dialog>
             </div>
 
             <div className="grid grid-cols-2 gap-6">
