@@ -15,8 +15,7 @@ export async function POST(request: NextRequest) {
       name,
       description,
       budget,
-      budgetPerInfluencer,
-      targetInfluencerCount,
+      maxPrice,
       startDate,
       endDate,
       criteria,
@@ -29,10 +28,10 @@ export async function POST(request: NextRequest) {
       websiteUrl,
     } = body;
 
-    if (!name || !budget || !budgetPerInfluencer || !targetInfluencerCount) {
+    if (!name || !budget) {
       return NextResponse.json({
         success: false,
-        error: 'Missing required fields: name, budget, budgetPerInfluencer, targetInfluencerCount',
+        error: 'Missing required fields: name, budget',
       }, { status: 400 });
     }
 
@@ -65,11 +64,14 @@ export async function POST(request: NextRequest) {
     // 3. 如果启用了自动匹配，立即开始匹配
     let matchResult = null;
     if (autoMatching) {
+      const budgetLimit = parseFloat(budget);
+      const priceLimit = maxPrice ? parseFloat(maxPrice) : null;
+
       matchResult = await autoMatchingService.match({
         campaignId: campaign.id,
         criteria: criteria,
-        targetCount: targetInfluencerCount,
-        budgetPerInfluencer: parseFloat(budgetPerInfluencer),
+        budgetLimit, // 总预算限制
+        priceLimit, // 单个达人最高限价
       });
 
       // 4. 批量创建邀请邮件
@@ -80,8 +82,8 @@ export async function POST(request: NextRequest) {
         {
           name,
           description,
-          minPrice: budgetPerInfluencer * 0.7,
-          maxPrice: budgetPerInfluencer,
+          minPrice: priceLimit ? priceLimit * 0.7 : 70,
+          maxPrice: priceLimit || 100,
           senderName: senderName || 'Marketing Team',
           senderEmail: senderEmail || 'noreply@yourdomain.com',
           companyName: companyName || '',

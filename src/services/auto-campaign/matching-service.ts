@@ -48,14 +48,16 @@ export class AutoMatchingService {
     logger.info('Starting auto matching', {
       campaignId: request.campaignId,
       criteria: request.criteria,
-      targetCount: request.targetCount,
+      budgetLimit: request.budgetLimit,
+      priceLimit: request.priceLimit,
     });
 
     try {
       // 1. 构建查询条件
-      const conditions = this.buildQueryConditions(request.criteria);
+      const conditions = this.buildQueryConditions(request.criteria, request.priceLimit);
 
       // 2. 查询符合条件的达人
+      // 获取所有符合条件的达人，后续会在总预算范围内筛选
       const candidates = await db
         .select()
         .from(influencers)
@@ -68,11 +70,11 @@ export class AutoMatchingService {
           )
         )
         .orderBy(
-          desc(influencers.averagePrice), // 价格优先
-          desc(influencers.qualityScore), // 质量次之
-          desc(influencers.engagementRate), // 互动率再次
+          desc(influencers.qualityScore), // 质量优先
+          desc(influencers.engagementRate), // 互动率次之
+          sql`${influencers.averagePrice} ASC`, // 价格升序，优先选择性价比高的
         )
-        .limit(request.targetCount * 2); // 获取更多候选人用于评分
+        .limit(200); // 最多获取200个候选人
 
       logger.info(`Found ${candidates.length} candidate influencers`, {
         campaignId: request.campaignId,
@@ -80,7 +82,7 @@ export class AutoMatchingService {
 
       // 3. 计算匹配度评分并排序
       const scoredCandidates = candidates.map(candidate => {
-        const score = this.calculateMatchScore(candidate, request.criteria, request.budgetPerInfluencer);
+        const score = this.calculateMatchScore(candidate, request.criteria);
         const reasons = this.getMatchReasons(candidate, request.criteria, score);
         return {
           influencer: candidate,
@@ -88,19 +90,31 @@ export class AutoMatchingService {
           matchReason: reasons,
         };
       }).filter(item => item.matchScore > 50) // 过滤掉匹配度过低的
-        .sort((a, b) => b.matchScore - a.matchScore) // 按匹配度降序
-        .slice(0, request.targetCount); // 取前 N 个
+        .sort((a, b) => b.matchScore - a.matchScore); // 按匹配度降序
 
       logger.info(`Scored and filtered to ${scoredCandidates.length} matches`, {
         campaignId: request.campaignId,
       });
 
-      // 4. 保存匹配结果到数据库
+      // 4. 在总预算范围内筛选达人
       const matchedInfluencers: MatchedInfluencer[] = [];
+      let totalCost = 0;
 
       for (const scored of scoredCandidates) {
-        const estimatedPrice = this.estimatePrice(scored.influencer, request.budgetPerInfluencer);
+        const estimatedPrice = this.estimatePrice(scored.influencer, request.priceLimit);
 
+        // 检查是否超出总预算
+        if (totalCost + estimatedPrice > request.budgetLimit) {
+          logger.info(`Budget limit reached, stopping matching`, {
+            campaignId: request.campaignId,
+            totalCost,
+            budgetLimit: request.budgetLimit,
+            matchedCount: matchedInfluencers.length,
+          });
+          break;
+        }
+
+        // 保存匹配结果到数据库
         const [match] = await db
           .insert(campaignAutoMatches)
           .values({
@@ -121,6 +135,8 @@ export class AutoMatchingService {
           matchScore: scored.matchScore,
           matchReason: scored.matchReason,
         });
+
+        totalCost += estimatedPrice;
       }
 
       // 5. 计算统计数据
@@ -157,7 +173,7 @@ export class AutoMatchingService {
   /**
    * 构建查询条件
    */
-  private buildQueryConditions(criteria: TargetingCriteria) {
+  private buildQueryConditions(criteria: TargetingCriteria, priceLimit?: number) {
     const conditions: any[] = [];
 
     // 订阅数范围
@@ -182,7 +198,9 @@ export class AutoMatchingService {
     }
 
     // 价格上限（如果设置了）
-    if (criteria.maxPrice) {
+    if (priceLimit) {
+      conditions.push(lte(influencers.averagePrice, priceLimit));
+    } else if (criteria.maxPrice) {
       conditions.push(lte(influencers.averagePrice, criteria.maxPrice));
     }
 
@@ -204,8 +222,7 @@ export class AutoMatchingService {
    */
   private calculateMatchScore(
     influencer: InfluencerMatch,
-    criteria: TargetingCriteria,
-    budgetPerInfluencer?: number
+    criteria: TargetingCriteria
   ): number {
     let score = 0;
 
@@ -224,11 +241,11 @@ export class AutoMatchingService {
     );
     score += engagementScore * 0.25;
 
-    // 3. 价格得分（30分）
-    if (budgetPerInfluencer && influencer.averagePrice) {
+    // 3. 价格得分（30分）- 价格越低得分越高
+    if (influencer.averagePrice && criteria.maxPrice) {
       const priceScore = this.calculatePriceScore(
         influencer.averagePrice,
-        budgetPerInfluencer
+        criteria.maxPrice
       );
       score += priceScore * 0.3;
     }
@@ -313,16 +330,28 @@ export class AutoMatchingService {
   /**
    * 估算价格
    */
-  private estimatePrice(influencer: InfluencerMatch, budget?: number): number {
+  private estimatePrice(influencer: InfluencerMatch, priceLimit?: number): number {
     if (influencer.averagePrice) {
-      return Number(influencer.averagePrice);
+      const price = Number(influencer.averagePrice);
+      // 如果设置了价格上限，确保不超过
+      if (priceLimit && price > priceLimit) {
+        return priceLimit;
+      }
+      return price;
     }
 
     // 根据粉丝数和互动率估算
-    const estimatedPrice = (influencer.subscriberCount / 10000) * 
+    const estimatedPrice = (influencer.subscriberCount / 10000) *
                           (influencer.engagementRate || 1) * 50;
 
-    return Math.round(estimatedPrice);
+    const price = Math.round(estimatedPrice);
+
+    // 如果设置了价格上限，确保不超过
+    if (priceLimit && price > priceLimit) {
+      return priceLimit;
+    }
+
+    return price;
   }
 
   /**

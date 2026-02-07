@@ -32,8 +32,6 @@ export default function CreateAutoCampaignPage() {
     name: "",
     description: "",
     budget: "",
-    budgetPerInfluencer: "",
-    targetInfluencerCount: "20",
     startDate: "",
     endDate: "",
     categories: [] as string[],
@@ -107,22 +105,31 @@ export default function CreateAutoCampaignPage() {
 
   const calculatePreview = () => {
     const budget = parseFloat(formData.budget) || 0;
-    const budgetPerInfluencer = parseFloat(formData.budgetPerInfluencer) || 0;
-    const targetCount = parseInt(formData.targetInfluencerCount) || 0;
+    const maxPrice = parseFloat(formData.maxPrice) || 0;
 
-    const estimatedTotalCost = budgetPerInfluencer * targetCount;
-    const estimatedInfluencers = Math.floor(budget / budgetPerInfluencer);
+    // 预计可合作达人数量（基于最高限价估算）
+    // 实际数量取决于匹配到的达人实际价格
+    let estimatedInfluencers = 0;
+    if (maxPrice > 0) {
+      estimatedInfluencers = Math.floor(budget / maxPrice);
+    }
+
+    // 如果没有设置最高限价，假设平均价格为 $100
+    if (maxPrice === 0 && budget > 0) {
+      estimatedInfluencers = Math.floor(budget / 100);
+    }
 
     setPreview({
-      estimatedTotalCost,
+      estimatedTotalCost: null, // 总成本由实际匹配的达人价格决定
       estimatedInfluencers,
-      withinBudget: estimatedTotalCost <= budget,
+      withinBudget: true, // 系统会在总预算范围内筛选
+      avgPricePerInfluencer: maxPrice || 100, // 平均或最高限价
     });
   };
 
   const handleSubmit = async () => {
-    if (!formData.name || !formData.budget || !formData.budgetPerInfluencer) {
-      toast.error("请填写必填字段");
+    if (!formData.name || !formData.budget) {
+      toast.error("请填写必填字段（项目名称和总预算）");
       return;
     }
 
@@ -138,7 +145,12 @@ export default function CreateAutoCampaignPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...formData,
+          name: formData.name,
+          description: formData.description,
+          budget: formData.budget,
+          maxPrice: formData.maxPrice, // 传递到顶层
+          startDate: formData.startDate,
+          endDate: formData.endDate,
           criteria: {
             categories: formData.categories,
             languages: formData.languages,
@@ -147,6 +159,13 @@ export default function CreateAutoCampaignPage() {
             minEngagementRate: parseFloat(formData.minEngagementRate),
             maxPrice: formData.maxPrice ? parseFloat(formData.maxPrice) : undefined,
           },
+          negotiationStrategy: formData.negotiationStrategy,
+          autoMatching: formData.autoMatching,
+          autoNegotiation: formData.autoNegotiation,
+          senderName: formData.senderName,
+          senderEmail: formData.senderEmail,
+          companyName: formData.companyName,
+          websiteUrl: formData.websiteUrl,
         }),
       });
 
@@ -216,34 +235,21 @@ export default function CreateAutoCampaignPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="budget">总预算 (USD) *</Label>
-                <Input
-                  id="budget"
-                  type="number"
-                  placeholder="2000"
-                  value={formData.budget}
-                  onChange={(e) => {
-                    setFormData({ ...formData, budget: e.target.value });
-                    calculatePreview();
-                  }}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="budgetPerInfluencer">单个博主预算 (USD) *</Label>
-                <Input
-                  id="budgetPerInfluencer"
-                  type="number"
-                  placeholder="100"
-                  value={formData.budgetPerInfluencer}
-                  onChange={(e) => {
-                    setFormData({ ...formData, budgetPerInfluencer: e.target.value });
-                    calculatePreview();
-                  }}
-                />
-              </div>
+            <div>
+              <Label htmlFor="budget">总预算 (USD) *</Label>
+              <p className="text-xs text-[#86868B] mb-2">
+                系统将在总预算范围内自动筛选和建联达人
+              </p>
+              <Input
+                id="budget"
+                type="number"
+                placeholder="例如：2000"
+                value={formData.budget}
+                onChange={(e) => {
+                  setFormData({ ...formData, budget: e.target.value });
+                  calculatePreview();
+                }}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -476,13 +482,19 @@ export default function CreateAutoCampaignPage() {
             </div>
 
             <div>
-              <Label htmlFor="maxPrice">最高报价上限 (USD)</Label>
+              <Label htmlFor="maxPrice">单个博主最高限价 (USD)</Label>
+              <p className="text-xs text-[#86868B] mb-2">
+                设置单个达人的最高报价上限，超过此价格的达人不会被筛选
+              </p>
               <Input
                 id="maxPrice"
                 type="number"
-                placeholder="150"
+                placeholder="例如：150"
                 value={formData.maxPrice}
-                onChange={(e) => setFormData({ ...formData, maxPrice: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, maxPrice: e.target.value });
+                  calculatePreview();
+                }}
               />
             </div>
           </div>
@@ -549,25 +561,40 @@ export default function CreateAutoCampaignPage() {
               <CheckCircle2 className="w-5 h-5 text-blue-600" />
               项目预览
             </h2>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>预计匹配达人</Label>
-                <p className="text-2xl font-semibold">{preview.estimatedInfluencers} 位</p>
-              </div>
-              <div>
-                <Label>预估总成本</Label>
-                <p className={`text-2xl font-semibold ${preview.withinBudget ? "text-green-600" : "text-red-600"}`}>
-                  ${preview.estimatedTotalCost}
-                </p>
-              </div>
-            </div>
 
-            {!preview.withinBudget && (
-              <p className="text-sm text-red-600 mt-2">
-                ⚠️ 预估成本超出预算！请调整参数。
-              </p>
-            )}
+            <div className="space-y-4">
+              <div>
+                <Label>总预算</Label>
+                <p className="text-2xl font-semibold">${formData.budget || 0}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>单个博主最高限价</Label>
+                  <p className="text-xl font-semibold">
+                    ${formData.maxPrice || "未设置"}
+                  </p>
+                </div>
+                <div>
+                  <Label>预计可合作达人</Label>
+                  <p className="text-xl font-semibold">
+                    {preview.estimatedInfluencers} 位
+                  </p>
+                </div>
+              </div>
+
+              {formData.maxPrice && (
+                <p className="text-sm text-[#86868B]">
+                  💡 基于 ${formData.maxPrice} 的上限价，系统预计可在总预算范围内匹配约 {preview.estimatedInfluencers} 位达人
+                </p>
+              )}
+
+              {!formData.maxPrice && (
+                <p className="text-sm text-orange-600">
+                  ⚠️ 建议设置单个博主最高限价，以便更精准地筛选达人
+                </p>
+              )}
+            </div>
           </Card>
         )}
 

@@ -21,8 +21,8 @@ export interface TargetingCriteria {
 export interface AutoMatchRequest {
   campaignId: string;
   criteria: TargetingCriteria;
-  targetCount: number;
-  budgetPerInfluencer?: number;
+  budgetLimit: number;           // 总预算限制
+  priceLimit?: number;           // 单个达人最高限价（可选）
 }
 
 export interface MatchedInfluencer {
