@@ -4,7 +4,7 @@
 
 import { NextRequest } from 'next/server';
 import { analyticsService } from '@/services/analytics';
-import { apiSuccess, withDefaultMiddleware } from '../../../lib/middleware';
+import { apiSuccess, withDefaultMiddleware } from '../../lib/middleware';
 
 async function handler(request: NextRequest) {
   const stats = await analyticsService.getCampaignStats();

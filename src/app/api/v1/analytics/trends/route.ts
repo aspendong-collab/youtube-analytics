@@ -4,7 +4,7 @@
 
 import { NextRequest } from 'next/server';
 import { analyticsService } from '@/services/analytics';
-import { apiSuccess, apiErrors, withDefaultMiddleware } from '../../../lib/middleware';
+import { apiSuccess, apiErrors, withDefaultMiddleware } from '../../lib/middleware';
 
 async function handler(request: NextRequest) {
   const url = new URL(request.url);

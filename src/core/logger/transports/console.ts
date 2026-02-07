@@ -3,7 +3,7 @@
  */
 
 import { LogEntry } from './types';
-import { formatLogConsole } from './formatters';
+import { formatLogConsole } from '../formatters';
 
 export class ConsoleTransport {
   /**
