@@ -8,107 +8,70 @@ const NEON_DATABASE_URL = 'postgresql://neondb_owner:npg_zw0a2RgOhAXY@ep-winter-
 // 从环境变量获取数据库连接字符串，如果未设置则使用硬编码值
 const connectionString = process.env.PGDATABASE_URL || NEON_DATABASE_URL;
 
-// 延迟初始化的数据库实例
-let _client: any = null;
-let _db: any = null;
-let _schema: any = null;
-let _isInitialized = false;
+// 数据库实例
+let _client: postgres.Sql | null = null;
+let _db: ReturnType<typeof drizzle> | null = null;
 
-// 检查是否在构建时
-const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' ||
-                    process.env.NODE_ENV === undefined;
-
-// 检查是否在开发环境
-const isDev = process.env.NODE_ENV === 'development';
+// 检查是否在构建时（只在明确的构建阶段跳过数据库初始化）
+const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
 
 /**
- * 初始化数据库
+ * 获取数据库实例
  */
-async function initializeDatabase() {
-  if (_isInitialized) {
-    return _db;
-  }
-
-  _isInitialized = true;
-
-  // 构建时不初始化数据库
+export function getDb() {
   if (isBuildTime) {
-    console.warn('[DB] Skipping database initialization during build');
+    console.warn('[DB] Build time detected, skipping database initialization');
     return null;
   }
 
-  // 检查连接字符串
-  if (!connectionString) {
-    console.error('[DB] PGDATABASE_URL not set');
-    return null;
-  }
+  if (!_db) {
+    try {
+      // 创建 postgres 客户端
+      if (!_client) {
+        const maskedUrl = connectionString.replace(/\/\/[^@]+@/, '//***@');
+        console.log('[DB] Connecting to database:', maskedUrl);
 
-  try {
-    // 动态导入 schema，避免构建时导入问题
-    const schemaModule = await import('@/storage/database/shared/schema');
-    _schema = schemaModule;
+        _client = postgres(connectionString, {
+          max: 10,
+          idle_timeout: 20,
+          connect_timeout: 10,
+        });
+      }
 
-    // 创建数据库连接
-    const maskedUrl = connectionString.replace(/\/\/[^@]+@/, '//***@');
-    console.log('[DB] Connecting to database:', maskedUrl);
-
-    _client = postgres(connectionString, {
-      max: 10,
-      idle_timeout: 20,
-      connect_timeout: 10,
-    });
-
-    _db = drizzle(_client, { schema: _schema });
-    console.log('[DB] Database connection established successfully');
-
-    return _db;
-  } catch (error) {
-    console.error('[DB] Database connection failed:', error);
-    if (isDev) {
-      console.warn('[DB] Using mock database due to connection failure');
+      // 创建 drizzle 实例（不使用 schema，直接使用导入的表）
+      _db = drizzle(_client);
+      console.log('[DB] Database connection established');
+    } catch (error) {
+      console.error('[DB] Database connection failed:', error);
+      throw error;
     }
-    return null;
   }
+
+  return _db;
 }
 
-// 同步版本（使用 Proxy 延迟初始化）
+// 导出 dbInstance（向后兼容）
 export const dbInstance = new Proxy({}, {
   get(target, prop) {
-    // 特殊处理 raw 和 sql 方法（优先处理，因为构建时也需要）
-    if (prop === 'raw' || prop === 'sql') {
-      return (strings: TemplateStringsArray, ...values: any[]) => {
-        return sql(strings, ...values);
-      };
+    const db = getDb();
+    
+    if (!db) {
+      throw new Error('Database not available');
     }
 
-    // 在构建时返回一个空对象
-    if (isBuildTime) {
-      return (...args: any[]) => {
-        console.warn(`[DB] ${String(prop)} called during build, returning empty result`);
-        return [];
-      };
-    }
-
-    // 如果数据库未初始化，返回一个空对象
-    if (!_db && !_isInitialized) {
-      console.warn('[DB] Database not initialized yet, calling initializeDatabase()');
-      // 异步初始化，但同步调用需要等待
-      initializeDatabase().catch(err => console.error('[DB] Async initialization failed:', err));
-      return (...args: any[]) => {
-        console.warn(`[DB] ${String(prop)} called before initialization, returning empty result`);
-        return [];
-      };
-    }
-
-    // 返回 db 的属性
-    return _db?.[prop as keyof typeof _db];
+    const propStr = String(prop);
+    const value = (db as any)[propStr];
+    
+    // 如果属性不存在，返回 undefined（而不是抛出错误）
+    // 这样可以兼容 drizzle 内部属性
+    return value;
   }
 }) as any;
 
-// 导出 schema（延迟导入）
-export const getSchema = async () => {
-  if (_schema) return _schema;
-  const schemaModule = await import('@/storage/database/shared/schema');
-  _schema = schemaModule;
-  return _schema;
+// 导出 raw 方法
+export const raw = (strings: TemplateStringsArray, ...values: any[]) => {
+  return sql(strings, ...values);
 };
+
+// 导出 sql
+export { sql };

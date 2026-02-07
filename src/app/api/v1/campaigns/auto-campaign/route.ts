@@ -67,15 +67,29 @@ export async function POST(request: NextRequest) {
       const budgetLimit = parseFloat(budget);
       const priceLimit = maxPrice ? parseFloat(maxPrice) : null;
 
+      console.log('[AutoCampaign] Starting auto matching...', { campaignId: campaign.id, budgetLimit, priceLimit });
+
+      // 补充缺失的必需字段
+      const fullCriteria = {
+        ...criteria,
+        minSubscriberCount: criteria.minSubscribers || criteria.minSubscriberCount || 0,
+        maxSubscriberCount: criteria.maxSubscribers || criteria.maxSubscriberCount || 1000000, // 设置更合理的上限（100万）
+        minEngagementRate: criteria.minEngagementRate || 0,
+      };
+
       matchResult = await autoMatchingService.match({
         campaignId: campaign.id,
-        criteria: criteria,
+        criteria: fullCriteria,
         budgetLimit, // 总预算限制
         priceLimit, // 单个达人最高限价
       });
 
+      console.log('[AutoCampaign] Auto matching completed', { matchedCount: matchResult.matchedInfluencers.length });
+
       // 4. 批量创建邀请邮件
       const influencerIds = matchResult.matchedInfluencers.map(m => m.influencerId);
+      console.log('[AutoCampaign] Creating email invitations...', { influencerIds });
+      
       await emailQueueService.batchCreateInvitations(
         campaign.id,
         influencerIds,
@@ -91,10 +105,14 @@ export async function POST(request: NextRequest) {
         }
       );
 
+      console.log('[AutoCampaign] Email invitations created');
+
       // 5. 更新活动状态为进行中
       await campaignsService.update(campaign.id, {
         status: 'active',
       });
+
+      console.log('[AutoCampaign] Campaign status updated to active');
     }
 
     return NextResponse.json({

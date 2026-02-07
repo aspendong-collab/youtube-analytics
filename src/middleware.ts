@@ -31,6 +31,7 @@ export function middleware(req: NextRequest) {
     '/api/keywords',
     '/api/db',
     '/api/youtube/key-pool', // YouTube API Key 池监控
+    '/api/v1/campaigns', // 暂时公开，用于测试
   ];
 
   // 组合所有公开路由
@@ -47,8 +48,13 @@ export function middleware(req: NextRequest) {
   const sessionToken = req.cookies.get('next-auth.session-token')?.value ||
                         req.cookies.get('__Secure-next-auth.session-token')?.value;
 
-  // 如果没有 session，重定向到登录页
+  // 如果没有 session
   if (!sessionToken) {
+    // 对于 API 请求，返回 401 错误
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    // 对于页面请求，重定向到登录页
     return NextResponse.redirect(new URL('/login', req.url));
   }
 

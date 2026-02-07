@@ -82,7 +82,7 @@ export class AutoMatchingService {
 
       // 3. 计算匹配度评分并排序
       const scoredCandidates = candidates.map(candidate => {
-        const score = this.calculateMatchScore(candidate, request.criteria);
+        const score = this.calculateMatchScore(candidate, request.criteria, request.priceLimit);
         const reasons = this.getMatchReasons(candidate, request.criteria, score);
         return {
           influencer: candidate,
@@ -142,7 +142,7 @@ export class AutoMatchingService {
       // 5. 计算统计数据
       const totalMatched = matchedInfluencers.length;
       const estimatedTotalCost = matchedInfluencers.reduce(
-        (sum, match) => sum + match.estimatedPrice,
+        (sum, match) => sum + (typeof match.estimatedPrice === 'string' ? parseFloat(match.estimatedPrice) : match.estimatedPrice),
         0
       );
       const matchDuration = Date.now() - startTime;
@@ -189,13 +189,13 @@ export class AutoMatchingService {
 
     // YouTube 标准分类筛选
     if (criteria.categories && criteria.categories.length > 0) {
-      conditions.push(inArray(influencers.categoryId, criteria.categories));
+      conditions.push(inArray(influencers.category, criteria.categories));
     }
 
-    // 语言筛选
-    if (criteria.languages && criteria.languages.length > 0) {
-      conditions.push(inArray(influencers.defaultLanguage, criteria.languages));
-    }
+    // 语言筛选（暂时禁用，因为数据库中没有 defaultLanguage 字段）
+    // if (criteria.languages && criteria.languages.length > 0) {
+    //   conditions.push(inArray(influencers.defaultLanguage, criteria.languages));
+    // }
 
     // 价格上限（如果设置了）
     if (priceLimit) {
@@ -222,11 +222,12 @@ export class AutoMatchingService {
    */
   private calculateMatchScore(
     influencer: InfluencerMatch,
-    criteria: TargetingCriteria
+    criteria: TargetingCriteria,
+    priceLimit?: number
   ): number {
     let score = 0;
 
-    // 1. 订阅数得分（20分）
+    // 1. 订阅数得分（20分）- 使用对数缩放，避免极端值
     const subscriberScore = this.calculateSubscriberScore(
       influencer.subscriberCount,
       criteria.minSubscriberCount,
@@ -234,7 +235,7 @@ export class AutoMatchingService {
     );
     score += subscriberScore * 0.2;
 
-    // 2. 互动率得分（25分）
+    // 2. 互动率得分（25分）- 至少给基础分
     const engagementScore = this.calculateEngagementScore(
       influencer.engagementRate || 0,
       criteria.minEngagementRate
@@ -242,46 +243,79 @@ export class AutoMatchingService {
     score += engagementScore * 0.25;
 
     // 3. 价格得分（30分）- 价格越低得分越高
-    if (influencer.averagePrice && criteria.maxPrice) {
+    if (influencer.averagePrice && (priceLimit || criteria.maxPrice)) {
       const priceScore = this.calculatePriceScore(
         influencer.averagePrice,
-        criteria.maxPrice
+        priceLimit || criteria.maxPrice!
       );
       score += priceScore * 0.3;
+    } else if (influencer.averagePrice) {
+      // 如果没有设置价格限制，给中等分数
+      score += 15;
     }
 
     // 4. 质量评分（15分）
     if (influencer.qualityScore) {
-      score += (influencer.qualityScore / 100) * 15;
+      score += (parseFloat(String(influencer.qualityScore)) / 100) * 15;
     }
 
     // 5. 合作评分（10分）
     if (influencer.cooperationScore) {
-      score += (influencer.cooperationScore / 100) * 10;
+      score += (parseFloat(String(influencer.cooperationScore)) / 100) * 10;
     }
+
+    // 基础分（10分）- 只要匹配基本条件就有基础分
+    score += 10;
 
     return Math.min(100, Math.round(score));
   }
 
   /**
-   * 计算订阅数得分
+   * 计算订阅数得分（使用对数缩放）
    */
   private calculateSubscriberScore(
     current: number,
     min: number,
     max: number
   ): number {
-    if (max === min) return 50;
-    return ((current - min) / (max - min)) * 100;
+    // 如果满足最低要求，给基础分 50 分
+    if (current < min) return 0;
+
+    // 使用对数缩放计算分数
+    const logCurrent = Math.log10(current);
+    const logMin = Math.log10(min);
+    const logMax = Math.log10(max);
+
+    if (logMax === logMin) return 50;
+
+    const score = ((logCurrent - logMin) / (logMax - logMin)) * 100;
+    return Math.min(100, Math.max(0, score));
   }
 
   /**
    * 计算互动率得分
    */
-  private calculateEngagementScore(current: number, min: number): number {
-    if (min === 0) return 50;
+  private calculateEngagementScore(
+    current: number,
+    min: number
+  ): number {
+    // 如果没有设置最低要求，给基础分
+    if (min === 0) {
+      // 使用对数缩放，避免极端值
+      if (current === 0) return 0;
+      const logCurrent = Math.log10(current + 1);
+      // 假设 10% 是很好的互动率
+      const score = Math.min(100, logCurrent * 50);
+      return score;
+    }
+
+    if (current < min) return 0;
+
+    // 如果是最低要求的 2 倍，给满分
     const ratio = current / min;
-    return Math.min(100, ratio * 50); // 互动率达到最小要求的2倍即满分
+    if (ratio >= 2) return 100;
+
+    return ratio * 50;
   }
 
   /**
