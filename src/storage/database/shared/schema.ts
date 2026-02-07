@@ -24,14 +24,14 @@ export {
   communicationThreads, 
   communicationMessages, 
   communicationTemplates 
-} from "../../core/database/schema/domain/communications";
+} from "@/core/database/schema/domain/communications";
 
 // Import negotiation tables
 export { 
   negotiations, 
   negotiationProposals, 
   negotiationHistory 
-} from "../../core/database/schema/domain/negotiations";
+} from "@/core/database/schema/domain/negotiations";
 
 // Users 表 - 存储用户信息
 export const users = pgTable(
