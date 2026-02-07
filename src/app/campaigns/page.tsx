@@ -426,14 +426,15 @@ export default function CampaignsPage() {
             管理和组织达人营销活动
           </p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm}>创建活动</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>创建营销活动</DialogTitle>
-            </DialogHeader>
+        <div className="flex gap-2">
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={resetForm} variant="outline">创建活动</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>创建营销活动</DialogTitle>
+              </DialogHeader>
             <div className="space-y-4">
               <div>
                 <Label htmlFor="name">活动名称 *</Label>
@@ -573,6 +574,10 @@ export default function CampaignsPage() {
             </div>
           </DialogContent>
         </Dialog>
+        <Button onClick={() => window.location.href = '/campaigns/create-auto'}>
+          <span className="mr-2">🚀</span>
+          自动化推广
+        </Button>
       </div>
 
       {/* 筛选和搜索 */}
@@ -668,6 +673,13 @@ export default function CampaignsPage() {
 
                   {/* 操作按钮 */}
                   <div className="flex flex-col gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.location.href = `/campaigns/${campaign.id}/progress`}
+                    >
+                      查看进度
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"

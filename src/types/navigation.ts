@@ -44,6 +44,7 @@ export const navItems: NavItem[] = [
         path: '/campaigns',
         children: [
           { id: 'campaigns', label: '活动管理', path: '/campaigns' },
+          { id: 'create-auto', label: '自动化推广', path: '/campaigns/create-auto' },
           { id: 'campaign-data', label: '活动数据', path: '/dashboard' },
         ]
       },
