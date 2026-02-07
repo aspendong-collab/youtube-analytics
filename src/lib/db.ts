@@ -1,4 +1,4 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
+import { drizzle, sql } from 'drizzle-orm';
 import postgres from 'postgres';
 
 // 硬编码的 Neon 数据库连接（确保始终使用正确的连接）
@@ -73,19 +73,18 @@ async function initializeDatabase() {
 // 同步版本（使用 Proxy 延迟初始化）
 export const dbInstance = new Proxy({}, {
   get(target, prop) {
+    // 特殊处理 raw 和 sql 方法（优先处理，因为构建时也需要）
+    if (prop === 'raw' || prop === 'sql') {
+      return (strings: TemplateStringsArray, ...values: any[]) => {
+        return sql(strings, ...values);
+      };
+    }
+
     // 在构建时返回一个空对象
     if (isBuildTime) {
       return (...args: any[]) => {
         console.warn(`[DB] ${String(prop)} called during build, returning empty result`);
         return [];
-      };
-    }
-
-    // 特殊处理 raw 和 sql 方法
-    if (prop === 'raw' || prop === 'sql') {
-      return (strings: TemplateStringsArray, ...values: any[]) => {
-        const { sql } = require('drizzle-orm');
-        return sql(strings, ...values);
       };
     }
 
