@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, timestamp, jsonb, boolean } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, timestamp, jsonb, boolean, integer } from "drizzle-orm/pg-core";
 import { timestamps } from "../common";
 
 /**
