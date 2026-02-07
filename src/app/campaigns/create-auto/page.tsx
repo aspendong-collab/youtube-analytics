@@ -368,7 +368,7 @@ export default function CreateAutoCampaignPage() {
               </div>
               <div>
                 <Label>预估总成本</Label>
-                <p className="text-2xl font-semibold ${preview.withinBudget ? "text-green-600" : "text-red-600"}">
+                <p className={`text-2xl font-semibold ${preview.withinBudget ? "text-green-600" : "text-red-600"}`}>
                   ${preview.estimatedTotalCost}
                 </p>
               </div>
