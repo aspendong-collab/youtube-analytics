@@ -23,9 +23,12 @@ import {
   Dialog,
   DialogContent,
   DialogTrigger,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowRight, Loader2, CheckCircle2, ChevronDown } from "lucide-react";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 export default function CreateAutoCampaignPage() {
   const [formData, setFormData] = useState({
@@ -367,6 +370,12 @@ export default function CreateAutoCampaignPage() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-md">
+                  <VisuallyHidden>
+                    <DialogTitle>选择博主分类</DialogTitle>
+                  </VisuallyHidden>
+                  <DialogDescription className="sr-only">
+                    选择您想要合作的博主分类，可以多选
+                  </DialogDescription>
                   <h3 className="text-lg font-semibold mb-4">选择博主分类</h3>
                   <div className="max-h-80 overflow-y-auto space-y-2">
                     {categoryOptions.map((opt) => (
@@ -418,6 +427,12 @@ export default function CreateAutoCampaignPage() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-sm">
+                  <VisuallyHidden>
+                    <DialogTitle>选择视频语言</DialogTitle>
+                  </VisuallyHidden>
+                  <DialogDescription className="sr-only">
+                    选择您想要合作的博主的视频语言，可以多选
+                  </DialogDescription>
                   <h3 className="text-lg font-semibold mb-4">选择视频语言</h3>
                   <div className="space-y-2">
                     {languageOptions.map((opt) => (
