@@ -49,6 +49,8 @@ export default function CreateAutoCampaignPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [preview, setPreview] = useState<any>(null);
+  const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
+  const [languagePopoverOpen, setLanguagePopoverOpen] = useState(false);
 
   // YouTube 标准分类
   const categoryOptions = [
@@ -338,7 +340,7 @@ export default function CreateAutoCampaignPage() {
             {/* 博主分类 - 多选下拉框 */}
             <div>
               <Label>博主分类（YouTube标准分类）</Label>
-              <Popover>
+              <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -380,7 +382,7 @@ export default function CreateAutoCampaignPage() {
             {/* 语言 - 多选下拉框 */}
             <div>
               <Label>视频语言</Label>
-              <Popover>
+              <Popover open={languagePopoverOpen} onOpenChange={setLanguagePopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
