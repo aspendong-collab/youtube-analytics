@@ -2,7 +2,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { aiNegotiationService } from '@/services/ai/ai-negotiation';
+import { AIService } from '@/services/ai';
 
 // POST /api/v1/ai/negotiate - AI 协助谈判
 export async function POST(request: NextRequest) {
@@ -17,10 +17,21 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const suggestion = await aiNegotiationService.assistNegotiation({
-      negotiationId,
-      negotiationContext,
-      messageHistory,
+    const aiService = AIService.getInstance();
+    
+    // 构建提示词
+    let prompt = `Negotiation Context: ${JSON.stringify(negotiationContext)}`;
+    
+    if (messageHistory && messageHistory.length > 0) {
+      prompt += `\n\nMessage History:\n${messageHistory.map((m: any) => `${m.role}: ${m.content}`).join('\n')}`;
+    }
+    
+    prompt += '\n\nPlease provide a strategic response suggestion for this negotiation.';
+    
+    const systemPrompt = 'You are an expert in business negotiation and communication. Provide strategic, professional, and effective negotiation responses that help achieve win-win outcomes.';
+
+    const suggestion = await aiService.generateText(prompt, {
+      systemPrompt,
     });
 
     return NextResponse.json({

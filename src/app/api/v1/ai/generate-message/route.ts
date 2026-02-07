@@ -2,7 +2,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { aiMessageService } from '@/services/ai/ai-message';
+import { AIService } from '@/services/ai';
 
 // POST /api/v1/ai/generate-message - AI 生成消息
 export async function POST(request: NextRequest) {
@@ -17,9 +17,18 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const message = await aiMessageService.generateMessage({
-      template,
-      context,
+    const aiService = AIService.getInstance();
+    
+    // 构建提示词
+    let prompt = template;
+    if (context) {
+      prompt += `\n\nContext: ${JSON.stringify(context)}`;
+    }
+    
+    const systemPrompt = 'You are a professional communication assistant. Generate personalized and engaging messages based on the provided template and context.';
+    
+    const message = await aiService.generateText(prompt, {
+      systemPrompt,
     });
 
     return NextResponse.json({
