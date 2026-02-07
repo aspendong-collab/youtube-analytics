@@ -22,7 +22,7 @@ export const navItems: NavItem[] = [
       {
         id: 'discovery-management',
         label: '发现与管理',
-        path: '/influencer-operations/discovery',
+        path: '/my-influencers',
         children: [
           { id: 'my-influencers', label: '我的达人库', path: '/my-influencers' },
           { id: 'influencer-list', label: '达人搜索', path: '/influencers' },
@@ -32,7 +32,7 @@ export const navItems: NavItem[] = [
       {
         id: 'contact-negotiation',
         label: '联系与谈判',
-        path: '/influencer-operations/contact',
+        path: '/ai-assistant',
         children: [
           { id: 'ai-assistant', label: '智能沟通助手', path: '/ai-assistant' },
           { id: 'negotiation', label: '自动谈判助手', path: '/negotiation' },
@@ -41,7 +41,7 @@ export const navItems: NavItem[] = [
       {
         id: 'campaign-management',
         label: '营销活动',
-        path: '/influencer-operations/campaigns',
+        path: '/campaigns',
         children: [
           { id: 'campaigns', label: '活动管理', path: '/campaigns' },
           { id: 'campaign-data', label: '活动数据', path: '/dashboard' },
