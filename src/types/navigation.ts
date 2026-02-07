@@ -69,6 +69,18 @@ export const navItems: NavItem[] = [
     ],
   },
   {
+    id: 'influencer-marketing',
+    label: '达人营销',
+    icon: '📢',
+    path: '/campaigns',
+    children: [
+      { id: 'campaigns', label: '营销活动', path: '/campaigns' },
+      { id: 'dashboard', label: '数据分析', path: '/dashboard' },
+      { id: 'ai-assistant', label: '智能沟通助手', path: '/ai-assistant' },
+      { id: 'negotiation', label: '自动谈判助手', path: '/negotiation' },
+    ],
+  },
+  {
     id: 'content-analysis',
     label: '内容分析',
     icon: '📊',
