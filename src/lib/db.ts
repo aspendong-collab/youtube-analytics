@@ -1,4 +1,5 @@
-import { drizzle, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { sql } from 'drizzle-orm';
 import postgres from 'postgres';
 
 // 硬编码的 Neon 数据库连接（确保始终使用正确的连接）
