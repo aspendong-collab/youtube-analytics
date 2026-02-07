@@ -2,6 +2,9 @@
  * API v1 - 分析 - 活动统计路由
  */
 
+// 强制动态路由
+export const dynamic = 'force-dynamic';
+
 import { NextRequest } from 'next/server';
 import { dbInstance as db } from '@/lib/db';
 import { campaigns, campaignParticipations } from '@/storage/database/shared/schema';

@@ -2,6 +2,9 @@
  * API v1 - 达人详情路由
  */
 
+// 强制动态路由
+export const dynamic = 'force-dynamic';
+
 import { NextRequest } from 'next/server';
 import { influencersService } from '@/services/influencers';
 import { apiSuccess, apiErrors, withDefaultMiddleware } from '../../lib/middleware';

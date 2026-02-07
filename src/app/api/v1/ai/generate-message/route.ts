@@ -1,3 +1,6 @@
+// 强制动态路由
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from "next/server";
 import { LLMClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
 

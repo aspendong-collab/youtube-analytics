@@ -2,6 +2,9 @@
  * API v1 - 营销活动参与路由
  */
 
+// 强制动态路由
+export const dynamic = 'force-dynamic';
+
 import { NextRequest } from 'next/server';
 import { campaignsService } from '@/services/campaigns';
 import { apiSuccess, apiErrors, withDefaultMiddleware } from '../../../lib/middleware';

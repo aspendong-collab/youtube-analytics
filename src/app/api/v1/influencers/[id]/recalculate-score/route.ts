@@ -2,6 +2,9 @@
  * API v1 - 达人评分路由
  */
 
+// 强制动态路由
+export const dynamic = 'force-dynamic';
+
 import { NextRequest } from 'next/server';
 import { apiSuccess, apiErrors, withDefaultMiddleware } from '../../../lib/middleware';
 
