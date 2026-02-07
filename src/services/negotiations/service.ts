@@ -2,8 +2,8 @@
  * 谈判服务
  */
 
-import { db } from '@/core/database';
-import { negotiations, negotiationProposals, negotiationHistory } from '@/core/database/schema';
+import { dbInstance as db } from '@/lib/db';
+import { negotiations, negotiationProposals, negotiationHistory } from '@/storage/database/shared/schema';
 import { logger } from '@/core/logger';
 import { generateId } from '@/shared/utils/string';
 import { Negotiation, NegotiationProposal } from './types';

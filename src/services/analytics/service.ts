@@ -2,8 +2,8 @@
  * 分析服务
  */
 
-import { db } from '@/core/database';
-import { influencers, youtubeVideos, campaignParticipations, campaigns } from '@/core/database/schema';
+import { dbInstance as db } from '@/lib/db';
+import { influencers, youtubeVideos, campaignParticipations, campaigns } from '@/storage/database/shared/schema';
 import { logger } from '@/core/logger';
 import { cache, statsKeys } from '@/core/cache';
 import { sum, avg, and, sql, gte, lte, desc } from 'drizzle-orm';

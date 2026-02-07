@@ -2,8 +2,8 @@
  * 达人社核心服务
  */
 
-import { db } from '@/core/database';
-import { influencers } from '@/core/database/schema';
+import { dbInstance as db } from '@/lib/db';
+import { influencers } from '@/storage/database/shared/schema';
 import { cache, youtubeKeys } from '@/core/cache';
 import { logger } from '@/core/logger';
 import { config } from '@/core/config';

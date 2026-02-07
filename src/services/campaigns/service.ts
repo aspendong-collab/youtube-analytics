@@ -2,8 +2,8 @@
  * 营销活动服务
  */
 
-import { db } from '@/core/database';
-import { campaigns, campaignParticipations } from '@/core/database/schema';
+import { dbInstance as db } from '@/lib/db';
+import { campaigns, campaignParticipations } from '@/storage/database/shared/schema';
 import { logger } from '@/core/logger';
 import { cache, youtubeKeys } from '@/core/cache';
 import { generateId } from '@/shared/utils/string';
