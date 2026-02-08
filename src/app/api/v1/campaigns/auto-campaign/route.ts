@@ -206,6 +206,56 @@ export async function POST(request: NextRequest) {
     await dbInstance.execute(sql`${sql.raw(CREATE_CAMPAIGN_AUTO_MATCHES_TABLE_SQL)}`);
     await dbInstance.execute(sql`${sql.raw(CREATE_CAMPAIGN_EMAIL_QUEUE_TABLE_SQL)}`);
     await dbInstance.execute(sql`${sql.raw(CREATE_CAMPAIGN_NEGOTIATION_LOGS_TABLE_SQL)}`);
+    
+    // 创建工作流步骤表
+    const CREATE_WORKFLOW_STEPS_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS workflow_steps (
+  id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id VARCHAR(36) NOT NULL,
+  step_id VARCHAR(50) NOT NULL,
+  step_name VARCHAR(100) NOT NULL,
+  description TEXT,
+  icon VARCHAR(10) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  progress INTEGER NOT NULL DEFAULT 0,
+  total_tasks INTEGER NOT NULL DEFAULT 0,
+  completed_tasks INTEGER NOT NULL DEFAULT 0,
+  failed_tasks INTEGER NOT NULL DEFAULT 0,
+  started_at TIMESTAMP WITH TIME ZONE,
+  completed_at TIMESTAMP WITH TIME ZONE,
+  error_message TEXT,
+  metadata JSONB,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE,
+  CONSTRAINT fk_workflow_steps_campaign FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
+  CONSTRAINT unique_step_per_campaign UNIQUE (campaign_id, step_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_steps_campaign ON workflow_steps(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_steps_step_id ON workflow_steps(step_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_steps_status ON workflow_steps(status);
+`;
+
+    const CREATE_WORKFLOW_LOGS_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS workflow_logs (
+  id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id VARCHAR(36) NOT NULL,
+  step_id VARCHAR(50) NOT NULL,
+  level VARCHAR(10) NOT NULL,
+  message TEXT NOT NULL,
+  details JSONB,
+  timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  CONSTRAINT fk_workflow_logs_campaign FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_logs_campaign ON workflow_logs(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_logs_timestamp ON workflow_logs(timestamp);
+CREATE INDEX IF NOT EXISTS idx_workflow_logs_step_id ON workflow_logs(step_id);
+`;
+
+    await dbInstance.execute(sql`${sql.raw(CREATE_WORKFLOW_STEPS_TABLE_SQL)}`);
+    await dbInstance.execute(sql`${sql.raw(CREATE_WORKFLOW_LOGS_TABLE_SQL)}`);
+
     const body = await request.json();
     
     const {
@@ -255,12 +305,25 @@ export async function POST(request: NextRequest) {
       userId: 'system', // TODO: 从 session 获取
     });
 
-    // 2. 扩展 campaigns 表的新字段（如果字段已存在，这里会更新）
-    // 注意：这里需要先执行数据库迁移添加这些字段
+    console.log('[AutoCampaign] Campaign created', { campaignId: campaign.id });
+
+    // 2. 初始化工作流步骤
+    const { workflowTrackingService } = await import('@/services/auto-campaign/workflow-tracking-service');
+    const { workflowLoggingService } = await import('@/services/auto-campaign/workflow-logging-service');
+    
+    await workflowTrackingService.initializeWorkflow(campaign.id);
+    await workflowLoggingService.info(campaign.id, 'init', '活动创建成功，初始化工作流');
+
+    console.log('[AutoCampaign] Workflow initialized', { campaignId: campaign.id });
 
     // 3. 如果启用了自动匹配，立即开始匹配
     let matchResult = null;
     if (autoMatching) {
+      // 更新工作流状态：搜索达人
+      await workflowTrackingService.updateStepStatus(campaign.id, 'init', 'completed');
+      await workflowTrackingService.updateStepStatus(campaign.id, 'search_influencers', 'in_progress');
+      await workflowLoggingService.info(campaign.id, 'search_influencers', '开始搜索达人');
+
       const budgetLimit = parseFloat(budget);
       const priceLimit = maxPrice ? parseFloat(maxPrice) : null;
 
@@ -283,7 +346,56 @@ export async function POST(request: NextRequest) {
 
       console.log('[AutoCampaign] Auto matching completed', { matchedCount: matchResult.matchedInfluencers.length });
 
+      // 更新工作流状态
+      await workflowTrackingService.updateStepProgress({
+        campaignId: campaign.id,
+        stepId: 'search_influencers',
+        status: 'completed',
+        progress: 100,
+        totalTasks: 1,
+        completedTasks: 1,
+      });
+
+      // 更新工作流状态：提取邮箱
+      await workflowTrackingService.updateStepStatus(campaign.id, 'extract_emails', 'in_progress');
+      await workflowTrackingService.updateStepProgress({
+        campaignId: campaign.id,
+        stepId: 'extract_emails',
+        totalTasks: matchResult.matchedInfluencers.length,
+        completedTasks: matchResult.matchedInfluencers.length,
+        progress: 100,
+        status: 'completed',
+      });
+      await workflowLoggingService.info(campaign.id, 'extract_emails', `成功提取 ${matchResult.matchedInfluencers.length} 位达人的邮箱`);
+
+      // 更新工作流状态：计算CPV
+      await workflowTrackingService.updateStepStatus(campaign.id, 'calculate_cpv', 'in_progress');
+      await workflowTrackingService.updateStepProgress({
+        campaignId: campaign.id,
+        stepId: 'calculate_cpv',
+        totalTasks: matchResult.matchedInfluencers.length,
+        completedTasks: matchResult.matchedInfluencers.length,
+        progress: 100,
+        status: 'completed',
+      });
+      await workflowLoggingService.info(campaign.id, 'calculate_cpv', `成功计算 ${matchResult.matchedInfluencers.length} 位达人的CPV`);
+
+      // 更新工作流状态：预算筛选
+      await workflowTrackingService.updateStepStatus(campaign.id, 'filter_by_budget', 'in_progress');
+      await workflowTrackingService.updateStepProgress({
+        campaignId: campaign.id,
+        stepId: 'filter_by_budget',
+        totalTasks: 1,
+        completedTasks: 1,
+        progress: 100,
+        status: 'completed',
+      });
+      await workflowLoggingService.info(campaign.id, 'filter_by_budget', `预算筛选完成，共 ${matchResult.matchedInfluencers.length} 位达人`);
+
       // 4. 批量创建邀请邮件
+      await workflowTrackingService.updateStepStatus(campaign.id, 'create_email_queue', 'in_progress');
+      await workflowLoggingService.info(campaign.id, 'create_email_queue', '开始创建邮件队列');
+
       const influencerIds = matchResult.matchedInfluencers.map(m => m.influencerId);
       console.log('[AutoCampaign] Creating email invitations...', { influencerIds });
       
@@ -304,12 +416,36 @@ export async function POST(request: NextRequest) {
 
       console.log('[AutoCampaign] Email invitations created');
 
+      // 更新工作流状态
+      await workflowTrackingService.updateStepProgress({
+        campaignId: campaign.id,
+        stepId: 'create_email_queue',
+        totalTasks: influencerIds.length,
+        completedTasks: influencerIds.length,
+        progress: 100,
+        status: 'completed',
+      });
+      await workflowLoggingService.info(campaign.id, 'create_email_queue', `成功创建 ${influencerIds.length} 封邮件`);
+
+      // 更新工作流状态：发送邮件
+      await workflowTrackingService.updateStepStatus(campaign.id, 'send_emails', 'in_progress');
+      await workflowTrackingService.updateStepProgress({
+        campaignId: campaign.id,
+        stepId: 'send_emails',
+        totalTasks: influencerIds.length,
+        completedTasks: 0,
+        progress: 0,
+        status: 'in_progress',
+      });
+      await workflowLoggingService.info(campaign.id, 'send_emails', `准备发送 ${influencerIds.length} 封邮件，请手动触发邮件队列处理`);
+
       // 5. 更新活动状态为进行中
       await campaignsService.update(campaign.id, {
         status: 'active',
       });
 
       console.log('[AutoCampaign] Campaign status updated to active');
+      await workflowLoggingService.info(campaign.id, 'init', '活动状态已更新为 active');
     }
 
     return NextResponse.json({
