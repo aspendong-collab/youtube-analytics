@@ -331,6 +331,198 @@ export class EmailTemplateService {
   }
 
   /**
+   * 基于 CPV 的砍价邮件模板
+   */
+  getCPVNegotiationTemplate(): EmailTemplate {
+    return {
+      name: 'cpv_negotiation',
+      subject: `关于 {{campaignName}} 项目的新报价 - 基于数据驱动分析`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>数据驱动报价</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; padding: 30px; text-align: center; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 5px; margin-top: 20px; }
+            .price-box { background: #fff; border: 3px solid #11998e; border-radius: 8px; padding: 25px; text-align: center; margin: 25px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+            .price-box .price { font-size: 42px; color: #11998e; font-weight: bold; }
+            .price-box .cpv { font-size: 16px; color: #666; margin-top: 10px; }
+            .data-section { background: #fff; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #38ef7d; }
+            .data-section h3 { color: #11998e; margin-top: 0; }
+            .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
+            .data-item { background: #f0f9f4; padding: 10px; border-radius: 5px; text-align: center; }
+            .data-item .label { font-size: 12px; color: #666; }
+            .data-item .value { font-size: 18px; font-weight: bold; color: #11998e; }
+            .highlight { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+            .badge { display: inline-block; background: #ff9800; color: white; padding: 5px 12px; border-radius: 15px; font-size: 12px; margin-left: 10px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🎯 数据驱动报价</h1>
+              <p>基于您的频道数据和行业标准</p>
+            </div>
+            
+            <div class="content">
+              <p>Hi <strong>{{influencerName}}</strong>,</p>
+              
+              <p>感谢您的回复！我们非常重视这次合作机会。经过对您频道数据的深入分析，我们希望给出一个更加合理、透明、双方共赢的报价。</p>
+              
+              <div class="price-box">
+                <div class="price">${{ourOffer}}</div>
+                <div class="cpv">预估 CPV: ${{estimatedCPV}} / 观看 | 评分: {{cpvScore}}/100</div>
+                {{#if isGoodDeal}}
+                <div style="margin-top: 10px;"><span class="badge">✨ 超值推荐</span></div>
+                {{/if}}
+              </div>
+              
+              <div class="data-section">
+                <h3>📊 您的频道数据分析</h3>
+                <div class="data-grid">
+                  <div class="data-item">
+                    <div class="label">平均观看次数</div>
+                    <div class="value">{{avgViews}}</div>
+                  </div>
+                  <div class="data-item">
+                    <div class="label">互动率</div>
+                    <div class="value">{{engagementRate}}%</div>
+                  </div>
+                  <div class="data-item">
+                    <div class="label">订阅者</div>
+                    <div class="value">{{subscribers}}</div>
+                  </div>
+                  <div class="data-item">
+                    <div class="label">市场平均 CPV</div>
+                    <div class="value">${{marketCPV}}</div>
+                  </div>
+                </div>
+              </div>
+              
+              {{#if counterOffer}}
+              <p><strong>您之前的报价：</strong> ${{counterOffer}}</p>
+              <p>我们理解您对作品的信心，但这个报价超出了我们的预算范围。我们重新计算了基于您的数据表现和行业标准的合理价格，希望您能理解。</p>
+              {{/if}}
+              
+              <div class="highlight">
+                <strong>💡 为什么是 ${{ourOffer}}？</strong><br>
+                • 基于 <strong>{{avgViews}}</strong> 次平均观看，CPV 为 <strong>${{estimatedCPV}}</strong><br>
+                • 低于市场平均 CPV <strong>{{cpvDifference}}%</strong>，性价比极高<br>
+                • 符合行业标准预算范围<br>
+                • 长期合作，未来还有更多机会
+              </div>
+              
+              <p><strong>合作包含：</strong></p>
+              <ul>
+                <li>✅ 1 条原创视频内容创作（8-12分钟）</li>
+                <li>✅ 产品介绍和真实使用体验</li>
+                <li>✅ 视频标题、描述和标签优化</li>
+                <li>✅ 视频 pin 置 30 天</li>
+                <li>✅ 产品样品和详细资料支持</li>
+                <li>✅ 专业的脚本指导和后期剪辑建议</li>
+              </ul>
+              
+              <p><strong>付款条件：</strong></p>
+              <ul>
+                <li>💳 视频发布确认后 7 天内支付</li>
+                <li>💰 支持 PayPal、银行转账或 USDT</li>
+                <li>📄 提供正式发票</li>
+              </ul>
+              
+              <p>我们相信这个报价是对您内容质量和影响力的高度认可，同时也确保了我们能够在预算范围内实现最大的营销效果。</p>
+              
+              <p><strong>如果接受这个报价，请回复确认，我们将立即安排后续流程！</strong></p>
+              
+              <p>如果您有任何问题或需要进一步讨论，我们随时保持开放沟通。</p>
+              
+              <p>期待与您的合作！🚀</p>
+              
+              <p>Best regards,<br>
+              <strong>{{senderName}}</strong><br>
+              {{senderEmail}}</p>
+            </div>
+            
+            <div class="footer">
+              <p>📊 基于数据驱动的智能定价 | 第 {{negotiationRound}} 轮谈判</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      variables: ['influencerName', 'campaignName', 'ourOffer', 'estimatedCPV', 'cpvScore', 'isGoodDeal', 'avgViews', 'engagementRate', 'subscribers', 'marketCPV', 'cpvDifference', 'counterOffer', 'negotiationRound', 'senderName', 'senderEmail'],
+    };
+  }
+
+  /**
+   * 渲染 CPV 砍价邮件
+   */
+  renderCPVNegotiation(context: {
+    influencerName: string;
+    campaignName: string;
+    ourOffer: number;
+    estimatedCPV: number;
+    cpvScore: number;
+    isGoodDeal: boolean;
+    avgViews: number;
+    engagementRate: number;
+    subscribers: number;
+    marketCPV: number;
+    counterOffer?: number;
+    negotiationRound: number;
+    senderName: string;
+    senderEmail: string;
+  }): {
+    subject: string;
+    html: string;
+    text: string;
+  } {
+    const template = this.getCPVNegotiationTemplate();
+    
+    let html = template.html;
+    let subject = template.subject;
+    
+    const cpvDifference = Math.round((1 - context.estimatedCPV / context.marketCPV) * 100);
+    
+    // 变量替换
+    const variables = {
+      ...context,
+      cpvDifference,
+      avgViews: context.avgViews.toLocaleString(),
+      subscribers: context.subscribers.toLocaleString(),
+      engagementRate: context.engagementRate.toFixed(2),
+      estimatedCPV: context.estimatedCPV.toFixed(4),
+      marketCPV: context.marketCPV.toFixed(4),
+      cpvScore: context.cpvScore,
+      isGoodDeal: context.isGoodDeal,
+      counterOffer: context.counterOffer ? context.counterOffer : '',
+    };
+    
+    Object.keys(variables).forEach(key => {
+      const value = variables[key as keyof typeof variables] || '';
+      const regex = new RegExp(`{{${key}}}`, 'g');
+      html = html.replace(regex, String(value));
+      subject = subject.replace(regex, String(value));
+    });
+    
+    // 移除未替换的变量和条件块
+    html = html.replace(/{{#if [^}]+}}/g, '').replace(/{{\/if}}/g, '');
+    html = html.replace(/{{[^}]+}}/g, '');
+    subject = subject.replace(/{{[^}]+}}/g, '');
+    
+    return {
+      subject,
+      html,
+      text: this.htmlToText(html),
+    };
+  }
+
+  /**
    * HTML 转 Text
    */
   private htmlToText(html: string): string {
