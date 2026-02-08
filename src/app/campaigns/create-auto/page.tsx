@@ -52,10 +52,6 @@ export default function CreateAutoCampaignPage() {
     companyName: "Test Company",
     websiteUrl: "https://example.com",
   });
-    senderEmail: "",
-    companyName: "",
-    websiteUrl: "",
-  });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [preview, setPreview] = useState<any>(null);
