@@ -178,15 +178,26 @@ export default function CreateAutoCampaignPage() {
         toast.success("自动化推广项目创建成功！");
         
         // 自动处理邮件队列
+        let emailResult = null;
         if (formData.autoMatching && result.data.matchResult) {
           toast.info(`已匹配 ${result.data.matchResult.totalMatched} 位达人，正在发送邮件...`);
           
-          // 触发邮件队列处理
-          await fetch("/api/v1/jobs/process-email-queue", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ limit: 50 }),
-          });
+          // 触发邮件队列处理并等待完成
+          try {
+            const emailResponse = await fetch("/api/v1/jobs/process-email-queue", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ limit: 50 }),
+            });
+            emailResult = await emailResponse.json();
+            
+            if (emailResult.success) {
+              toast.success(`已处理 ${emailResult.data.processed} 封邮件，成功发送 ${emailResult.data.succeeded} 封`);
+            }
+          } catch (error) {
+            console.error("Process email queue error:", error);
+            toast.warning("邮件队列处理失败，请稍后在进度页面手动触发");
+          }
         }
         
         // 跳转到进度页面

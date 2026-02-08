@@ -43,6 +43,21 @@ export default function AutoCampaignProgressPage() {
       
       if (result.success) {
         setProgress(result.data);
+        
+        // 如果有等待中的邮件，自动触发邮件队列处理
+        if (result.data.stats && result.data.stats.queued > 0) {
+          console.log(`Found ${result.data.stats.queued} queued emails, triggering queue processing...`);
+          try {
+            await fetch("/api/v1/jobs/process-email-queue", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ limit: 10 }),
+            });
+            console.log("Email queue processing triggered");
+          } catch (error) {
+            console.error("Failed to trigger email queue processing:", error);
+          }
+        }
       }
     } catch (error) {
       console.error("Load progress error:", error);
