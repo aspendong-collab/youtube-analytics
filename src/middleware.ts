@@ -24,6 +24,7 @@ export function middleware(req: NextRequest) {
     '/api/competitor-analysis',
     '/api/suggestions',
     '/api/test',
+    '/api/v1/test', // v1 版本的测试 API
     '/api/health',
     '/api/check-env',
     '/api/check-env-youtube',
