@@ -3,6 +3,8 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createElasticEmailProvider } from '@/services/email/elastic-provider';
+import { createResendProvider } from '@/services/email/resend-provider';
+import { createMockEmailProvider } from '@/services/email/mock-provider';
 
 /**
  * 测试邮件发送 API
@@ -11,7 +13,7 @@ import { createElasticEmailProvider } from '@/services/email/elastic-provider';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { to, toName, subject, html } = body;
+    const { to, toName, subject, html, provider } = body;
 
     if (!to || !subject) {
       return NextResponse.json({
@@ -20,9 +22,28 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const provider = createElasticEmailProvider();
+    // 根据参数或环境变量选择邮件提供商
+    const providerName = provider || process.env.EMAIL_PROVIDER || 'resend';
+    
+    let emailProvider;
+    switch (providerName) {
+      case 'resend':
+        emailProvider = createResendProvider();
+        break;
+      case 'elastic':
+        emailProvider = createElasticEmailProvider();
+        break;
+      case 'mock':
+        emailProvider = createMockEmailProvider();
+        break;
+      default:
+        return NextResponse.json({
+          success: false,
+          error: `Unknown email provider: ${providerName}`,
+        }, { status: 400 });
+    }
 
-    const result = await provider.sendEmail({
+    const result = await emailProvider.sendEmail({
       to,
       toName: toName || 'Test User',
       subject,
@@ -37,6 +58,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: result.success,
       data: result,
+      provider: providerName,
     });
 
   } catch (error: any) {

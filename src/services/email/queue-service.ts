@@ -7,6 +7,7 @@ import { dbInstance as db } from '@/lib/db';
 import { campaignEmailQueue, campaignAutoMatches, influencers } from '@/storage/database/shared/schema';
 import { logger } from '@/core/logger';
 import { createElasticEmailProvider } from './elastic-provider';
+import { createResendProvider } from './resend-provider';
 import { createMockEmailProvider } from './mock-provider';
 import { emailTemplateService } from './templates';
 import { EmailOptions, EmailType, EmailStatus } from '../auto-campaign/types';
@@ -17,20 +18,36 @@ export class EmailQueueService {
   private static instance: EmailQueueService;
   private emailProvider: any;
   
-  // Elastic Email 限制
-  private readonly MAX_PER_HOUR = 500;
-  private readonly MAX_PER_DAY = 5000;
+  // 速率限制（根据不同服务商设置）
+  private readonly MAX_PER_HOUR: number;
+  private readonly MAX_PER_DAY: number;
 
   private constructor() {
     // 根据环境变量选择邮件提供商
-    const useMock = process.env.USE_MOCK_EMAIL === 'true';
+    const provider = process.env.EMAIL_PROVIDER || 'resend'; // 默认使用 Resend
     
-    if (useMock) {
-      logger.info('[EmailQueue] Using Mock Email Provider for testing');
-      this.emailProvider = createMockEmailProvider();
-    } else {
-      logger.info('[EmailQueue] Using Elastic Email Provider');
-      this.emailProvider = createElasticEmailProvider();
+    switch (provider) {
+      case 'mock':
+        logger.info('[EmailQueue] Using Mock Email Provider for testing');
+        this.emailProvider = createMockEmailProvider();
+        this.MAX_PER_HOUR = 500;
+        this.MAX_PER_DAY = 5000;
+        break;
+        
+      case 'resend':
+        logger.info('[EmailQueue] Using Resend Email Provider');
+        this.emailProvider = createResendProvider();
+        this.MAX_PER_HOUR = 10000; // Resend 没有明确的限制，设一个保守值
+        this.MAX_PER_DAY = 50000;
+        break;
+        
+      case 'elastic':
+      default:
+        logger.info('[EmailQueue] Using Elastic Email Provider');
+        this.emailProvider = createElasticEmailProvider();
+        this.MAX_PER_HOUR = 500;
+        this.MAX_PER_DAY = 5000;
+        break;
     }
   }
 
