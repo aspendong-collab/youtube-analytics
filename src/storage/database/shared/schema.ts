@@ -1227,3 +1227,115 @@ export type UpdateAffiliateInfluencer = z.infer<typeof updateAffiliateInfluencer
 export type AffiliateLinkType = 'ref' | 'utm' | 'short' | 'keyword' | 'disclosure';
 export type AffiliateStatus = 'potential' | 'verified' | 'rejected';
 export type CooperationStatus = 'available' | 'contacted' | 'negotiating' | 'collaborating' | 'completed' | 'rejected';
+
+// ==================== 工作流步骤追踪 Tables ====================
+
+/**
+ * 工作流步骤执行记录表
+ * 追踪自动化推广工作流的每一步执行情况
+ */
+export const workflowSteps = pgTable(
+  "workflow_steps",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    campaignId: varchar("campaign_id", { length: 36 })
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    stepId: varchar("step_id", { length: 50 }).notNull(), // 工作流步骤ID
+    stepName: varchar("step_name", { length: 100 }).notNull(),
+    description: text("description"),
+    icon: varchar("icon", { length: 10 }).notNull(),
+    status: varchar("status", { length: 20 })
+      .notNull()
+      .default("pending"), // pending, in_progress, completed, failed, skipped
+    progress: integer("progress").notNull().default(0), // 0-100
+    totalTasks: integer("total_tasks").notNull().default(0),
+    completedTasks: integer("completed_tasks").notNull().default(0),
+    failedTasks: integer("failed_tasks").notNull().default(0),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    errorMessage: text("error_message"),
+    metadata: jsonb("metadata").$type<Record<string, any>>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+  },
+  (table) => ({
+    campaignIdx: index("workflow_steps_campaign_idx").on(table.campaignId),
+    stepIdIdx: index("workflow_steps_step_id_idx").on(table.stepId),
+    statusIdx: index("workflow_steps_status_idx").on(table.status),
+    uniqueStepPerCampaign: unique("workflow_steps_unique_step").on(table.campaignId, table.stepId),
+  })
+);
+
+/**
+ * 工作流日志表
+ * 记录工作流执行过程中的详细日志
+ */
+export const workflowLogs = pgTable(
+  "workflow_logs",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    campaignId: varchar("campaign_id", { length: 36 })
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    stepId: varchar("step_id", { length: 50 }).notNull(),
+    level: varchar("level", { length: 10 }).notNull(), // info, warn, error, debug
+    message: text("message").notNull(),
+    details: jsonb("details").$type<Record<string, any>>(),
+    timestamp: timestamp("timestamp", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    campaignIdx: index("workflow_logs_campaign_idx").on(table.campaignId),
+    timestampIdx: index("workflow_logs_timestamp_idx").on(table.timestamp),
+    stepIdIdx: index("workflow_logs_step_id_idx").on(table.stepId),
+  })
+);
+
+// ==================== 工作流 Types ====================
+
+export type WorkflowStep = typeof workflowSteps.$inferSelect;
+export type InsertWorkflowStep = z.infer<typeof insertWorkflowStepSchema>;
+export type UpdateWorkflowStep = z.infer<typeof updateWorkflowStepSchema>;
+
+export type WorkflowLog = typeof workflowLogs.$inferSelect;
+export type InsertWorkflowLog = z.infer<typeof insertWorkflowLogSchema>;
+
+export type WorkflowStepStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'skipped';
+export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
+
+// Zod schemas for validation
+const insertWorkflowStepSchema = createInsertSchema(workflowSteps).pick({
+  campaignId: true,
+  stepId: true,
+  stepName: true,
+  description: true,
+  icon: true,
+  status: true,
+  progress: true,
+  totalTasks: true,
+  completedTasks: true,
+  failedTasks: true,
+  startedAt: true,
+  completedAt: true,
+  errorMessage: true,
+  metadata: true,
+});
+
+const updateWorkflowStepSchema = insertWorkflowStepSchema.partial();
+
+const insertWorkflowLogSchema = createInsertSchema(workflowLogs).pick({
+  campaignId: true,
+  stepId: true,
+  level: true,
+  message: true,
+  details: true,
+  timestamp: true,
+});
