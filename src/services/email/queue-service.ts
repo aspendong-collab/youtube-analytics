@@ -7,6 +7,7 @@ import { dbInstance as db } from '@/lib/db';
 import { campaignEmailQueue, campaignAutoMatches, influencers } from '@/storage/database/shared/schema';
 import { logger } from '@/core/logger';
 import { createElasticEmailProvider } from './elastic-provider';
+import { createMockEmailProvider } from './mock-provider';
 import { emailTemplateService } from './templates';
 import { EmailOptions, EmailType, EmailStatus } from '../auto-campaign/types';
 import { generateId } from '@/shared/utils/string';
@@ -14,13 +15,24 @@ import { and, sql, eq, gte, or, desc } from 'drizzle-orm';
 
 export class EmailQueueService {
   private static instance: EmailQueueService;
-  private emailProvider = createElasticEmailProvider();
+  private emailProvider: any;
   
   // Elastic Email 限制
   private readonly MAX_PER_HOUR = 500;
   private readonly MAX_PER_DAY = 5000;
 
-  private constructor() {}
+  private constructor() {
+    // 根据环境变量选择邮件提供商
+    const useMock = process.env.USE_MOCK_EMAIL === 'true';
+    
+    if (useMock) {
+      logger.info('[EmailQueue] Using Mock Email Provider for testing');
+      this.emailProvider = createMockEmailProvider();
+    } else {
+      logger.info('[EmailQueue] Using Elastic Email Provider');
+      this.emailProvider = createElasticEmailProvider();
+    }
+  }
 
   static getInstance(): EmailQueueService {
     if (!EmailQueueService.instance) {
