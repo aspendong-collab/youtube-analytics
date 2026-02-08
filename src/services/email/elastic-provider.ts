@@ -20,7 +20,7 @@ interface ElasticEmailResponse {
 
 export class ElasticEmailProvider {
   private config: ElasticEmailConfig;
-  private apiUrl: string = 'https://api.elasticemail.com/v4/emails/send';
+  private apiUrl: string = 'https://api.elasticemail.com/v2/email/send';
 
   constructor(config: ElasticEmailConfig) {
     this.config = config;
@@ -31,46 +31,41 @@ export class ElasticEmailProvider {
    */
   async sendEmail(options: EmailOptions): Promise<ElasticEmailResponse> {
     try {
-      logger.info('Sending email via Elastic Email', {
+      logger.info('Sending email via Elastic Email v2', {
         to: options.to,
         subject: options.subject,
       });
 
+      // 使用 form-data 格式（v2 API）
+      const formData = new URLSearchParams();
+      formData.append('apikey', this.config.apiKey);
+      formData.append('from', this.config.fromEmail);
+      formData.append('fromName', this.config.fromName);
+      formData.append('subject', options.subject);
+      formData.append('to', options.to);
+      formData.append('bodyText', options.text || '');
+      formData.append('bodyHtml', options.html || '');
+
       const response = await fetch(this.apiUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-ElasticEmail-ApiKey': this.config.apiKey,
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: JSON.stringify({
-          Recipients: {
-            To: [options.to],
-          },
-          Content: {
-            From: this.config.fromEmail,
-            FromName: this.config.fromName,
-            Subject: options.subject,
-            HTML: options.html,
-            Text: options.text || this.stripHtml(options.html),
-          },
-          Options: {
-            TrackOpens: options.trackingEnabled !== false,
-            TrackClicks: options.trackingEnabled !== false,
-          },
-        }),
+        body: formData,
       });
 
       const data = await response.json();
 
       if (response.ok && data.success === true) {
         logger.info('Email sent successfully', {
-          messageId: data.messageId,
+          transactionId: data.transactionid,
+          messageId: data.messageid,
           to: options.to,
         });
 
         return {
           success: true,
-          messageId: data.messageId,
+          messageId: data.messageid,
           data: data,
         };
       } else {
@@ -204,7 +199,7 @@ export class ElasticEmailProvider {
 // 导出工厂函数
 export function createElasticEmailProvider(): ElasticEmailProvider {
   return new ElasticEmailProvider({
-    apiKey: process.env.ELASTIC_API_KEY || '7BF22E57E27B438EA1836CF9A7EF0AC504D0383779AA1FE8D30207F8886651B839DA8CFA3A6FB8CD153FDFCDF783BB4E',
+    apiKey: process.env.ELASTIC_EMAIL_API_KEY || '',
     fromEmail: process.env.EMAIL_FROM || 'noreply@yourdomain.com',
     fromName: process.env.EMAIL_FROM_NAME || 'Your Brand',
   });
