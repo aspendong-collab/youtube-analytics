@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,22 +32,26 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 export default function CreateAutoCampaignPage() {
   const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    budget: "",
+    name: "2024年春季新品推广测试",
+    description: "这是一个测试推广活动，用于验证自动化流程",
+    budget: "5000",
     startDate: "",
     endDate: "",
     categories: [] as string[],
     languages: [] as string[],
     minSubscriberCount: "10000",
-    maxSubscriberCount: "100000",
+    maxSubscriberCount: "500000",
     minEngagementRate: "5",
-    maxPrice: "",
+    maxPrice: "2000",
     negotiationStrategy: "moderate",
     autoMatching: true,
     autoNegotiation: true,
     // 邮件配置
-    senderName: "",
+    senderName: "Marketing Team",
+    senderEmail: "marketing@test.com",
+    companyName: "Test Company",
+    websiteUrl: "https://example.com",
+  });
     senderEmail: "",
     companyName: "",
     websiteUrl: "",
@@ -57,6 +61,31 @@ export default function CreateAutoCampaignPage() {
   const [preview, setPreview] = useState<any>(null);
   const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
   const [languagePopoverOpen, setLanguagePopoverOpen] = useState(false);
+  const [testDataInitializing, setTestDataInitializing] = useState(false);
+
+  // 页面加载时初始化测试数据
+  useEffect(() => {
+    initTestData();
+  }, []);
+
+  const initTestData = async () => {
+    try {
+      const response = await fetch('/api/v1/test/init-data', {
+        method: 'POST',
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('[InitTestData] Success:', result.message);
+        if (!result.message.includes('已存在')) {
+          toast.success(result.message);
+        }
+      }
+    } catch (error) {
+      console.error('[InitTestData] Error:', error);
+      // 不显示错误，避免打扰用户
+    }
+  };
 
   // YouTube 标准分类
   const categoryOptions = [
@@ -172,38 +201,25 @@ export default function CreateAutoCampaignPage() {
         }),
       });
 
-      const result = await response.json();
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[CreateCampaign] API error:', response.status, errorText);
+        throw new Error(`API错误 (${response.status}): ${errorText}`);
+      }
 
-      if (result.success) {
+      const result = await response.json();
+      console.log('[CreateCampaign] API result:', result);
+
+      if (result.success && result.data && result.data.campaign) {
         toast.success("自动化推广项目创建成功！");
         
-        // 自动处理邮件队列
-        let emailResult = null;
-        if (formData.autoMatching && result.data.matchResult) {
-          toast.info(`已匹配 ${result.data.matchResult.totalMatched} 位达人，正在发送邮件...`);
-          
-          // 触发邮件队列处理并等待完成
-          try {
-            const emailResponse = await fetch("/api/v1/jobs/process-email-queue", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ limit: 50 }),
-            });
-            emailResult = await emailResponse.json();
-            
-            if (emailResult.success) {
-              toast.success(`已处理 ${emailResult.data.processed} 封邮件，成功发送 ${emailResult.data.succeeded} 封`);
-            }
-          } catch (error) {
-            console.error("Process email queue error:", error);
-            toast.warning("邮件队列处理失败，请稍后在进度页面手动触发");
-          }
-        }
-        
         // 跳转到进度页面
-        window.location.href = `/campaigns/${result.data.campaign.id}/progress`;
+        const campaignId = result.data.campaign.id;
+        console.log('[CreateCampaign] Redirecting to progress page:', campaignId);
+        window.location.href = `/campaigns/${campaignId}/progress`;
       } else {
-        throw new Error(result.error || "创建失败");
+        console.error('[CreateCampaign] Invalid response:', result);
+        throw new Error(result.error || "创建失败，返回数据格式错误");
       }
     } catch (error: any) {
       console.error("Create auto campaign error:", error);
@@ -221,6 +237,19 @@ export default function CreateAutoCampaignPage() {
           设置推广参数，系统将自动匹配达人、发送邮件并进行谈判
         </p>
       </div>
+
+      {/* 测试数据提示 */}
+      <Card className="p-4 bg-blue-50 border-blue-200">
+        <div className="flex items-start gap-3">
+          <CheckCircle2 className="w-5 h-5 text-blue-600 mt-0.5" />
+          <div>
+            <h3 className="font-medium text-blue-900">测试环境已准备就绪</h3>
+            <p className="text-sm text-blue-700 mt-1">
+              系统已自动初始化测试达人数据，您可以直接点击下方按钮开始测试自动化推广流程。
+            </p>
+          </div>
+        </div>
+      </Card>
 
       <div className="grid gap-6">
         {/* 基本信息 */}

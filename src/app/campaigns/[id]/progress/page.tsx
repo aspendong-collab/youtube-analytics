@@ -33,19 +33,25 @@ export default function AutoCampaignProgressPage() {
 
   const loadCampaignData = async () => {
     if (!campaignId) return;
-    
+
     setLoading(true);
     try {
       // 加载活动详情
       const campaignResponse = await fetch(`/api/v1/campaigns/${campaignId}/progress`);
       const campaignResult = await campaignResponse.json();
-      
-      if (campaignResult.success) {
-        setCampaign(campaignResult.data.campaign);
+
+      if (campaignResult.success && campaignResult.data) {
+        setCampaign(campaignResult.data.campaign || null);
         setEmails(campaignResult.data.emails || []);
+      } else {
+        console.error('[ProgressPage] Failed to load campaign data', campaignResult);
+        setCampaign(null);
+        setEmails([]);
       }
     } catch (error) {
-      console.error("Load campaign data error:", error);
+      console.error('[ProgressPage] Load campaign data error:', error);
+      setCampaign(null);
+      setEmails([]);
     } finally {
       setLoading(false);
     }
