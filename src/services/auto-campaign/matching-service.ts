@@ -78,6 +78,18 @@ export class AutoMatchingService {
 
       logger.info(`Found ${candidates.length} candidate influencers`, {
         campaignId: request.campaignId,
+        conditions: conditions.length,
+        sampleCandidate: candidates.length > 0 ? {
+          id: candidates[0].id,
+          channelTitle: candidates[0].channelTitle,
+          subscriberCount: candidates[0].subscriberCount,
+          engagementRate: candidates[0].engagementRate,
+          averagePrice: candidates[0].averagePrice,
+          category: candidates[0].category,
+          status: candidates[0].status,
+          isActive: candidates[0].isActive,
+          email: candidates[0].email,
+        } : null,
       });
 
       // 3. 计算匹配度评分并排序
@@ -94,6 +106,10 @@ export class AutoMatchingService {
 
       logger.info(`Scored and filtered to ${scoredCandidates.length} matches`, {
         campaignId: request.campaignId,
+        sampleScored: scoredCandidates.length > 0 ? {
+          channelTitle: scoredCandidates[0].influencer.channelTitle,
+          matchScore: scoredCandidates[0].matchScore,
+        } : null,
       });
 
       // 4. 在总预算范围内筛选达人
@@ -176,21 +192,24 @@ export class AutoMatchingService {
   private buildQueryConditions(criteria: TargetingCriteria, priceLimit?: number) {
     const conditions: any[] = [];
 
-    // 订阅数范围
-    conditions.push(
-      and(
-        gte(influencers.subscriberCount, criteria.minSubscriberCount),
-        lte(influencers.subscriberCount, criteria.maxSubscriberCount)
-      )
-    );
+    // 订阅数范围（分别添加条件）
+    conditions.push(gte(influencers.subscriberCount, criteria.minSubscriberCount));
+    conditions.push(lte(influencers.subscriberCount, criteria.maxSubscriberCount));
 
     // 最低互动率
-    conditions.push(gte(influencers.engagementRate, criteria.minEngagementRate));
+    if (criteria.minEngagementRate) {
+      conditions.push(gte(influencers.engagementRate, criteria.minEngagementRate));
+    }
 
     // YouTube 标准分类筛选
     if (criteria.categories && criteria.categories.length > 0) {
       conditions.push(inArray(influencers.category, criteria.categories));
     }
+
+    logger.info('Built query conditions', {
+      criteria,
+      conditionsCount: conditions.length,
+    });
 
     // 语言筛选（暂时禁用，因为数据库中没有 defaultLanguage 字段）
     // if (criteria.languages && criteria.languages.length > 0) {

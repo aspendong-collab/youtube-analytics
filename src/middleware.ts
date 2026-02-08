@@ -31,7 +31,8 @@ export function middleware(req: NextRequest) {
     '/api/keywords',
     '/api/db',
     '/api/youtube/key-pool', // YouTube API Key 池监控
-    '/api/v1/campaigns', // 暂时公开，用于测试
+    '/api/v1/campaigns', // 营销活动 API
+    '/api/v1/jobs', // 任务处理 API（用于测试邮件队列处理）
   ];
 
   // 组合所有公开路由

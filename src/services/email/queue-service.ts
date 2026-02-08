@@ -164,7 +164,7 @@ export class EmailQueueService {
         .where(
           and(
             eq(campaignEmailQueue.status, 'queued'),
-            gte(campaignEmailQueue.scheduledAt, new Date()),
+            sql`${campaignEmailQueue.scheduledAt} <= NOW()`, // 只处理排期时间已到的邮件
             or(
               sql`${campaignEmailQueue.failedAt} IS NULL`,
               sql`${campaignEmailQueue.retryCount} < ${campaignEmailQueue.maxRetries}`
@@ -174,7 +174,18 @@ export class EmailQueueService {
         .orderBy(campaignEmailQueue.scheduledAt)
         .limit(canSend);
 
-      logger.info(`Processing ${queuedEmails.length} emails from queue`);
+      logger.info(`Processing ${queuedEmails.length} emails from queue`, {
+        queuedEmails: queuedEmails.length,
+        totalQueued: canSend,
+        sentInLastHour,
+        maxPerHour: this.MAX_PER_HOUR,
+        sampleEmail: queuedEmails.length > 0 ? {
+          id: queuedEmails[0].id,
+          status: queuedEmails[0].status,
+          scheduledAt: queuedEmails[0].scheduledAt,
+          recipientEmail: queuedEmails[0].recipientEmail,
+        } : null,
+      });
 
       for (const email of queuedEmails) {
         try {
