@@ -101,12 +101,19 @@ export async function GET(request: NextRequest) {
       const trendingUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&chart=mostPopular&regionCode=${regionCode}&maxResults=${maxResults}&key=${apiKey}`;
       console.log('[热门排行榜API] 搜索热门视频:', trendingUrl.replace(/key=[^&]+/, 'key=***'));
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       const trendingResponse = await fetch(trendingUrl, {
-        signal: AbortSignal.timeout(15000),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!trendingResponse.ok) {
-        throw new Error(`获取热门视频失败: ${trendingResponse.status}`);
+        const errorText = await trendingResponse.text();
+        console.error('[热门排行榜API] YouTube API 错误:', trendingResponse.status, errorText);
+        throw new Error(`获取热门视频失败: ${trendingResponse.status} - ${errorText}`);
       }
 
       const trendingData = await trendingResponse.json();
@@ -123,12 +130,18 @@ export async function GET(request: NextRequest) {
         const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(keyword)}&order=viewCount&maxResults=${Math.ceil(maxResults / keywordList.length)}&key=${apiKey}`;
         console.log('[热门排行榜API] 搜索关键词:', keyword, searchUrl.replace(/key=[^&]+/, 'key=***'));
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
         const searchResponse = await fetch(searchUrl, {
-          signal: AbortSignal.timeout(15000),
+          signal: controller.signal,
         });
 
+        clearTimeout(timeoutId);
+
         if (!searchResponse.ok) {
-          console.warn(`[热门排行榜API] 关键词 "${keyword}" 搜索失败: ${searchResponse.status}`);
+          const errorText = await searchResponse.text();
+          console.error(`[热门排行榜API] 关键词 "${keyword}" 搜索失败:`, searchResponse.status, errorText);
           continue;
         }
 
@@ -167,12 +180,19 @@ export async function GET(request: NextRequest) {
     const videosUrl = `https://www.googleapis.com/youtube/v3/videos?${videosParams.toString()}`;
     console.log('[热门排行榜API] 获取视频详情:', videosUrl.replace(/key=[^&]+/, 'key=***'));
 
+    const controller1 = new AbortController();
+    const timeoutId1 = setTimeout(() => controller1.abort(), 15000);
+
     const videosResponse = await fetch(videosUrl, {
-      signal: AbortSignal.timeout(15000),
+      signal: controller1.signal,
     });
 
+    clearTimeout(timeoutId1);
+
     if (!videosResponse.ok) {
-      throw new Error(`获取视频详情失败: ${videosResponse.status}`);
+      const errorText = await videosResponse.text();
+      console.error('[热门排行榜API] YouTube API 错误:', videosResponse.status, errorText);
+      throw new Error(`获取视频详情失败: ${videosResponse.status} - ${errorText}`);
     }
 
     const videosData = await videosResponse.json();
@@ -187,12 +207,19 @@ export async function GET(request: NextRequest) {
     const channelsUrl = `https://www.googleapis.com/youtube/v3/channels?${channelsParams.toString()}`;
     console.log('[热门排行榜API] 获取频道详情:', channelsUrl.replace(/key=[^&]+/, 'key=***'));
 
+    const controller2 = new AbortController();
+    const timeoutId2 = setTimeout(() => controller2.abort(), 15000);
+
     const channelsResponse = await fetch(channelsUrl, {
-      signal: AbortSignal.timeout(15000),
+      signal: controller2.signal,
     });
 
+    clearTimeout(timeoutId2);
+
     if (!channelsResponse.ok) {
-      throw new Error(`获取频道详情失败: ${channelsResponse.status}`);
+      const errorText = await channelsResponse.text();
+      console.error('[热门排行榜API] YouTube API 错误:', channelsResponse.status, errorText);
+      throw new Error(`获取频道详情失败: ${channelsResponse.status} - ${errorText}`);
     }
 
     const channelsData = await channelsResponse.json();
