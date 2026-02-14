@@ -72,9 +72,9 @@ export default function KeywordExpansionPage() {
   const [keyword, setKeyword] = useState('');
   const [language, setLanguage] = useState<SupportedLanguage>('zh-CN');
   const [useRuleEngine, setUseRuleEngine] = useState(true); // 规则引擎默认启用
-  const [useLLMEngine, setUseLLMEngine] = useState(false); // LLM引擎默认关闭（需要配置API）
-  const [useDataMining, setUseDataMining] = useState(false); // 数据挖掘默认关闭（需要配置YouTube API）
-  const [useSemanticExpansion, setUseSemanticExpansion] = useState(false); // 语义相似度拓展默认关闭（需要配置API）
+  const [useLLMEngine, setUseLLMEngine] = useState(true); // LLM引擎默认启用
+  const [useDataMining, setUseDataMining] = useState(true); // 数据挖掘默认启用
+  const [useSemanticExpansion, setUseSemanticExpansion] = useState(true); // 语义相似度拓展默认启用
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ExpansionResponse | null>(null);
   const [selectedDimension, setSelectedDimension] = useState<string>('all');
