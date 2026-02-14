@@ -17,26 +17,31 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Import campaigns and campaignParticipations from campaigns-schema
-export { 
-  campaigns, 
+export {
+  campaigns,
   campaignParticipations,
   campaignAutoMatches,
   campaignEmailQueue,
   campaignNegotiationLogs
 } from "./campaigns-schema";
 
+// Import aiInfluencers from influencer-schema
+export {
+  aiInfluencers
+} from "../database/influencer-schema";
+
 // Import communication tables
-export { 
-  communicationThreads, 
-  communicationMessages, 
-  communicationTemplates 
+export {
+  communicationThreads,
+  communicationMessages,
+  communicationTemplates
 } from "@/core/database/schema/domain/communications";
 
 // Import negotiation tables
-export { 
-  negotiations, 
-  negotiationProposals, 
-  negotiationHistory 
+export {
+  negotiations,
+  negotiationProposals,
+  negotiationHistory
 } from "@/core/database/schema/domain/negotiations";
 
 // Users 表 - 存储用户信息
