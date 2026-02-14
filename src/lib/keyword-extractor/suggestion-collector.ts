@@ -13,7 +13,7 @@ interface SearchSuggestion {
  */
 class YouTubeSuggestionCollector {
   private baseUrl = 'https://suggestqueries.google.com/complete/search';
-  private timeout = 5000; // 5秒超时
+  private timeout = 3000; // 3秒超时（从5秒减少到3秒，更快触发降级）
 
   /**
    * 带超时的 fetch

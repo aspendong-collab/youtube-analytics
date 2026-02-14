@@ -106,7 +106,18 @@ export default function KeywordExpandPage() {
       }
     } catch (error) {
       console.error('搜索失败:', error);
-      toast.error(error instanceof Error ? error.message : '搜索失败');
+      let errorMessage = error instanceof Error ? error.message : '搜索失败';
+      
+      // 提供更详细的错误提示
+      if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT')) {
+        errorMessage = '网络超时，可能是网络连接问题。已自动生成基础关键词作为后备方案。';
+      } else if (errorMessage.includes('fetch failed') || errorMessage.includes('ETIMEDOUT')) {
+        errorMessage = '外部服务暂时无法访问，已自动生成基础关键词作为后备方案。';
+      } else if (errorMessage.includes('Quota exceeded') || errorMessage.includes('配额')) {
+        errorMessage = 'YouTube API 配额已用完，已自动生成基础关键词作为后备方案。';
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

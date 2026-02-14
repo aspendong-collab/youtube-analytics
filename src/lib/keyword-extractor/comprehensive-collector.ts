@@ -191,7 +191,26 @@ class ComprehensiveKeywordCollector {
 
     if (allVideos.length === 0) {
       console.error('[KeywordCollector] 警告：未采集到任何视频数据！可能是API配额问题或关键词过于冷门');
-      console.error('[KeywordCollector] 将仅返回搜索建议和相关搜索数据（如果有）');
+    }
+
+    // 检查是否所有数据源都失败，如果是，使用降级策略生成关键词
+    const allDataSourcesFailed = 
+      allSuggestions.length === 0 && 
+      allRelatedSearches.length === 0 && 
+      allCompetitorKeywords.length === 0 &&
+      allQuestions.length === 0 &&
+      allVideos.length === 0;
+
+    if (allDataSourcesFailed) {
+      console.warn('[KeywordCollector] 所有数据源都失败，使用降级策略生成关键词...');
+      
+      // 生成基于规则的关键词作为后备方案
+      const fallbackKeywords = this.generateFallbackKeywords(keyword, languages);
+      allSuggestions.push(...fallbackKeywords.suggestions);
+      allRelatedSearches.push(...fallbackKeywords.related);
+      allQuestions.push(...fallbackKeywords.questions);
+      
+      console.log(`[KeywordCollector] 降级策略生成了: ${fallbackKeywords.suggestions.length} 个建议，${fallbackKeywords.related.length} 个相关搜索，${fallbackKeywords.questions.length} 个问题`);
     }
 
     // 步骤6：从视频中提取关键词
@@ -464,6 +483,113 @@ class ComprehensiveKeywordCollector {
     });
 
     return stats;
+  }
+
+  /**
+   * 生成降级关键词（当所有数据源都失败时使用）
+   */
+  private generateFallbackKeywords(keyword: string, languages: string[]): {
+    suggestions: string[];
+    related: string[];
+    questions: string[];
+  } {
+    console.log(`[KeywordCollector] 生成降级关键词: ${keyword}`);
+
+    const suggestions: string[] = [];
+    const related: string[] = [];
+    const questions: string[] = [];
+
+    // 根据语言生成关键词模板
+    const isEnglish = languages.includes('en') || !languages.some(l => l.startsWith('zh'));
+
+    if (isEnglish) {
+      // 英文关键词模板
+      suggestions.push(
+        `${keyword} tutorial`,
+        `how to ${keyword}`,
+        `best ${keyword}`,
+        `${keyword} tips`,
+        `${keyword} for beginners`,
+        `${keyword} guide`,
+        `${keyword} explained`,
+        `learn ${keyword}`,
+        `${keyword} 2024`,
+        `${keyword} 2025`
+      );
+
+      related.push(
+        `${keyword} review`,
+        `${keyword} vs`,
+        `top 10 ${keyword}`,
+        `${keyword} tools`,
+        `${keyword} software`,
+        `${keyword} online`,
+        `free ${keyword}`,
+        `${keyword} price`,
+        `${keyword} alternatives`,
+        `why ${keyword}`
+      );
+
+      questions.push(
+        `what is ${keyword}`,
+        `how does ${keyword} work`,
+        `why use ${keyword}`,
+        `is ${keyword} worth it`,
+        `when to use ${keyword}`,
+        `where to learn ${keyword}`,
+        `who needs ${keyword}`,
+        `can i use ${keyword}`,
+        `should i use ${keyword}`,
+        `how much is ${keyword}`
+      );
+    } else {
+      // 中文关键词模板
+      suggestions.push(
+        `${keyword}教程`,
+        `${keyword}怎么用`,
+        `如何${keyword}`,
+        `${keyword}技巧`,
+        `${keyword}入门`,
+        `${keyword}指南`,
+        `${keyword}详解`,
+        `学习${keyword}`,
+        `${keyword}最新`,
+        `${keyword}方法`
+      );
+
+      related.push(
+        `${keyword}测评`,
+        `${keyword}对比`,
+        `${keyword}推荐`,
+        `${keyword}工具`,
+        `${keyword}软件`,
+        `${keyword}在线`,
+        `免费${keyword}`,
+        `${keyword}价格`,
+        `${keyword}替代`,
+        `为什么${keyword}`
+      );
+
+      questions.push(
+        `什么是${keyword}`,
+        `${keyword}怎么工作`,
+        `为什么用${keyword}`,
+        `${keyword}值得吗`,
+        `什么时候用${keyword}`,
+        `哪里学${keyword}`,
+        `谁需要${keyword}`,
+        `可以用${keyword}吗`,
+        `应该用${keyword}吗`,
+        `${keyword}多少钱`
+      );
+    }
+
+    // 去重
+    return {
+      suggestions: [...new Set(suggestions)],
+      related: [...new Set(related)],
+      questions: [...new Set(questions)],
+    };
   }
 }
 
