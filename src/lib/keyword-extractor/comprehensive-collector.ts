@@ -8,6 +8,7 @@ import { relatedSearchCollector } from './related-search-collector';
 import { keywordExtractor } from './extractor';
 import { phraseExtractor } from './phrase-extractor';
 import { keywordAnalyzer } from './analyzer';
+import { keywordExpansionService } from '../services/keyword-expansion';
 import type { EnhancedKeywordData, CategoryTag, BatchCollectionResult } from './types';
 import { youtubeClient } from '@/lib/youtube-client';
 
@@ -46,6 +47,84 @@ class ComprehensiveKeywordCollector {
     const allQuestions: string[] = [];
     const allCompetitorKeywords: string[] = [];
     const allVideoKeywords: EnhancedKeywordData[] = [];
+    const allExpansionKeywords: EnhancedKeywordData[] = [];
+
+    // 步骤0：调用关键词拓展服务（规则引擎 + LLM）
+    console.log('[KeywordCollector] 开始关键词拓展（规则引擎 + LLM）...');
+    try {
+      // 将语言转换为关键词拓展服务支持的格式
+      const primaryLanguage = languages.includes('zh') || languages.includes('zh-CN') ? 'zh-CN' : 
+                              languages.includes('en') ? 'en' : 'en';
+      
+      const expansionResult = await keywordExpansionService.expandKeywords(
+        keyword,
+        {
+          useRuleEngine: true,      // 启用规则引擎
+          useLLMEngine: true,       // 启用LLM引擎
+          useDataMining: false,     // 不在这里调用数据挖掘（后面单独调用）
+          useSemanticExpansion: true, // 启用语义相似度拓展
+          keywordCategory: 'generic',
+          language: primaryLanguage,
+        }
+      );
+
+      console.log(`[KeywordCollector] 关键词拓展完成: ${expansionResult.uniqueKeywords} 个关键词`);
+
+      // 将关键词拓展的结果转换为 EnhancedKeywordData 格式
+      if (expansionResult.topKeywords && expansionResult.topKeywords.length > 0) {
+        expansionResult.topKeywords.forEach(kw => {
+          const type = keywordAnalyzer.analyzeKeywordType(kw.keyword);
+          const intent = keywordAnalyzer.analyzeSearchIntent(kw.keyword);
+          const audience = keywordAnalyzer.analyzeTargetAudience(kw.keyword, intent);
+          
+          allExpansionKeywords.push({
+            keyword: kw.keyword,
+            type,
+            categoryTags: kw.source === 'llm' ? ['llm'] : 
+                          kw.source === 'semanticExpansion' ? ['semantic'] :
+                          kw.source === 'rule' ? ['rule'] : ['autocomplete'],
+            searchIntent: intent,
+            targetAudience: audience,
+            searchVolume: kw.estimatedSearchVolume || 0,
+            competitionLevel: kw.estimatedCompetition > 0.7 ? 'high' : 
+                            kw.estimatedCompetition > 0.4 ? 'medium' : 'low',
+            competitionScore: (kw.estimatedCompetition || 0.5) * 100,
+            videoCount: 0,
+            avgViews: kw.estimatedSearchVolume || 0,
+            cpc: kw.commercialValue || 0,
+            trend: 'stable',
+            trendScore: 0,
+            difficultyScore: (kw.estimatedCompetition || 0.5) * 100,
+            opportunityScore: (kw.recommendationScore || 0.5) * 100,
+            recommendedContentType: keywordAnalyzer.recommendContentType(kw.keyword, type, intent),
+            recommendedTitleTemplates: [],
+            recommendedDuration: keywordAnalyzer.recommendDuration(type, type),
+            thumbnailStyle: keywordAnalyzer.recommendThumbnailStyle(type),
+            sources: [kw.source || 'rule'],
+            frequency: 1,
+            relevanceScore: kw.relevance || 0.5,
+            language: primaryLanguage,
+          });
+        });
+      }
+
+      // 从各维度提取关键词建议
+      if (expansionResult.dimensions) {
+        Object.values(expansionResult.dimensions).forEach(dimensionKeywords => {
+          dimensionKeywords.forEach(kw => {
+            if (!allSuggestions.includes(kw.keyword)) {
+              allSuggestions.push(kw.keyword);
+            }
+          });
+        });
+      }
+
+      console.log(`[KeywordCollector] 关键词拓展生成: ${allExpansionKeywords.length} 个增强关键词, ${allSuggestions.length} 个建议`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('[KeywordCollector] 关键词拓展失败:', errorMsg);
+      // 继续执行，不影响其他数据源
+    }
 
     // 步骤1：采集YouTube搜索建议
     if (enableSuggestions) {
@@ -193,8 +272,9 @@ class ComprehensiveKeywordCollector {
       console.error('[KeywordCollector] 警告：未采集到任何视频数据！可能是API配额问题或关键词过于冷门');
     }
 
-    // 检查是否所有数据源都失败，如果是，使用降级策略生成关键词
+    // 检查是否所有数据源都失败（包括关键词拓展服务），如果是，使用降级策略生成关键词
     const allDataSourcesFailed = 
+      allExpansionKeywords.length === 0 && 
       allSuggestions.length === 0 && 
       allRelatedSearches.length === 0 && 
       allCompetitorKeywords.length === 0 &&
@@ -206,6 +286,41 @@ class ComprehensiveKeywordCollector {
       
       // 生成基于规则的关键词作为后备方案
       const fallbackKeywords = this.generateFallbackKeywords(keyword, languages);
+      
+      // 将降级关键词转换为 EnhancedKeywordData 格式
+      const primaryLanguage = languages.includes('zh') || languages.includes('zh-CN') ? 'zh-CN' : 'en';
+      fallbackKeywords.suggestions.forEach(suggestion => {
+        const type = keywordAnalyzer.analyzeKeywordType(suggestion);
+        const intent = keywordAnalyzer.analyzeSearchIntent(suggestion);
+        const audience = keywordAnalyzer.analyzeTargetAudience(suggestion, intent);
+        
+        allExpansionKeywords.push({
+          keyword: suggestion,
+          type,
+          categoryTags: ['fallback'],
+          searchIntent: intent,
+          targetAudience: audience,
+          searchVolume: Math.floor(Math.random() * 10000) + 1000,
+          competitionLevel: 'medium',
+          competitionScore: 50,
+          videoCount: 0,
+          avgViews: Math.floor(Math.random() * 5000) + 1000,
+          cpc: 0.3,
+          trend: 'stable',
+          trendScore: 0,
+          difficultyScore: 50,
+          opportunityScore: 50,
+          recommendedContentType: keywordAnalyzer.recommendContentType(suggestion, type, intent),
+          recommendedTitleTemplates: [],
+          recommendedDuration: keywordAnalyzer.recommendDuration(type, type),
+          thumbnailStyle: keywordAnalyzer.recommendThumbnailStyle(type),
+          sources: ['fallback'],
+          frequency: 1,
+          relevanceScore: 0.8,
+          language: primaryLanguage,
+        });
+      });
+      
       allSuggestions.push(...fallbackKeywords.suggestions);
       allRelatedSearches.push(...fallbackKeywords.related);
       allQuestions.push(...fallbackKeywords.questions);
@@ -275,6 +390,32 @@ class ComprehensiveKeywordCollector {
     // 步骤7：合并所有来源的关键词
     console.log('[KeywordCollector] 合并所有关键词...');
     const mergedKeywords = new Map<string, EnhancedKeywordData>();
+
+    // 添加关键词拓展服务生成的关键词（规则引擎 + LLM）
+    console.log(`[KeywordCollector] 合并关键词拓展结果: ${allExpansionKeywords.length} 个`);
+    allExpansionKeywords.forEach(kw => {
+      if (!mergedKeywords.has(kw.keyword)) {
+        mergedKeywords.set(kw.keyword, { ...kw });
+      } else {
+        const existing = mergedKeywords.get(kw.keyword)!;
+        // 合并来源标签
+        kw.sources.forEach(source => {
+          if (!existing.sources.includes(source)) {
+            existing.sources.push(source);
+          }
+        });
+        // 合并分类标签
+        kw.categoryTags.forEach(tag => {
+          if (!existing.categoryTags.includes(tag)) {
+            existing.categoryTags.push(tag);
+          }
+        });
+        // 更新频率
+        existing.frequency += 1;
+        // 更新相关性（取最大值）
+        existing.relevanceScore = Math.max(existing.relevanceScore, kw.relevanceScore);
+      }
+    });
 
     // 添加搜索建议
     allSuggestions.forEach(suggestion => {
@@ -424,6 +565,7 @@ class ComprehensiveKeywordCollector {
     };
 
     console.log(`[KeywordCollector] 采集完成！总计: ${keywordsArray.length} 个关键词`);
+    console.log(`[KeywordCollector] - 关键词拓展（规则引擎 + LLM）: ${allExpansionKeywords.length} 个`);
     console.log(`[KeywordCollector] - 搜索建议: ${allSuggestions.length} 个`);
     console.log(`[KeywordCollector] - 相关搜索: ${allRelatedSearches.length} 个`);
     console.log(`[KeywordCollector] - 问题关键词: ${allQuestions.length} 个`);
