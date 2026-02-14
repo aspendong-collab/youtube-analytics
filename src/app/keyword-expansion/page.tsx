@@ -71,10 +71,10 @@ const KEYWORD_TYPE_COLORS: Record<string, string> = {
 export default function KeywordExpansionPage() {
   const [keyword, setKeyword] = useState('');
   const [language, setLanguage] = useState<SupportedLanguage>('zh-CN');
-  const [useRuleEngine, setUseRuleEngine] = useState(true);
-  const [useLLMEngine, setUseLLMEngine] = useState(true);
-  const [useDataMining, setUseDataMining] = useState(true); // 默认启用数据挖掘
-  const [useSemanticExpansion, setUseSemanticExpansion] = useState(true); // 新增：语义相似度拓展开关
+  const [useRuleEngine, setUseRuleEngine] = useState(true); // 规则引擎默认启用
+  const [useLLMEngine, setUseLLMEngine] = useState(false); // LLM引擎默认关闭（需要配置API）
+  const [useDataMining, setUseDataMining] = useState(false); // 数据挖掘默认关闭（需要配置YouTube API）
+  const [useSemanticExpansion, setUseSemanticExpansion] = useState(false); // 语义相似度拓展默认关闭（需要配置API）
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ExpansionResponse | null>(null);
   const [selectedDimension, setSelectedDimension] = useState<string>('all');
@@ -592,12 +592,12 @@ export default function KeywordExpansionPage() {
               </div>
 
               {/* 配置选项 */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-200 dark:border-slate-800">
                 <div className="flex items-center justify-between space-x-2">
                   <Label htmlFor="rule-engine" className="flex flex-col space-y-1">
                     <span>规则引擎</span>
                     <span className="font-normal text-xs text-slate-500">
-                      基于预设模板生成
+                      基于预设模板生成关键词（推荐启用）
                     </span>
                   </Label>
                   <Switch
@@ -610,7 +610,7 @@ export default function KeywordExpansionPage() {
                   <Label htmlFor="llm-engine" className="flex flex-col space-y-1">
                     <span>LLM引擎</span>
                     <span className="font-normal text-xs text-slate-500">
-                      AI智能场景联想
+                      AI智能场景联想（需配置LLM API）
                     </span>
                   </Label>
                   <Switch
@@ -623,7 +623,7 @@ export default function KeywordExpansionPage() {
                   <Label htmlFor="data-mining" className="flex flex-col space-y-1">
                     <span>数据挖掘</span>
                     <span className="font-normal text-xs text-slate-500">
-                      从YouTube提取
+                      从YouTube提取真实数据（需配置YouTube API）
                     </span>
                   </Label>
                   <Switch
@@ -636,7 +636,7 @@ export default function KeywordExpansionPage() {
                   <Label htmlFor="semantic-expansion" className="flex flex-col space-y-1">
                     <span>语义相似度拓展</span>
                     <span className="font-normal text-xs text-slate-500">
-                      近义词、同义词、相关词
+                      近义词、同义词、相关词（需配置LLM API）
                     </span>
                   </Label>
                   <Switch
@@ -798,30 +798,59 @@ export default function KeywordExpansionPage() {
                 <CardTitle>数据来源统计</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-5 gap-4">
+                <div className="grid grid-cols-5 gap-4 mb-4">
                   {(() => {
                     const allKeywords = Object.values(result.dimensions).flat();
                     const sources = [
-                      { source: 'rule', name: '规则引擎', color: 'bg-slate-500', icon: Sparkles },
-                      { source: 'llm', name: 'AI生成', color: 'bg-blue-500', icon: Zap },
-                      { source: 'tagMining', name: '标签提取', color: 'bg-green-500', icon: Target },
-                      { source: 'commentMining', name: '评论提取', color: 'bg-purple-500', icon: Home },
-                      { source: 'semanticExpansion', name: '语义相似度', color: 'bg-orange-500', icon: Languages },
+                      { source: 'rule', name: '规则引擎', color: 'bg-slate-500', icon: Sparkles, requiresConfig: false },
+                      { source: 'llm', name: 'AI生成', color: 'bg-blue-500', icon: Zap, requiresConfig: true },
+                      { source: 'tagMining', name: '标签提取', color: 'bg-green-500', icon: Target, requiresConfig: true },
+                      { source: 'commentMining', name: '评论提取', color: 'bg-purple-500', icon: Home, requiresConfig: true },
+                      { source: 'semanticExpansion', name: '语义相似度', color: 'bg-orange-500', icon: Languages, requiresConfig: true },
                     ];
-                    return sources.map(({ source, name, color, icon: Icon }) => {
+                    return sources.map(({ source, name, color, icon: Icon, requiresConfig }) => {
                       const count = allKeywords.filter((k: any) => k.source === source).length;
+                      const isZero = count === 0;
                       return (
-                        <div key={source} className={`p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800`}>
+                        <div
+                          key={source}
+                          className={`p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 ${
+                            isZero && requiresConfig ? 'opacity-60' : ''
+                          }`}
+                        >
                           <div className="flex items-center gap-2 mb-2">
                             <div className={`w-3 h-3 rounded-full ${color}`} />
                             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{name}</span>
                           </div>
-                          <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{count}</p>
+                          <p className={`text-2xl font-bold ${isZero ? 'text-slate-400 dark:text-slate-600' : 'text-slate-900 dark:text-slate-50'}`}>{count}</p>
+                          {isZero && requiresConfig && (
+                            <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">需配置API</p>
+                          )}
                         </div>
                       );
                     });
                   })()}
                 </div>
+
+                {/* 提示信息 */}
+                {(() => {
+                  const allKeywords = Object.values(result.dimensions).flat();
+                  const llmCount = allKeywords.filter((k: any) => k.source === 'llm').length;
+                  const dataMiningCount = allKeywords.filter((k: any) =>
+                    k.source === 'tagMining' || k.source === 'commentMining'
+                  ).length;
+
+                  if (llmCount === 0 && dataMiningCount === 0 && allKeywords.length > 0) {
+                    return (
+                      <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <p className="text-xs text-blue-700 dark:text-blue-300">
+                          💡 <strong>提示：</strong>当前仅使用规则引擎生成关键词。如需获取更丰富的关键词（AI生成、YouTube真实数据），请在拓展前开启"LLM引擎"和"数据挖掘"选项，并配置相应的API密钥。
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </CardContent>
             </Card>
 
