@@ -28,7 +28,7 @@ export {
 // Import aiInfluencers from influencer-schema
 export {
   aiInfluencers
-} from "../database/influencer-schema";
+} from "./influencer-schema";
 
 // Import communication tables
 export {
